@@ -1,6 +1,7 @@
 """Verify actual local Prometheus targets and a retained business-event trace."""
 import importlib.util
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import urllib.error
 import urllib.request
@@ -46,7 +47,8 @@ def main():
             spans = [span for trace in traces.get("data", []) for span in trace.get("spans", [])]
             if spans:
                 result = {"healthyScrapeTargets": len(healthy), "businessEventType": event["eventType"],
-                          "traceId": trace_id, "retainedSpans": len(spans), "verifiedAtUtc": event["recordedAtUtc"]}
+                          "traceId": trace_id, "retainedSpans": len(spans), "businessRecordedAtUtc": event["recordedAtUtc"],
+                          "verifiedAtUtc": datetime.now(timezone.utc).isoformat()}
                 (ROOT / "artifacts").mkdir(exist_ok=True)
                 (ROOT / "artifacts/observability.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 print(f"Verified {len(healthy)} healthy service scrape targets and {len(spans)} retained spans for a recorded business event.")

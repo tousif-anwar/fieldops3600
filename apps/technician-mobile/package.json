@@ -38,6 +38,18 @@
   "devDependencies": {
     "@types/react": "~19.3.0",
     "tsx": "^4.20.0",
-    "typescript": "~5.9.2"
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "@expo/cli": {
+      "glob": "14.0.2"
+    },
+    "@expo/fingerprint": {
+      "glob": "14.0.2",
+      "minimatch": "11.0.1"
+    },
+    "glob@14.0.2": {
+      "minimatch": "11.0.1"
+    }
   }
 }

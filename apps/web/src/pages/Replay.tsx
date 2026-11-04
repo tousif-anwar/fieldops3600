@@ -41,6 +41,7 @@ import {
 } from "../replay";
 import type { Replay, ReplayEvent, WorkOrder } from "../types";
 import { TraceEvidence } from "../components/TraceEvidence";
+import { DeliveryEvidence } from "../components/DeliveryEvidence";
 
 const initialFilters: ReplayFilters = {
   type: "",
@@ -228,7 +229,7 @@ export function ReplayPage() {
               </span>
               <h2>{order?.title ?? "Work order investigation"}</h2>
               <p>
-                {events.length} logical events <span>·</span>{" "}
+                {events.length} recorded events <span>·</span>{" "}
                 {new Set(events.map((e) => e.sourceService)).size} services{" "}
                 <span>·</span> {dateTime(replay.data.summary.incidentStartUtc)}
               </p>
@@ -566,6 +567,11 @@ export function ReplayPage() {
                                   {e.actorRole} <span>·</span> {e.sourceService}
                                 </p>
                                 <div className="timeline-tags">
+                                  {e.evidenceKind === "Diagnostic" && (
+                                    <span className="event-tag">
+                                      System observation
+                                    </span>
+                                  )}
                                   {e.orderingUncertain && (
                                     <span className="event-tag">
                                       Relative order uncertain
@@ -581,11 +587,19 @@ export function ReplayPage() {
                                       Late arrival
                                     </span>
                                   )}
-                                  {e.retryCount > 0 && (
+                                  {e.retryCount == null ? (
                                     <span className="event-tag warning">
-                                      {e.retryCount}{" "}
-                                      {e.retryCount === 1 ? "retry" : "retries"}
+                                      Retry count unknown
                                     </span>
+                                  ) : (
+                                    e.retryCount > 0 && (
+                                      <span className="event-tag warning">
+                                        {e.retryCount}{" "}
+                                        {e.retryCount === 1
+                                          ? "retry"
+                                          : "retries"}
+                                      </span>
+                                    )
                                   )}
                                   {/Pause|Resume|Override/.test(
                                     e.eventType,
@@ -623,6 +637,14 @@ export function ReplayPage() {
                         </p>
                         <dl className="event-dl">
                           <div>
+                            <dt>Evidence</dt>
+                            <dd>
+                              {selected.evidenceKind === "Diagnostic"
+                                ? "Diagnostic observation"
+                                : "Business event"}
+                            </dd>
+                          </div>
+                          <div>
                             <dt>Occurred</dt>
                             <dd>{dateTime(selected.occurredAtUtc)}</dd>
                           </div>
@@ -658,19 +680,10 @@ export function ReplayPage() {
                             <dd>{selected.sequenceNumber}</dd>
                           </div>
                         </dl>
-                        {selected.attempts?.length > 0 && (
-                          <div className="delivery-attempts">
-                            <h4>Delivery attempts</h4>
-                            {selected.attempts.map((a, i) => (
-                              <div key={`${a.attempt}-${i}`}>
-                                <span>Attempt {a.attempt}</span>
-                                <Status value={a.status} />
-                                <small>{dateTime(a.receivedAtUtc)}</small>
-                                {a.error && <p>{a.error}</p>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <DeliveryEvidence
+                          retryCount={selected.retryCount}
+                          attempts={selected.attempts ?? []}
+                        />
                         <TraceEvidence
                           key={selected.eventId}
                           traceId={selected.traceId}

@@ -58,7 +58,8 @@ class GatewaySecurityTests(unittest.TestCase):
             with urllib.request.urlopen(request, timeout=5) as response:
                 return response.status, response.read(), dict(response.headers)
         except urllib.error.HTTPError as error:
-            return error.code, error.read(), dict(error.headers)
+            with error:
+                return error.code, error.read(), dict(error.headers)
 
     def test_only_health_is_anonymous(self):
         self.assertEqual(200, self.request("/health/live")[0])
@@ -85,6 +86,10 @@ class GatewaySecurityTests(unittest.TestCase):
     def test_unapproved_origin_gets_no_cors_allowance(self):
         _, _, headers = self.request("/api/session", {"Origin": "https://attacker.invalid"})
         self.assertNotIn("Access-Control-Allow-Origin", headers)
+
+    def test_readiness_rejects_missing_business_services_while_process_is_live(self):
+        self.assertEqual(200, self.request("/health/live")[0])
+        self.assertEqual(503, self.request("/health/ready")[0])
 
 
 if __name__ == "__main__":

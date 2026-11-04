@@ -58,15 +58,17 @@ public static class Bootstrap
             builder.Services.AddMassTransit(config =>
             {
                 if (service is "work-orders" or "notifications" or "reporting") config.AddConsumer<OperationalConsumer>();
+                if (service == "reporting") config.AddConsumer<ReplayFaultConsumer>();
                 config.UsingRabbitMq((context, rabbit) =>
                 {
                     rabbit.Host(builder.Configuration["RabbitMq:Host"] ?? "localhost", builder.Configuration["RabbitMq:VirtualHost"] ?? "/", host => { host.Username(builder.Configuration["RabbitMq:Username"] ?? throw new InvalidOperationException("RabbitMq:Username is required.")); host.Password(builder.Configuration["RabbitMq:Password"] ?? throw new InvalidOperationException("RabbitMq:Password is required.")); });
                     if (service is "work-orders" or "notifications" or "reporting") rabbit.ReceiveEndpoint($"fieldops-{service}-events", endpoint => { endpoint.UseMessageRetry(retry => retry.Intervals(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(10))); endpoint.ConcurrentMessageLimit = 1; endpoint.ConfigureConsumer<OperationalConsumer>(context); });
+                    if (service == "reporting") rabbit.ReceiveEndpoint("fieldops-replay-faults", endpoint => { endpoint.UseMessageRetry(retry => retry.Intervals(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(10))); endpoint.ConcurrentMessageLimit = 1; endpoint.ConfigureConsumer<ReplayFaultConsumer>(context); });
                 });
             });
             builder.Services.AddHostedService<OutboxDispatcher>();
         }
-        if (builder.Configuration.GetValue<bool>("Demo:EnableConsumerFailure") && !builder.Environment.IsDevelopment()) throw new InvalidOperationException("Failure injection is development-only.");
+        if ((builder.Configuration.GetValue<bool>("Demo:EnableConsumerFailure") || builder.Configuration.GetValue<bool>("Demo:AlwaysFailConsumer")) && !builder.Environment.IsDevelopment()) throw new InvalidOperationException("Failure injection is development-only.");
         var policy = new SlaPolicy(builder.Configuration.GetValue("Sla:DurationSeconds", 1800), builder.Configuration.GetValue("Sla:WarningSeconds", 1200), builder.Configuration.GetValue("Sla:CriticalSeconds", 1500));
         policy.Validate(builder.Environment.IsDevelopment()); builder.Services.AddSingleton(policy);
         if (service == "workflows")

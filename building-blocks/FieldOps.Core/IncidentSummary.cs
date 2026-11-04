@@ -31,7 +31,7 @@ public static class IncidentSummaries
         var finished = events.LastOrDefault(e => e.EventType == "WorkflowCompleted.v1");
         return new(events.Min(e => e.OccurredAtUtc), events.Max(e => e.OccurredAtUtc), breaches.Length, interventions.Length,
             finished is not null ? Text(finished, "outcome") ?? "Completed" : "In progress",
-            [$"{events.Length} distinct business events recorded.", $"{breaches.Length} stage SLA breaches recorded.", $"{interventions.Length} stage-control interventions recorded.", $"{actions.Length} supervisor actions or advisory decisions recorded."],
+            [$"{events.Length} distinct audit events recorded (business actions and diagnostic evidence are separately typed).", $"{breaches.Length} stage SLA breaches recorded.", $"{interventions.Length} stage-control interventions recorded.", $"{actions.Length} supervisor actions or advisory decisions recorded."],
             ["No root cause is inferred automatically. Recorded delays, failures, answers and interventions establish observations, not causality."], incidents, actions);
     }
     private static string? Text(AuditEvent e, string field) => e.EventPayload.TryGetProperty(field, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : null;

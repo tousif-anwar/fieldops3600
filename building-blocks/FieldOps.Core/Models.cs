@@ -153,7 +153,10 @@ public sealed class DeliveryAttempt
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid EventId { get; set; }
-    public int Attempt { get; set; }
+    public int? Attempt { get; set; }
+    public string ConsumerService { get; set; } = "reporting";
+    public Guid? FaultId { get; set; }
+    public DateTimeOffset? OccurredAtUtc { get; set; }
     public DateTimeOffset ReceivedAtUtc { get; set; }
     public DateTimeOffset ProcessedAtUtc { get; set; }
     public string Status { get; set; } = "Processed";

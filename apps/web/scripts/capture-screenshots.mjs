@@ -117,18 +117,13 @@ try {
       await page
         .getByRole("link", { name: "My workflow", exact: true })
         .click();
-      const selected = page.locator(".job-card").filter({
-        has: page.getByRole("heading", {
-          name:
-            orders.find((order) => order.id === workflow.workOrderId)?.title ??
-            "",
-        }),
-      });
-      if (await selected.count()) {
-        await selected.getByRole("button").click();
-        await page.locator(".workflow-stepper").waitFor();
-        await capture("guided-service-workflow");
-      }
+      const selected = page.locator(
+        `.job-card[data-work-order-id="${workflow.workOrderId}"]`,
+      );
+      await selected.waitFor({ state: "visible", timeout: 20000 });
+      await selected.getByRole("button").click();
+      await page.locator(".workflow-stepper").waitFor();
+      await capture("guided-service-workflow");
     }
   }
 } finally {

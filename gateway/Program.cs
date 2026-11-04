@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -78,7 +79,8 @@ builder.Services.AddRateLimiter(options =>
             context.User.FindFirst("sub")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 240, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
-builder.Services.AddHealthChecks();
+builder.Services.AddHttpClient("readiness", client => client.Timeout = TimeSpan.FromSeconds(3));
+builder.Services.AddHealthChecks().AddCheck<UpstreamReadiness>("business-services", tags: ["ready"]);
 builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddService("fieldops-gateway"))
     .WithTracing(trace => trace.AddAspNetCoreInstrumentation(options => options.Filter = c => !c.Request.Path.StartsWithSegments("/health"))
         .AddHttpClientInstrumentation().AddOtlpExporter());
@@ -147,7 +149,8 @@ app.UseCors();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
-app.MapHealthChecks("/health/live").AllowAnonymous();
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") }).AllowAnonymous();
 app.MapGet("/api/session", (ClaimsPrincipal user) => Results.Ok(new
 {
     id = user.FindFirst("sub")?.Value,
@@ -157,3 +160,24 @@ app.MapGet("/api/session", (ClaimsPrincipal user) => Results.Ok(new
 }));
 app.MapReverseProxy();
 app.Run();
+
+public sealed class UpstreamReadiness(IHttpClientFactory clients, IConfiguration configuration) : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        var names = new[] { "work-orders", "technicians", "scheduling", "workflows", "notifications", "reporting" };
+        var checks = names.Select(async (name, index) =>
+        {
+            var address = configuration[$"Services:{name}"] ?? $"http://localhost:{5101 + index}";
+            try
+            {
+                using var response = await clients.CreateClient("readiness").GetAsync(address.TrimEnd('/') + "/health/ready", cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException) { return false; }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested) { return false; }
+        });
+        return (await Task.WhenAll(checks)).All(healthy => healthy)
+            ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy("A required business service is not ready.");
+    }
+}

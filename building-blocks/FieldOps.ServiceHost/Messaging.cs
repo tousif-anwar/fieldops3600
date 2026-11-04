@@ -103,7 +103,7 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         if (context.GetRetryAttempt() > 0) Telemetry.Retries.WithLabels(identity.Name).Inc();
         if (identity.Name == "reporting")
         {
-            db.DeliveryAttempts.Add(new DeliveryAttempt { EventId = e.EventId, Attempt = context.GetRetryAttempt() + 1, ReceivedAtUtc = now, ProcessedAtUtc = now, Status = seen ? "Duplicate" : "Processed" });
+            db.DeliveryAttempts.Add(new DeliveryAttempt { EventId = e.EventId, Attempt = context.GetRetryAttempt() + 1, ConsumerService = identity.Name, OccurredAtUtc = now, ReceivedAtUtc = now, ProcessedAtUtc = now, Status = seen ? "Duplicate" : "Processed" });
         }
         if (seen)
         {
@@ -112,12 +112,12 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         }
         // Development-only deterministic failure injection for a broker retry demonstration.
         // One requested event type fails its first delivery; retry remains broker-owned.
-        if (configuration.GetValue<bool>("Demo:EnableConsumerFailure") && e.EventType == configuration["Demo:FailEventType"] && context.GetRetryAttempt() == 0)
+        if (configuration.GetValue<bool>("Demo:EnableConsumerFailure") && e.EventType == configuration["Demo:FailEventType"] && (configuration.GetValue<bool>("Demo:AlwaysFailConsumer") || context.GetRetryAttempt() == 0))
         {
             if (identity.Name == "reporting")
             {
                 db.ChangeTracker.Clear();
-                db.DeliveryAttempts.Add(new DeliveryAttempt { EventId = e.EventId, Attempt = 1, ReceivedAtUtc = now, ProcessedAtUtc = now, Status = "Failed", Error = "Controlled development-only processing failure" });
+                db.DeliveryAttempts.Add(new DeliveryAttempt { EventId = e.EventId, Attempt = context.GetRetryAttempt() + 1, ConsumerService = identity.Name, OccurredAtUtc = now, ReceivedAtUtc = now, ProcessedAtUtc = now, Status = "Failed", Error = "Controlled development-only processing failure" });
                 await db.SaveChangesAsync(context.CancellationToken); await transaction.CommitAsync(context.CancellationToken);
             }
             throw new InvalidOperationException("Controlled development-only consumer failure.");
@@ -148,11 +148,14 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         switch (e.EventType)
         {
             case "BookingCreated.v1":
-                if (order.Status is "Created" or "Scheduled") { order.TechnicianId = GetString(e, "technicianId"); order.Status = "Scheduled"; order.Version++; } break;
+                if (order.Status is "Created" or "Scheduled") { order.TechnicianId = GetString(e, "technicianId"); order.Status = "Scheduled"; order.Version++; }
+                break;
             case "BookingCancelled.v1":
-                if (order.Status == "Scheduled") { order.TechnicianId = null; order.Status = "Created"; order.Version++; } break;
+                if (order.Status == "Scheduled") { order.TechnicianId = null; order.Status = "Created"; order.Version++; }
+                break;
             case "WorkflowStarted.v1":
-                if (order.Status is not "Completed" and not "Cancelled") { order.Status = "InProgress"; order.TechnicianId = GetString(e, "technicianId"); order.Version++; } break;
+                if (order.Status is not "Completed" and not "Cancelled") { order.Status = "InProgress"; order.TechnicianId = GetString(e, "technicianId"); order.Version++; }
+                break;
             case "WorkflowCompleted.v1":
                 order.Status = "Completed"; order.CompletedAtUtc = GetDate(e, "completedAtUtc") ?? e.OccurredAtUtc; order.Version++;
                 db.Enqueue(new AuditEvent(Guid.NewGuid(), "WorkOrderCompleted.v1", 1, order.Id, e.WorkflowId, null, "system", "System", "work-orders", e.CorrelationId, e.EventId, e.TraceId, e.SpanId, e.OccurredAtUtc, clock.GetUtcNow(), order.Version, System.Text.Json.JsonSerializer.SerializeToElement(OperationsApi.OrderPayload(order), Json.Options))); break;
@@ -171,13 +174,15 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
 
     private async Task ProjectReporting(AuditEvent e, DateTimeOffset now, CancellationToken ct)
     {
-        var body = Json.Write(e);
-        db.Events.Add(new StoredEvent { EventId = e.EventId, WorkOrderId = e.WorkOrderId, EventType = e.EventType, SourceService = e.SourceService, TeamId = GetString(e, "teamId") ?? "", ActorId = e.ActorId, Body = body, OccurredAtUtc = e.OccurredAtUtc, ReceivedAtUtc = now, ProcessedAtUtc = now, SequenceNumber = e.SequenceNumber, CorrelationId = e.CorrelationId, TraceId = e.TraceId, IntegrityHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body))) });
+        await FaultEvidence.LockOrder(db, e.WorkOrderId, ct);
+        // A fault may have preserved this original evidence before normal delivery
+        // recovers. Keep its original body/arrival and still apply the missing facts.
+        if (!await db.Events.AnyAsync(x => x.EventId == e.EventId, ct)) db.Events.Add(FaultEvidence.Store(e, now));
         if (e.WorkOrderId == Guid.Empty) return;
         var projection = await db.ReplayProjections.FindAsync([e.WorkOrderId], ct);
         if (projection is null) { projection = new ReplayProjection { WorkOrderId = e.WorkOrderId, TeamId = GetString(e, "teamId") ?? "" }; db.ReplayProjections.Add(projection); }
         var priorEvents = await db.Events.AsNoTracking().Where(x => x.WorkOrderId == e.WorkOrderId).Select(x => x.Body).ToListAsync(ct);
-        var history = priorEvents.Select(Json.Read<AuditEvent>).Append(e).ToArray();
+        var history = priorEvents.Select(Json.Read<AuditEvent>).Append(e).GroupBy(x => x.EventId).Select(g => g.First()).ToArray();
         projection.StateJson = Json.Write(ReplayEngine.Reconstruct(history)); projection.EventCount = history.Length; projection.UpdatedAtUtc = now;
         var order = await db.WorkOrderFacts.FindAsync([e.WorkOrderId], ct);
         if (order is null) { order = new WorkOrderFact { WorkOrderId = e.WorkOrderId, CreatedAtUtc = e.OccurredAtUtc, TeamId = GetString(e, "teamId") ?? "" }; db.WorkOrderFacts.Add(order); }

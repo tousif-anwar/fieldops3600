@@ -64,11 +64,13 @@ $env:CI='1'
 npx expo export --platform android --output-dir dist/android
 ```
 
-Before the SDK 58 upgrade, the SDK 55 implementation was typechecked, all 12 offline/form tests passed, and an Android Hermes bundle was exported successfully through Metro. Those results are historical and do not certify the upgraded native dependency graph. After installing SDK 58 packages, rerun every command above with `expo export --clear` and record the result in the repository implementation status. Tests cover persistence/restart, stable idempotency, retry timing, concurrent flushes, remount races, conflicts, account isolation, terminal authorization failures, conditional fields, and hidden-answer removal.
+The upgraded SDK 58 application passed TypeScript 6 typechecking, all 12 offline/form tests, Expo's dependency compatibility check, and a clean-cache Android Metro/Hermes export (1,266 modules). `npm audit` reports zero vulnerabilities. Tests cover persistence/restart, stable idempotency, retry timing, concurrent flushes, remount races, conflicts, account isolation, terminal authorization failures, conditional fields, and hidden-answer removal.
 
 ## SDK 58 migration
 
 The dependency upgrade aligns Expo 58.0.23, React Native 0.88.1, React 19.3.0 and native module versions with Expo's bundled compatibility map. The application uses only the public React Native and Expo Router APIs; it has no deep React Native imports, custom navigator, removed InteractionManager/Touchable APIs, or legacy navigation-state persistence. AuthSession's code/PKCE flow and SecureStore's device-only token storage keep their existing interfaces.
+
+Scoped build-tool overrides use patched `glob` 14.0.2 and `minimatch` 11.0.1 under Expo CLI/fingerprint. They resolve the remaining AbortSignal traversal and glob amplification advisories without changing unrelated dependency trees. The compatibility check and clean-cache bundle export were executed with these overrides.
 
 The obsolete `newArchEnabled` configuration was removed. Native layouts now use safe-area-context for edge insets, retain opaque stack headers explicitly, and request automatic scroll inset adjustment. This prevents the new iOS transparent-header default from placing controls under the navigation bar. Orientation is adaptive for resizable windows. The optional web preview explicitly retains single-page output; the operations web application remains the supported browser experience.
 

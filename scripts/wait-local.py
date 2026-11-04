@@ -3,7 +3,7 @@ import time
 import urllib.error
 import urllib.request
 
-targets = ["http://localhost:8080/realms/fieldops/.well-known/openid-configuration", "http://localhost:5100/health/live", "http://localhost:8088/"]
+targets = ["http://localhost:8080/realms/fieldops/.well-known/openid-configuration", "http://localhost:5100/health/ready", "http://localhost:8088/"]
 deadline = time.monotonic() + 180
 pending = set(targets)
 while pending and time.monotonic() < deadline:

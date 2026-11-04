@@ -27,7 +27,11 @@ public sealed class WorkflowTests
     }
 
     [Theory]
-    [InlineData(19, 0)] [InlineData(20, 1)] [InlineData(25, 2)] [InlineData(30, 3)] [InlineData(45, 3)]
+    [InlineData(19, 0)]
+    [InlineData(20, 1)]
+    [InlineData(25, 2)]
+    [InlineData(30, 3)]
+    [InlineData(45, 3)]
     public void PersistedSlaThresholdsCatchUpAfterRestart(int minutes, int expected)
     {
         var workflow = New();

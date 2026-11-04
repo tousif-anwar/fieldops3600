@@ -113,11 +113,14 @@ export interface Reports {
   }[];
 }
 export interface DeliveryAttempt {
-  attempt: number;
+  attempt: number | null;
+  occurredAtUtc?: string;
   receivedAtUtc: string;
   processedAtUtc?: string;
   status: string;
   error?: string;
+  consumerService?: string;
+  faultId?: string;
 }
 export interface ReplayEvent {
   eventId: string;
@@ -140,8 +143,9 @@ export interface ReplayEvent {
   sequenceNumber: number;
   eventPayload: Record<string, unknown>;
   schemaVersion: number;
-  retryCount: number;
+  retryCount: number | null;
   processingStatus: string;
+  evidenceKind?: "Business" | "Diagnostic";
   attempts: DeliveryAttempt[];
   orderingUncertain?: boolean;
   missingCausation?: boolean;

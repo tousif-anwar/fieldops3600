@@ -97,7 +97,9 @@ export function Empty({
 }
 export function Status({ value }: { value: string }) {
   const normalized = value.toLowerCase();
-  const tone = /breach|critical|overdue|fail|cancel/.test(normalized)
+  const tone = /breach|critical|overdue|fail|cancel|dead.?letter/.test(
+    normalized,
+  )
     ? "danger"
     : /warning|risk|pause|pending/.test(normalized)
       ? "warning"

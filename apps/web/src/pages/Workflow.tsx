@@ -38,6 +38,7 @@ import {
 } from "../components/common";
 import type { FormField, Template, WorkOrder, Workflow } from "../types";
 import { RiskAssessment } from "../components/RiskAssessment";
+import { completedStageCount } from "../workflow";
 
 export function visibleFields(
   fields: FormField[],
@@ -91,8 +92,13 @@ export function MyJobs() {
         <div className="jobs-grid">
           {assigned.map((w) => {
             const f = workflows.data?.find((f) => f.workOrderId === w.id);
+            const completed = completedStageCount(f);
             return (
-              <article className="job-card" key={w.id}>
+              <article
+                className="job-card"
+                key={w.id}
+                data-work-order-id={w.id}
+              >
                 <div className="job-card-top">
                   <span className="order-number">{w.number}</span>
                   <Status value={w.priority} />
@@ -100,10 +106,18 @@ export function MyJobs() {
                 <h2>{w.title}</h2>
                 <p>{w.customerName}</p>
                 <p className="muted">{w.siteAddress}</p>
-                <div className="job-progress">
+                <div
+                  className="job-progress"
+                  role="progressbar"
+                  aria-label={`${w.number} workflow completion`}
+                  aria-valuemin={0}
+                  aria-valuemax={8}
+                  aria-valuenow={completed}
+                  aria-valuetext={`${completed} of 8 stages complete`}
+                >
                   <div
                     style={{
-                      width: `${f ? (Math.min(f.currentStageIndex, 8) / 8) * 100 : 0}%`,
+                      width: `${(completed / 8) * 100}%`,
                     }}
                   />
                 </div>
@@ -116,9 +130,7 @@ export function MyJobs() {
                             ?.name
                       : "Ready to begin"}
                   </span>
-                  <small>
-                    {f ? Math.min(f.currentStageIndex, 8) : 0}/8 stages
-                  </small>
+                  <small>{completed}/8 stages</small>
                 </div>
                 <Button
                   appearance="primary"
@@ -305,11 +317,11 @@ export function WorkflowPage() {
           <div className="stepper-heading">
             <Wrench size={18} />
             <strong>Service pipeline</strong>
-            <small>{Math.min(f.currentStageIndex, 8)} of 8 complete</small>
+            <small>{completedStageCount(f)} of 8 complete</small>
           </div>
           <ol>
             {f.stages.map((s) => {
-              const completed = s.status === "Completed";
+              const completed = ["Completed", "Overridden"].includes(s.status);
               const available = completed || s.index === f.currentStageIndex;
               return (
                 <li
@@ -328,7 +340,7 @@ export function WorkflowPage() {
                       <strong>{s.name}</strong>
                       <small>
                         {completed
-                          ? "Completed · read only"
+                          ? `${s.status} · read only`
                           : s.index === f.currentStageIndex
                             ? "Current stage"
                             : "Coming up"}

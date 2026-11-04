@@ -53,12 +53,15 @@ public static class ReportingApi
             double Minutes(StageFact s) => Math.Max(0, (s.CompletedAtUtc!.Value - s.StartedAtUtc!.Value).TotalMinutes - s.PausedSeconds / 60);
             return Results.Ok(new
             {
-                totalWorkOrders = orders.Count, completedWorkOrders = completed,
+                totalWorkOrders = orders.Count,
+                completedWorkOrders = completed,
                 completionRate = orders.Count == 0 ? 0 : (double)completed / orders.Count,
                 slaComplianceRate = completedStages.Length == 0 ? (double?)null : (double)completedStages.Count(s => !s.Breached) / completedStages.Length,
                 averageServiceMinutes = completed == 0 ? (double?)null : orders.Where(x => x.CompletedAtUtc.HasValue).Average(x => (x.CompletedAtUtc!.Value - x.CreatedAtUtc).TotalMinutes),
                 averageStageMinutes = completedStages.Length == 0 ? (double?)null : completedStages.Average(Minutes),
-                activeJobs = orders.Count(x => x.Status == "InProgress"), atRiskStages = stages.Count(x => x.CompletedAtUtc is null && x.SlaStatus is "Warning" or "Critical"), overdueStages = stages.Count(x => x.CompletedAtUtc is null && x.Breached),
+                activeJobs = orders.Count(x => x.Status == "InProgress"),
+                atRiskStages = stages.Count(x => x.CompletedAtUtc is null && x.SlaStatus is "Warning" or "Critical"),
+                overdueStages = stages.Count(x => x.CompletedAtUtc is null && x.Breached),
                 completedToday = orders.Count(x => x.CompletedAtUtc.HasValue && x.CompletedAtUtc.Value.UtcDateTime.Date == now.UtcDateTime.Date),
                 refreshedAtUtc = orders.Count == 0 ? (DateTimeOffset?)null : orders.Max(x => x.UpdatedAtUtc),
                 volumeTrend = orders.GroupBy(x => x.CreatedAtUtc.UtcDateTime.Date).OrderBy(x => x.Key).Select(x => new { date = x.Key.ToString("yyyy-MM-dd"), total = x.Count(), completed = x.Count(o => o.CompletedAtUtc.HasValue) }),
@@ -101,11 +104,19 @@ public static class ReportingApi
             var ordered = ReplayEngine.Order(all);
             var attempts = await db.DeliveryAttempts.AsNoTracking().Where(x => records.Select(e => e.EventId).Contains(x.EventId)).OrderBy(x => x.ReceivedAtUtc).ToListAsync(ct);
             var filtered = ordered.Where(x => (eventType is null || x.Event.EventType == eventType) && (service is null || x.Event.SourceService == service) && (actor is null || x.Event.ActorId == actor) && (correlationId is null || x.Event.CorrelationId == correlationId) && (traceId is null || x.Event.TraceId == traceId) && (!from.HasValue || x.Event.OccurredAtUtc >= from.Value) && (!to.HasValue || x.Event.OccurredAtUtc <= to.Value));
-            return Results.Ok(new { workOrderId, events = filtered.Select(item =>
+            return Results.Ok(new
+            {
+                workOrderId,
+                events = filtered.Select(item =>
             {
                 var e = item.Event; var stored = records.Single(x => x.EventId == e.EventId); var deliveries = attempts.Where(x => x.EventId == e.EventId).ToArray();
-                return new { e.EventId, e.EventType, e.EventVersion, e.WorkOrderId, e.WorkflowId, e.StageInstanceId, e.ActorId, e.ActorRole, e.SourceService, e.CorrelationId, e.CausationId, e.TraceId, e.SpanId, e.OccurredAtUtc, e.RecordedAtUtc, stored.ReceivedAtUtc, stored.ProcessedAtUtc, e.SequenceNumber, e.EventPayload, e.SchemaVersion, retryCount = deliveries.Count(x => x.Status == "Failed"), processingStatus = "Processed", processingDelaySeconds = (stored.ReceivedAtUtc - e.OccurredAtUtc).TotalSeconds, item.OrderingUncertain, item.MissingCausation, integrityVerified = stored.IntegrityHash == Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(stored.Body))), attempts = deliveries.Select(x => new { x.Attempt, x.ReceivedAtUtc, x.ProcessedAtUtc, x.Status, x.Error }) };
-            }), summary = Summary(all), state = ReplayEngine.Reconstruct(all), orderingPolicy = "Causation, source sequence, authoritative occurrence timestamp. Independent cross-service ordering is marked uncertain.", traceRetention = "Trace identifiers persist with audit events. A trace may have expired from Jaeger independently; inspect trace availability before following a trace link." });
+                return new { e.EventId, e.EventType, e.EventVersion, e.WorkOrderId, e.WorkflowId, e.StageInstanceId, e.ActorId, e.ActorRole, e.SourceService, e.CorrelationId, e.CausationId, e.TraceId, e.SpanId, e.OccurredAtUtc, e.RecordedAtUtc, stored.ReceivedAtUtc, stored.ProcessedAtUtc, e.SequenceNumber, e.EventPayload, e.SchemaVersion, evidenceKind = Diagnostic(e) ? "Diagnostic" : "Business", retryCount = DeliveryObservations.RetryCount(deliveries), processingStatus = DeliveryObservations.ProcessingStatus(deliveries, Diagnostic(e)), processingDelaySeconds = (stored.ReceivedAtUtc - e.OccurredAtUtc).TotalSeconds, item.OrderingUncertain, item.MissingCausation, integrityVerified = stored.IntegrityHash == Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(stored.Body))), attempts = deliveries.Select(x => new { x.Attempt, x.ConsumerService, x.FaultId, x.OccurredAtUtc, x.ReceivedAtUtc, x.ProcessedAtUtc, x.Status, x.Error }) };
+            }),
+                summary = Summary(all),
+                state = ReplayEngine.Reconstruct(all),
+                orderingPolicy = "Causation, source sequence, authoritative occurrence timestamp. Independent cross-service ordering is marked uncertain.",
+                traceRetention = "Trace identifiers persist with audit events. A trace may have expired from Jaeger independently; inspect trace availability before following a trace link."
+            });
         });
         replay.MapGet("/{workOrderId:guid}/export.csv", async (Guid workOrderId, ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
@@ -116,7 +127,8 @@ public static class ReportingApi
             var csv = "EventId,EventType,EventVersion,WorkOrderId,WorkflowId,StageInstanceId,OccurredAtUtc,RecordedAtUtc,ReceivedAtUtc,ProcessedAtUtc,SourceService,ActorId,ActorRole,CorrelationId,CausationId,TraceId,SpanId,SequenceNumber,OrderingUncertain,MissingCausation,RetryCount,ProcessingStatus,Payload\r\n" + string.Join("\r\n", rows.Select(x =>
             {
                 var e = x.Event; var stored = records.Single(r => r.EventId == e.EventId);
-                return string.Join(",", new[] { e.EventId.ToString(), e.EventType, e.EventVersion.ToString(), e.WorkOrderId.ToString(), e.WorkflowId?.ToString() ?? "", e.StageInstanceId?.ToString() ?? "", e.OccurredAtUtc.ToString("O"), e.RecordedAtUtc.ToString("O"), stored.ReceivedAtUtc.ToString("O"), stored.ProcessedAtUtc.ToString("O"), e.SourceService, e.ActorId, e.ActorRole, e.CorrelationId, e.CausationId?.ToString() ?? "", e.TraceId ?? "", e.SpanId ?? "", e.SequenceNumber.ToString(), x.OrderingUncertain.ToString(), x.MissingCausation.ToString(), attempts.Count(a => a.EventId == e.EventId && a.Status == "Failed").ToString(), "Processed", Json.Write(e.EventPayload) }.Select(Csv));
+                var deliveries = attempts.Where(a => a.EventId == e.EventId).ToArray();
+                return string.Join(",", new[] { e.EventId.ToString(), e.EventType, e.EventVersion.ToString(), e.WorkOrderId.ToString(), e.WorkflowId?.ToString() ?? "", e.StageInstanceId?.ToString() ?? "", e.OccurredAtUtc.ToString("O"), e.RecordedAtUtc.ToString("O"), stored.ReceivedAtUtc.ToString("O"), stored.ProcessedAtUtc.ToString("O"), e.SourceService, e.ActorId, e.ActorRole, e.CorrelationId, e.CausationId?.ToString() ?? "", e.TraceId ?? "", e.SpanId ?? "", e.SequenceNumber.ToString(), x.OrderingUncertain.ToString(), x.MissingCausation.ToString(), DeliveryObservations.RetryCount(deliveries)?.ToString() ?? "Unknown", DeliveryObservations.ProcessingStatus(deliveries, Diagnostic(e)), Json.Write(e.EventPayload) }.Select(Csv));
             }));
             return Results.File(Encoding.UTF8.GetBytes(csv), "text/csv", $"incident-{workOrderId}.csv");
         });
@@ -138,7 +150,7 @@ public static class ReportingApi
             var ids = records.Select(x => x.EventId).ToArray();
             var attempts = await db.DeliveryAttempts.AsNoTracking().Where(x => ids.Contains(x.EventId)).OrderBy(x => x.ReceivedAtUtc).ToListAsync(ct);
             lines.Add("Delivery attempts (separate from business actions):");
-            lines.AddRange(attempts.Select(a => $"Event {a.EventId}; attempt {a.Attempt}; {a.Status}; received {a.ReceivedAtUtc:O}; processed {a.ProcessedAtUtc:O}; {a.Error}"));
+            lines.AddRange(attempts.Select(a => $"Event {a.EventId}; consumer {a.ConsumerService}; attempt {a.Attempt?.ToString() ?? "unknown"}; {a.Status}; occurred {a.OccurredAtUtc:O}; received {a.ReceivedAtUtc:O}; processed {a.ProcessedAtUtc:O}; {a.Error}"));
             lines.Add("Chronological business evidence:");
             lines.AddRange(ReplayEngine.Order(events).Select(x => $"{x.Event.OccurredAtUtc:O} | {x.Event.EventType} | {x.Event.SourceService} | {x.Event.ActorId}; uncertain order={x.OrderingUncertain}"));
             lines.Add("Inferred causes: None. Event evidence alone does not establish a root cause.");
@@ -155,6 +167,7 @@ public static class ReportingApi
         return records;
     }
     private static object Summary(AuditEvent[] events) => IncidentSummaries.Create(events);
+    private static bool Diagnostic(AuditEvent e) => e.EventType is "MessageProcessingFailed.v1" or "DeadLetterRecorded.v1";
     private static string Csv(string value)
     {
         if (value.Length > 0 && "=+-@\t\r".Contains(value[0])) value = "'" + value;

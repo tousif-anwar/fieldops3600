@@ -4211,3 +4211,19 @@ td {
     font-size: 8px;
   }
 }
+.delivery-uncertainty {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #766444;
+  margin-top: 12px;
+}
+.delivery-fault-id {
+  overflow-wrap: anywhere;
+}
+.delivery-fault-id code {
+  font-size: 10px;
+}
+.delivery-evidence .delivery-attempts small {
+  font-size: 10px;
+  color: #66778d;
+}

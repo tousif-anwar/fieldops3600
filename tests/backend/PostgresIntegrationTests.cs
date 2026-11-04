@@ -37,7 +37,7 @@ public sealed class PostgresIntegrationTests(PostgresFixture fixture)
         var cs = await fixture.Database("reporting", false);
         await using var db = PostgresFixture.Db(cs, "reporting");
         await SchemaMigrator.Apply(db); await SchemaMigrator.Apply(db);
-        Assert.Equal(2, await db.Database.SqlQueryRaw<int>("SELECT count(*)::integer AS \"Value\" FROM fieldops_schema_migrations").SingleAsync());
+        Assert.Equal(3, await db.Database.SqlQueryRaw<int>("SELECT count(*)::integer AS \"Value\" FROM fieldops_schema_migrations").SingleAsync());
         await db.Database.ExecuteSqlRawAsync("UPDATE fieldops_schema_migrations SET sha256='changed' WHERE migration_id LIKE '%001_initial%'");
         await Assert.ThrowsAsync<InvalidOperationException>(() => SchemaMigrator.Apply(db));
     }
@@ -102,6 +102,55 @@ public sealed class PostgresIntegrationTests(PostgresFixture fixture)
         await using var read = PostgresFixture.Db(cs, "reporting"); var stored = await read.Events.SingleAsync();
         Assert.Equal(body, stored.Body);
         Assert.Equal(hash, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(stored.Body))));
+    }
+
+    [Fact]
+    public async Task FaultMonitorPreservesMissingOriginalOnceAndDeduplicatesTerminalEvidence()
+    {
+        var cs = await fixture.Database("reporting");
+        var now = DateTimeOffset.FromUnixTimeMilliseconds(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        var original = EventFactory.Create(null, "workflows", "StageStarted.v1", Guid.NewGuid(),
+            new { teamId = "north", technicianId = "tech-01", stageName = "Diagnosis" }, 2, now, Guid.NewGuid(), Guid.NewGuid());
+        var originalBody = Json.Write(original);
+        var observation = new FaultObservation(Guid.NewGuid(), original.EventId, original, now.AddSeconds(5), "notifications", ["System.InvalidOperationException"]);
+        await using (var write = PostgresFixture.Db(cs, "reporting"))
+        {
+            Assert.True(await FaultEvidence.Record(write, observation, now.AddSeconds(10)));
+            Assert.False(await FaultEvidence.Record(write, observation, now.AddSeconds(20)));
+        }
+        await using var inspect = PostgresFixture.Db(cs, "reporting");
+        var retained = await inspect.Events.ToListAsync();
+        Assert.Equal(3, retained.Count);
+        var business = Assert.Single(retained, e => e.EventId == original.EventId);
+        Assert.Equal(originalBody, business.Body);
+        Assert.Equal(original.OccurredAtUtc, business.OccurredAtUtc);
+        Assert.Equal(now.AddSeconds(10), business.ReceivedAtUtc);
+        Assert.Equal(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(originalBody))), business.IntegrityHash);
+        var attempt = Assert.Single(await inspect.DeliveryAttempts.ToListAsync());
+        Assert.Equal("notifications", attempt.ConsumerService); Assert.Equal("DeadLettered", attempt.Status); Assert.Null(attempt.Attempt);
+        Assert.Equal(observation.FaultId, attempt.FaultId);
+        Assert.Equal(3, (await inspect.ReplayProjections.SingleAsync()).EventCount);
+        Assert.Equal(new[] { "StageStarted.v1", "MessageProcessingFailed.v1", "DeadLetterRecorded.v1" }, ReplayEngine.Order(retained.Select(e => Json.Read<AuditEvent>(e.Body))).Select(e => e.Event.EventType));
+    }
+
+    [Fact]
+    public async Task AdditionalFaultsAppendObservationsWithoutRewritingExistingBusinessEvidence()
+    {
+        var cs = await fixture.Database("reporting"); var now = DateTimeOffset.FromUnixTimeMilliseconds(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        var original = EventFactory.Create(null, "work-orders", "WorkOrderCreated.v1", Guid.NewGuid(), new { teamId = "north" }, 1, now);
+        var priorArrival = now.AddSeconds(1);
+        await using (var setup = PostgresFixture.Db(cs, "reporting")) { setup.Events.Add(FaultEvidence.Store(original, priorArrival)); await setup.SaveChangesAsync(); }
+        await using (var write = PostgresFixture.Db(cs, "reporting"))
+        {
+            var fault = new FaultObservation(Guid.NewGuid(), original.EventId, original, now.AddSeconds(5), "notifications", ["System.Exception"]);
+            await FaultEvidence.Record(write, fault, now.AddSeconds(10));
+            await FaultEvidence.Record(write, fault with { FaultId = Guid.NewGuid(), ConsumerService = "work-orders" }, now.AddSeconds(15));
+        }
+        await using var inspect = PostgresFixture.Db(cs, "reporting");
+        Assert.Equal(5, await inspect.Events.CountAsync());
+        Assert.Equal(priorArrival, (await inspect.Events.SingleAsync(e => e.EventId == original.EventId)).ReceivedAtUtc);
+        Assert.Equal(2, await inspect.DeliveryAttempts.CountAsync());
+        Assert.Equal(2, await inspect.Inbox.CountAsync());
     }
 
     [Fact]

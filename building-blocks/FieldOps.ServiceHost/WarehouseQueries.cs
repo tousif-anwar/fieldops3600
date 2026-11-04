@@ -96,20 +96,41 @@ public static class WarehouseQueries
             while (await reader.ReadAsync(ct))
             {
                 var booked = reader.IsDBNull(1) ? 0 : reader.GetDouble(1);
-                utilization.Add(new { technicianId = reader.GetString(0), bookedMinutes = booked,
+                utilization.Add(new
+                {
+                    technicianId = reader.GetString(0),
+                    bookedMinutes = booked,
                     capacityMinutes = reader.IsDBNull(2) ? (double?)null : reader.GetDouble(2),
-                    utilization = reader.IsDBNull(3) ? (double?)null : reader.GetDouble(3) });
+                    utilization = reader.IsDBNull(3) ? (double?)null : reader.GetDouble(3)
+                });
             }
-        return Results.Ok(new { totalWorkOrders = total, completedWorkOrders = completed, completionRate, slaComplianceRate = compliance,
-            averageServiceMinutes = averageService, averageStageMinutes = averageStage, activeJobs = active, atRiskStages = atRisk,
-            overdueStages = overdue, completedToday = today, refreshedAtUtc = refreshed, volumeTrend = volume, stageMetrics = stages,
-            categoryBreakdown = categories, technicianUtilization = utilization,
+        return Results.Ok(new
+        {
+            totalWorkOrders = total,
+            completedWorkOrders = completed,
+            completionRate,
+            slaComplianceRate = compliance,
+            averageServiceMinutes = averageService,
+            averageStageMinutes = averageStage,
+            activeJobs = active,
+            atRiskStages = atRisk,
+            overdueStages = overdue,
+            completedToday = today,
+            refreshedAtUtc = refreshed,
+            volumeTrend = volume,
+            stageMetrics = stages,
+            categoryBreakdown = categories,
+            technicianUtilization = utilization,
             dataSource = "Independent PostgreSQL dimensional warehouse, incrementally ingested from RabbitMQ; eventually consistent synthetic demonstration data.",
-            metricDefinitions = new { completionRate = "Completed orders / orders created in selected half-open UTC interval.",
+            metricDefinitions = new
+            {
+                completionRate = "Completed orders / orders created in selected half-open UTC interval.",
                 slaComplianceRate = "Completed stages with no recorded breach / completed stages. Approved pauses excluded from effective duration.",
                 averageServiceMinutes = "Order creation to completion, includes dispatch wait.",
                 activeJobs = "Orders with recorded InProgress lifecycle state in the selected creation-date cohort.",
                 atRiskStages = "Active stages with recorded server Warning or Critical events; eventually consistent.",
-                technicianUtilization = "Confirmed appointment minutes overlapping the explicit UTC range / published local working-shift minutes overlapping that range. Includes appointments for orders created earlier. Time-off, weekend exclusions and historical working-hours changes are not modeled; null without valid published timezone/hours and both range boundaries." } });
+                technicianUtilization = "Confirmed appointment minutes overlapping the explicit UTC range / published local working-shift minutes overlapping that range. Includes appointments for orders created earlier. Time-off, weekend exclusions and historical working-hours changes are not modeled; null without valid published timezone/hours and both range boundaries."
+            }
+        });
     }
 }

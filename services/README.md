@@ -37,7 +37,7 @@ Tests include deterministic SLA/domain/authorization/replay checks and real Post
 - `Services:WorkOrders`, `Services:Technicians`, `Services:Scheduling`, `Services:Workflows`: service HTTP base URLs. Requests forward the caller's signed bearer token, never an invented identity header.
 - `Services:Intelligence`: private intelligence base URL, required only for the optimized dispatch strategy. Optimizer unavailability produces an explicit error; the server does not silently substitute baseline results.
 - `Sla:DurationSeconds`, `Sla:WarningSeconds`, `Sla:CriticalSeconds`: defaults 1800/1200/1500. Shortening the stage deadline below 1800 seconds outside Development is rejected.
-- `Demo:EnableConsumerFailure`, `Demo:FailEventType`: Development-only deterministic first-attempt failure injection for a selected event type. The broker owns retry and `_error` queues.
+- `Demo:EnableConsumerFailure`, `Demo:FailEventType`: Development-only deterministic first-attempt failure injection for a selected event type. `Demo:AlwaysFailConsumer=true` keeps failing that selected type until retries exhaust. Either failure option is rejected outside Development. The broker owns retry and `_error` queues.
 
 ### Schema migrations
 
@@ -89,7 +89,7 @@ Quartz periodically scans persisted active workflow state. Restarting does not r
 
 - Booking overlap is strongly protected in PostgreSQL. Technician configuration and time-off are validated remotely at command time; changes racing between that validation and booking commit are not a distributed serializable transaction. An organizational reconfiguration needs coordinated rescheduling.
 - The operational baseline does not invent route/travel distances. OR-Tools evaluation and ML inference live in the intelligence component; predictions remain advisory and synthetic-data limitations are explicit.
-- Reporting records duplicate/successful replay deliveries and the controlled retry demonstration separately from business events. Generalized intermediate failure evidence from every consumer and a full dead-letter management console remain incomplete; RabbitMQ `_error` queues preserve failed messages.
+- Reporting records duplicate/successful replay deliveries and controlled retry attempts separately from business events. A separate `Fault<AuditEvent>` consumer records terminal failures from business consumers, preserves missing original evidence, and appends sanitized diagnostic events. Terminal fault contracts do not establish every intermediate attempt or a retry count; unknown values remain null. A full dead-letter repair console and generalized intermediate-attempt instrumentation remain incomplete; RabbitMQ `_error` queues preserve failed messages.
 - Template v1 is immutable backend configuration. Publishing/editing new workflow templates through an administrator UI is not implemented.
 - Replay event and stage detail queries are intended for this regional workload. A large evidence archive needs pagination, retention automation, and privileged archival tooling.
 - The simple PDF writer produces searchable factual text with multiple pages. It uses built-in Helvetica/ASCII substitution, not branded Unicode typesetting.

@@ -77,6 +77,7 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
                 b.Entity<StoredEvent>().Property(x => x.Body).HasColumnType("text");
                 b.Entity<DeliveryAttempt>().ToTable("delivery_attempts");
                 b.Entity<DeliveryAttempt>().HasIndex(x => x.EventId);
+                b.Entity<DeliveryAttempt>().HasIndex(x => x.FaultId).HasFilter("\"FaultId\" IS NOT NULL");
                 b.Entity<ReplayProjection>().ToTable("replay_projection").HasKey(x => x.WorkOrderId);
                 b.Entity<ReplayProjection>().Property(x => x.StateJson).HasColumnType("jsonb");
                 b.Entity<WorkOrderFact>().ToTable("fact_work_order").HasKey(x => x.WorkOrderId);
