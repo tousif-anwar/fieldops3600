@@ -14,7 +14,7 @@ FieldOps 360 manages a regional HVAC service workflow. Six deployable ASP.NET Co
 | Intelligence | Synthetic model artifact and stateless optimization/inference | Gateway authorized routes |
 | Keycloak | Users, roles, PKCE/OIDC sessions | Port 8080 |
 
-Reporting hosts the replay processor and warehouse ingestion to avoid additional low-volume deployments. Its analytical and replay databases remain independent from operational state. Integration implementation and deviations are recorded in the status document.
+Reporting hosts the replay processor. A separate Python analytics worker consumes events into an independent warehouse; Reporting has a read-only warehouse connection. Six service migration jobs and a warehouse migration job use owner identities, then exit. Long-running service identities cannot create or alter schemas. Replay event and delivery tables allow runtime SELECT/INSERT only. Integration limitations are recorded in the status document.
 
 ## Trust boundaries
 
@@ -60,7 +60,9 @@ flowchart TB
   Reports --> RDb[(Reporting / replay database)]
   Orders & Staff & Booking & Flow --> Bus[RabbitMQ]
   Bus --> Alerts & Reports
-  Reports --> Warehouse[(Analytical warehouse)]
+  Bus --> Worker[Python analytics worker]
+  Worker --> Warehouse[(Analytical warehouse)]
+  Reports -->|read only| Warehouse
 ```
 
 ## Components (C4 level 3)

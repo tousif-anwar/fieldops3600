@@ -169,7 +169,10 @@ export function WorkflowPage() {
   });
   const template = useQuery({
     queryKey: ["workflow-template", workflow.data?.templateVersion],
-    queryFn: () => api<Template>(`/api/workflows/templates/${workflow.data!.templateVersion}`),
+    queryFn: () =>
+      api<Template>(
+        `/api/workflows/templates/${workflow.data!.templateVersion}`,
+      ),
     enabled: !!workflow.data,
     staleTime: 300000,
   });

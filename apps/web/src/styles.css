@@ -1812,10 +1812,23 @@ tbody tr:hover {
   gap: 10px;
   margin-left: auto;
   max-width: 470px;
+  min-width: 0;
   flex: 1;
 }
 .replay-search > form > span {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+/* Native select options otherwise impose their full label's minimum width on
+   the flex row, pushing Investigate beyond the page and scrolling the document. */
+.replay-search select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.replay-search > form > button {
+  flex-shrink: 0;
 }
 .replay-intro {
   padding: 45px 40px;

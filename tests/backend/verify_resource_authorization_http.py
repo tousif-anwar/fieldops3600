@@ -91,6 +91,16 @@ class ResourceAuthorizationHttpTests(unittest.TestCase):
         finally:
             self.cancel_order(order["id"], "administrator")
 
+    def test_technician_profile_and_time_off_reads_are_self_scoped(self):
+        status, profiles = self.request("GET", "/api/technicians", "technician")
+        self.assertEqual(200, status)
+        self.assertEqual(["tech-01"], [profile["id"] for profile in profiles])
+        self.assertEqual(200, self.request("GET", "/api/technicians/tech-01", "technician")[0])
+        self.assertEqual(200, self.request("GET", "/api/technicians/tech-01/time-off", "technician")[0])
+        for path in ["/api/technicians/tech-02", "/api/technicians/tech-02/time-off"]:
+            self.assertEqual(404, self.request("GET", path, "technician")[0])
+            self.assertEqual(200, self.request("GET", path, "supervisor")[0])
+
     def test_other_technician_scope_and_booking_first_order_cancellation(self):
         order = self.create_order()
         booking = None

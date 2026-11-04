@@ -22,4 +22,17 @@ docker compose run --rm -v "${PWD}:/repo:ro" migrate-warehouse python /repo/test
 docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/analytics/quality-tests/run_checks.py
 ```
 
-The PostgreSQL suite covers duplicate/colliding events, source-local late ordering, terminal lifecycle protection, cancelled booking enrichment, reschedule preservation, UTC bucketing under a different session timezone, DST capacity, partial ranges, team scope, unknown metadata, prediction decisions, and metric denominators. Every test rolls back its synthetic records. `quality-tests/checks.sql` lists checks expected to return zero rows. For backfill, republish retained original event envelopes to the warehouse queue without changing IDs or occurrence timestamps. A general administrative backfill command and reconciliation against source totals are still pending.
+The 26-case PostgreSQL suite covers duplicate/colliding events, source-local late ordering, terminal lifecycle protection, cancelled booking enrichment, reschedule preservation, UTC bucketing under a different session timezone, DST capacity, partial ranges, team scope, unknown metadata, prediction decisions, metric denominators and archive recovery. Every test rolls back its synthetic records. `quality-tests/checks.sql` lists checks expected to return zero rows.
+
+## Historical backfill and reconciliation
+
+`ingestion-worker/backfill.py` accepts JSONL containing unchanged original `AuditEvent` envelopes from a retained archive. Do not reconstruct these from the enriched replay API or strip properties: their canonical hashes must match the ingestion ledger. The default mode reports distinct, matched and missing source events and the archive SHA256 without changing the database. `--apply` validates all retained hashes before projecting missing events in one transaction. Changed duplicate IDs fail; ordinary duplicates remain no-ops. The same late-event rules as live ingestion preserve terminal state. Transactions are bounded to 10,000 rows/50 MiB; split larger archives. The command never accesses operational databases or prints payloads/credentials.
+
+```powershell
+# Mount an existing trusted archive under .local; it remains ignored by Git.
+docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/analytics/ingestion-worker/backfill.py /repo/.local/archive.jsonl
+docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/analytics/ingestion-worker/backfill.py /repo/.local/archive.jsonl --apply
+docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/analytics/quality-tests/run_checks.py
+```
+
+Reconcile again after application: `missingBefore=0` and matching archive/ledger hashes establish event-level coverage for that supplied archive. Quality checks independently test fact invariants. This does not prove that the archive contains every source event; retention completeness and independent source manifests remain an operator responsibility. Automatic archive acquisition and reconciliation against every operational database's live totals are not implemented.

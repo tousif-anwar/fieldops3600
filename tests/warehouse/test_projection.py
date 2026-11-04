@@ -3,6 +3,7 @@
 # ruff: noqa: E501
 import importlib.util
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,6 +17,8 @@ SPEC = importlib.util.spec_from_file_location(
 )
 WORKER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(WORKER)
+sys.path.insert(0, str(ROOT / "analytics/ingestion-worker"))
+import backfill
 
 
 class WarehouseTests(unittest.TestCase):
@@ -70,6 +73,29 @@ class WarehouseTests(unittest.TestCase):
                 (event["eventId"],),
             ).fetchone()[0],
         )
+
+    def test_archive_reconciliation_does_not_write_without_apply(self):
+        event = self.event("WorkOrderCreated.v1")
+        report = backfill.reconcile(self.db, [event, event])
+        self.assertEqual((1, 1, 0), (report["missingBefore"], report["repeatedArchiveRows"], report["inserted"]))
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.ingestion_ledger WHERE event_id=%s", (event["eventId"],)).fetchone())
+
+    def test_archive_backfill_is_idempotent_and_preserves_late_terminal_state(self):
+        complete = self.event("WorkOrderCompleted.v1", sequence=3, minutes=50, payload={"completedAtUtc": (self.now + timedelta(minutes=50)).isoformat()})
+        created = self.event("WorkOrderCreated.v1", payload={"createdAtUtc": self.now.isoformat(), "serviceCategory": "HVAC"})
+        report = backfill.reconcile(self.db, [complete, created], apply=True)
+        self.assertEqual(2, report["inserted"])
+        self.assertEqual(0, backfill.reconcile(self.db, [complete, created], apply=True)["inserted"])
+        self.assertEqual("Completed", self.db.execute("SELECT s.status FROM warehouse.fact_work_order f JOIN warehouse.dim_work_order_status s USING(status_key) WHERE f.work_order_id=%s", (self.order,)).fetchone()[0])
+
+    def test_archive_collision_is_detected_before_any_missing_event_is_written(self):
+        retained = self.event("WorkOrderCreated.v1")
+        WORKER.project(self.db, retained)
+        changed = {**retained, "eventPayload": {**retained["eventPayload"], "priority": "Critical"}}
+        missing = self.event("WorkOrderUpdated.v1", sequence=2)
+        with self.assertRaisesRegex(ValueError, "differs"):
+            backfill.reconcile(self.db, [missing, changed], apply=True)
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.ingestion_ledger WHERE event_id=%s", (missing["eventId"],)).fetchone())
 
     def test_changed_duplicate_is_rejected(self):
         event = self.event("WorkOrderCreated.v1")
