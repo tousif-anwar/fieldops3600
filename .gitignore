@@ -21,6 +21,8 @@ playwright-report/
 *.user
 *.suo
 *.log
+*.tsbuildinfo
+tests/backend/results/
 *.joblib
 *.pkl
 *.pem
