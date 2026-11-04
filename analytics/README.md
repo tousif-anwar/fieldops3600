@@ -18,7 +18,7 @@ Run real PostgreSQL tests after starting Compose:
 
 ```powershell
 docker compose build analytics-worker
-docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/tests/warehouse/test_projection.py -v
+docker compose run --rm -v "${PWD}:/repo:ro" migrate-warehouse python /repo/tests/warehouse/test_projection.py -v
 docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/analytics/quality-tests/run_checks.py
 ```
 

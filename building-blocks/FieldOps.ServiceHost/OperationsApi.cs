@@ -97,21 +97,21 @@ public static class OperationsApi
         group.MapGet("", async (ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
             var caller = Caller.From(http.User);
-            var records = await db.Technicians.AsNoTracking().Where(x => caller.IsAdministrator || x.TeamId == caller.TeamId).OrderBy(x => x.Name).ToListAsync(ct);
+            var records = await db.Technicians.AsNoTracking().Where(x => caller.IsAdministrator || (x.TeamId == caller.TeamId && (!caller.IsTechnician || x.Id == caller.Id))).OrderBy(x => x.Name).ToListAsync(ct);
             return Results.Ok(records.Select(TechnicianView));
         });
         group.MapGet("/{id}", async (string id, ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
             var tech = await db.Technicians.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Technician not found.");
             var caller = Caller.From(http.User);
-            if (!caller.IsAdministrator && caller.TeamId != tech.TeamId) throw new DomainException(404, "Technician not found.");
+            if (!caller.IsAdministrator && (caller.TeamId != tech.TeamId || caller.IsTechnician && tech.Id != caller.Id)) throw new DomainException(404, "Technician not found.");
             return Results.Ok(TechnicianView(tech));
         });
         group.MapGet("/{id}/time-off", async (string id, ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
             var tech = await db.Technicians.FindAsync([id], ct) ?? throw new DomainException(404, "Technician not found.");
             var caller = Caller.From(http.User);
-            if (!caller.IsAdministrator && tech.TeamId != caller.TeamId) throw new DomainException(404, "Technician not found.");
+            if (!caller.IsAdministrator && (tech.TeamId != caller.TeamId || caller.IsTechnician && tech.Id != caller.Id)) throw new DomainException(404, "Technician not found.");
             return Results.Ok(await db.TimeOff.AsNoTracking().Where(x => x.TechnicianId == id).ToListAsync(ct));
         });
         group.MapPost("/{id}/time-off", async (string id, TimeOffRequest request, ServiceDb db, HttpContext http, CancellationToken ct) =>
@@ -195,8 +195,11 @@ public static class OperationsApi
 
     private static void MapWorkflows(WebApplication app)
     {
+        var defaultTemplateVersion = app.Configuration.GetValue("Workflows:DefaultTemplateVersion", 1);
+        _ = Templates.Get(defaultTemplateVersion);
         var group = app.MapGroup("/api/workflows").RequireAuthorization("operational");
-        group.MapGet("/templates/default", () => Results.Ok(Templates.Default));
+        group.MapGet("/templates/default", () => Results.Ok(Templates.Get(defaultTemplateVersion)));
+        group.MapGet("/templates/{version:int}", (int version) => Results.Ok(Templates.Get(version)));
         group.MapGet("", async (Guid? workOrderId, ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
             var caller = Caller.From(http.User);
@@ -215,7 +218,7 @@ public static class OperationsApi
             var existing = await db.Workflows.SingleOrDefaultAsync(x => x.WorkOrderId == order.Id, ct);
             if (existing is not null) return Results.Ok(WorkflowView(existing));
             var now = clock.GetUtcNow();
-            var workflow = WorkflowEngine.Start(order.Id, booking.TechnicianId, order.TeamId, now, policy);
+            var workflow = WorkflowEngine.Start(order.Id, booking.TechnicianId, order.TeamId, now, policy, defaultTemplateVersion);
             db.Workflows.Add(workflow);
             var started = EventFactory.Create(http, "workflows", "WorkflowStarted.v1", order.Id, StagePayload(workflow, workflow.Stages[0]), workflow.Version, now, workflow.Id);
             db.Enqueue(started);

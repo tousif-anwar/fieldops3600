@@ -10,44 +10,6 @@ public sealed record FormField(string Key, string Label, string[] Options, bool 
 public sealed record StageDefinition(int Index, string Name, FormField[] Fields);
 public sealed record WorkflowTemplate(int Version, StageDefinition[] Stages);
 
-public static class Templates
-{
-    private static FormField Field(string key, string label, params string[] options) => new(key, label, options);
-    public static readonly WorkflowTemplate Default = new(1,
-    [
-        new(0, "Job Accepted", [Field("assignment", "Assignment", "Accept", "Request Reassignment"), Field("readiness", "Readiness", "Ready", "Missing Equipment", "Need Assistance")]),
-        new(1, "Travel / Arrival", [Field("travelStatus", "Travel Status", "Departed", "Delayed", "Arrived"), new("delayReason", "Delay Reason", ["Traffic", "Weather", "Vehicle Issue", "Other"], true, "travelStatus", "Delayed"), Field("siteAccess", "Site Access", "Accessible", "Restricted", "Customer Unavailable")]),
-        new(2, "Initial Inspection", [Field("equipmentCondition", "Equipment Condition", "Good", "Fair", "Poor", "Critical"), Field("visibleDamage", "Visible Damage", "None", "Minor", "Major"), Field("safetyConcern", "Safety Concern", "None", "Electrical", "Mechanical", "Environmental")]),
-        new(3, "Diagnosis", [Field("problemCategory", "Problem Category", "Electrical", "Mechanical", "Refrigeration", "Controls"), Field("severity", "Severity", "Low", "Medium", "High", "Critical"), Field("rootCause", "Root Cause", "Wear", "Component Failure", "Installation", "Unknown"), Field("partsRequired", "Parts Required", "Yes", "No")]),
-        new(4, "Repair / Service", [Field("action", "Action", "Repair", "Replace", "Adjust", "Clean"), Field("partsStatus", "Parts Status", "Available", "Ordered", "Not Required"), Field("repairResult", "Repair Result", "Successful", "Partially Successful", "Unsuccessful")]),
-        new(5, "Quality Verification", [Field("functionalTest", "Functional Test", "Pass", "Fail"), Field("safetyVerification", "Safety Verification", "Pass", "Fail"), Field("equipmentOperational", "Equipment Operational", "Yes", "No")]),
-        new(6, "Customer Confirmation", [Field("customerAvailable", "Customer Available", "Yes", "No"), Field("customerInformed", "Customer Informed", "Yes", "No"), Field("serviceAccepted", "Service Accepted", "Yes", "No", "Pending")]),
-        new(7, "Job Completion", [Field("outcome", "Outcome", "Resolved", "Partially Resolved", "Escalated"), Field("equipmentStatus", "Equipment Status", "Operational", "Limited", "Out of Service"), Field("followUpRequired", "Follow-up Required", "Yes", "No")])
-    ]);
-
-    public static void Validate(int stageIndex, Dictionary<string, string> answers)
-    {
-        if (stageIndex is < 0 or > 7) throw new DomainException(409, "Invalid stage.");
-        var fields = Default.Stages[stageIndex].Fields;
-        foreach (var key in answers.Keys)
-            if (!fields.Any(f => f.Key == key)) throw new DomainException(400, $"Unknown form field: {key}.");
-        foreach (var field in fields)
-        {
-            var visible = field.ConditionField is null || (answers.TryGetValue(field.ConditionField, out var parent) && parent == field.ConditionValue);
-            if (!visible)
-            {
-                if (answers.ContainsKey(field.Key)) throw new DomainException(400, $"Field {field.Key} does not apply to these answers.");
-                continue;
-            }
-            if (!answers.TryGetValue(field.Key, out var value))
-            {
-                if (field.Required) throw new DomainException(400, $"Choose a value for {field.Label}.");
-            }
-            else if (!field.Options.Contains(value, StringComparer.Ordinal)) throw new DomainException(400, $"Invalid option for {field.Label}.");
-        }
-    }
-}
-
 public sealed record SlaPolicy(int DurationSeconds = 1800, int WarningSeconds = 1200, int CriticalSeconds = 1500)
 {
     public void Validate(bool development)
@@ -59,10 +21,11 @@ public sealed record SlaPolicy(int DurationSeconds = 1800, int WarningSeconds = 
 
 public static class WorkflowEngine
 {
-    public static Workflow Start(Guid workOrderId, string technicianId, string teamId, DateTimeOffset now, SlaPolicy policy)
+    public static Workflow Start(Guid workOrderId, string technicianId, string teamId, DateTimeOffset now, SlaPolicy policy, int templateVersion = 1)
     {
-        var workflow = new Workflow { WorkOrderId = workOrderId, TechnicianId = technicianId, TeamId = teamId, StartedAtUtc = now };
-        var stages = Templates.Default.Stages.Select(s => new StageState { Index = s.Index, Name = s.Name }).ToList();
+        var definition = Templates.Get(templateVersion);
+        var workflow = new Workflow { WorkOrderId = workOrderId, TechnicianId = technicianId, TeamId = teamId, StartedAtUtc = now, TemplateVersion = definition.Version };
+        var stages = definition.Stages.Select(s => new StageState { Index = s.Index, Name = s.Name }).ToList();
         Activate(stages[0], now, policy);
         workflow.Stages = stages;
         return workflow;
@@ -82,7 +45,9 @@ public static class WorkflowEngine
         var stages = workflow.Stages;
         var stage = stages[workflow.CurrentStageIndex];
         if (stage.PausedAtUtc is not null) throw new DomainException(409, "Resume the stage before submitting.");
-        Templates.Validate(stage.Index, answers);
+        Templates.Validate(stage.Index, answers, workflow.TemplateVersion);
+        if (stage.Index == 0 && answers.GetValueOrDefault("assignment") == "Request Reassignment")
+            throw new DomainException(409, "Reassignment does not accept the job. Use Request Assistance to notify the supervisor; the acceptance stage remains open.");
         stage.Answers = new(answers);
         stage.CompletedAtUtc = now;
         stage.Status = "Completed";

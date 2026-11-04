@@ -11,8 +11,9 @@ export function useJob(id: string) {
     (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data });
   const workflows = useQuery({ queryKey: ['workflows', id], enabled: !!id, refetchInterval: online ? 15_000 : false, queryFn: async () =>
     (await requestApi<Workflow[]>(`/api/workflows?workOrderId=${encodeURIComponent(id)}`, await getAccessToken())).data });
-  const template = useQuery({ queryKey: ['template', 'default'], queryFn: async () =>
-    (await requestApi<WorkflowTemplate>('/api/workflows/templates/default', await getAccessToken())).data });
+  const templateVersion = workflows.data?.[0]?.templateVersion;
+  const template = useQuery({ queryKey: ['template', templateVersion ?? 'default'], queryFn: async () =>
+    (await requestApi<WorkflowTemplate>(`/api/workflows/templates/${templateVersion ?? 'default'}`, await getAccessToken())).data });
   return { workOrders, workflows, template,
     job: workOrders.data?.find(job => job.id === id), workflow: workflows.data?.[0] };
 }

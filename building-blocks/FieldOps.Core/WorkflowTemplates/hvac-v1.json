@@ -1,0 +1,294 @@
+{
+  "version": 1,
+  "stages": [
+    {
+      "index": 0,
+      "name": "Job Accepted",
+      "fields": [
+        {
+          "key": "assignment",
+          "label": "Assignment",
+          "options": [
+            "Accept",
+            "Request Reassignment"
+          ],
+          "required": true
+        },
+        {
+          "key": "readiness",
+          "label": "Readiness",
+          "options": [
+            "Ready",
+            "Missing Equipment",
+            "Need Assistance"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Travel / Arrival",
+      "fields": [
+        {
+          "key": "travelStatus",
+          "label": "Travel Status",
+          "options": [
+            "Departed",
+            "Delayed",
+            "Arrived"
+          ],
+          "required": true
+        },
+        {
+          "key": "delayReason",
+          "label": "Delay Reason",
+          "options": [
+            "Traffic",
+            "Weather",
+            "Vehicle Issue",
+            "Other"
+          ],
+          "required": true,
+          "conditionField": "travelStatus",
+          "conditionValue": "Delayed"
+        },
+        {
+          "key": "siteAccess",
+          "label": "Site Access",
+          "options": [
+            "Accessible",
+            "Restricted",
+            "Customer Unavailable"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Initial Inspection",
+      "fields": [
+        {
+          "key": "equipmentCondition",
+          "label": "Equipment Condition",
+          "options": [
+            "Good",
+            "Fair",
+            "Poor",
+            "Critical"
+          ],
+          "required": true
+        },
+        {
+          "key": "visibleDamage",
+          "label": "Visible Damage",
+          "options": [
+            "None",
+            "Minor",
+            "Major"
+          ],
+          "required": true
+        },
+        {
+          "key": "safetyConcern",
+          "label": "Safety Concern",
+          "options": [
+            "None",
+            "Electrical",
+            "Mechanical",
+            "Environmental"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Diagnosis",
+      "fields": [
+        {
+          "key": "problemCategory",
+          "label": "Problem Category",
+          "options": [
+            "Electrical",
+            "Mechanical",
+            "Refrigeration",
+            "Controls"
+          ],
+          "required": true
+        },
+        {
+          "key": "severity",
+          "label": "Severity",
+          "options": [
+            "Low",
+            "Medium",
+            "High",
+            "Critical"
+          ],
+          "required": true
+        },
+        {
+          "key": "rootCause",
+          "label": "Root Cause",
+          "options": [
+            "Wear",
+            "Component Failure",
+            "Installation",
+            "Unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "partsRequired",
+          "label": "Parts Required",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Repair / Service",
+      "fields": [
+        {
+          "key": "action",
+          "label": "Action",
+          "options": [
+            "Repair",
+            "Replace",
+            "Adjust",
+            "Clean"
+          ],
+          "required": true
+        },
+        {
+          "key": "partsStatus",
+          "label": "Parts Status",
+          "options": [
+            "Available",
+            "Ordered",
+            "Not Required"
+          ],
+          "required": true
+        },
+        {
+          "key": "repairResult",
+          "label": "Repair Result",
+          "options": [
+            "Successful",
+            "Partially Successful",
+            "Unsuccessful"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Quality Verification",
+      "fields": [
+        {
+          "key": "functionalTest",
+          "label": "Functional Test",
+          "options": [
+            "Pass",
+            "Fail"
+          ],
+          "required": true
+        },
+        {
+          "key": "safetyVerification",
+          "label": "Safety Verification",
+          "options": [
+            "Pass",
+            "Fail"
+          ],
+          "required": true
+        },
+        {
+          "key": "equipmentOperational",
+          "label": "Equipment Operational",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Customer Confirmation",
+      "fields": [
+        {
+          "key": "customerAvailable",
+          "label": "Customer Available",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "key": "customerInformed",
+          "label": "Customer Informed",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "key": "serviceAccepted",
+          "label": "Service Accepted",
+          "options": [
+            "Yes",
+            "No",
+            "Pending"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Job Completion",
+      "fields": [
+        {
+          "key": "outcome",
+          "label": "Outcome",
+          "options": [
+            "Resolved",
+            "Partially Resolved",
+            "Escalated"
+          ],
+          "required": true
+        },
+        {
+          "key": "equipmentStatus",
+          "label": "Equipment Status",
+          "options": [
+            "Operational",
+            "Limited",
+            "Out of Service"
+          ],
+          "required": true
+        },
+        {
+          "key": "followUpRequired",
+          "label": "Follow-up Required",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ]
+}

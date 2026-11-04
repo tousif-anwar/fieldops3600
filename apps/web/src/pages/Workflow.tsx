@@ -168,8 +168,9 @@ export function WorkflowPage() {
     refetchInterval: 20000,
   });
   const template = useQuery({
-    queryKey: ["workflow-template"],
-    queryFn: () => api<Template>("/api/workflows/templates/default"),
+    queryKey: ["workflow-template", workflow.data?.templateVersion],
+    queryFn: () => api<Template>(`/api/workflows/templates/${workflow.data!.templateVersion}`),
+    enabled: !!workflow.data,
     staleTime: 300000,
   });
   const [selectedStage, setSelectedStage] = useState<number | null>(null);

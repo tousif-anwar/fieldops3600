@@ -46,6 +46,9 @@ def main():
                 continue
             spans = [span for trace in traces.get("data", []) for span in trace.get("spans", [])]
             if spans:
+                availability = read(f"http://localhost:5100/api/replay/{order['id']}/traces/{trace_id}/availability", token)
+                if not availability.get("available") or availability.get("spanCount", 0) < 1:
+                    raise RuntimeError("The authorized order-bound trace availability check did not confirm a retained trace.")
                 result = {"healthyScrapeTargets": len(healthy), "businessEventType": event["eventType"],
                           "traceId": trace_id, "retainedSpans": len(spans), "businessRecordedAtUtc": event["recordedAtUtc"],
                           "verifiedAtUtc": datetime.now(timezone.utc).isoformat()}

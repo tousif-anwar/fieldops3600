@@ -33,11 +33,13 @@ class ResourceAuthorizationHttpTests(unittest.TestCase):
             data=json.dumps(data).encode() if data is not None else None,
             headers=headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=25) as response:
-                return response.status, json.load(response)
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=25) as response:
+                payload = response.read()
+                return response.status, json.loads(payload) if payload else None
         except urllib.error.HTTPError as error:
             with error:
-                return error.code, json.load(error)
+                payload = error.read()
+                return error.code, json.loads(payload) if payload else None
 
     def create_order(self, team="north", role="dispatcher"):
         status, order = self.request("POST", "/api/work-orders", role, {

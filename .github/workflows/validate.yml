@@ -65,7 +65,8 @@ jobs:
       - run: python scripts/init-local.py
       - run: docker compose up -d --build
       - run: python scripts/wait-local.py
-      - run: docker compose run --rm -v "$PWD:/repo:ro" analytics-worker python /repo/tests/warehouse/test_projection.py -v
+      - run: docker compose run --rm -v "$PWD:/repo:ro" migrate-warehouse python /repo/tests/warehouse/test_projection.py -v
+      - run: python scripts/verify-database-permissions.py
       - run: python -m unittest discover -s tests/integration -v
       - run: npm ci && npx playwright install --with-deps chromium && npm run test:e2e
         working-directory: apps/web

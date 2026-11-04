@@ -269,11 +269,13 @@ services:
     restart: "no"
 
   intelligence:
+    image: fieldops360-intelligence:local
     build: {context: ., dockerfile: intelligence/Dockerfile}
     expose: ["8000"]
     restart: unless-stopped
 
   gateway:
+    image: fieldops360-gateway:local
     build: {context: ., dockerfile: infrastructure/docker/Dockerfile.gateway}
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -301,6 +303,7 @@ services:
     restart: unless-stopped
 
   web:
+    image: fieldops360-web:local
     build: {context: ., dockerfile: infrastructure/docker/Dockerfile.web}
     ports: ["127.0.0.1:8088:8080"]
     depends_on: [gateway]
