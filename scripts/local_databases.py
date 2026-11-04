@@ -3,15 +3,22 @@
 Only the fixed FieldOps service/role names below are accepted. SQL sent to psql
 contains credentials and must never be printed or committed as generated output.
 """
+# SQL policy expressions stay schema-qualified for review.
+# ruff: noqa: E501
 
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 import re
+from pathlib import Path
 
 OPERATIONAL_SERVICES = (
-    "work_orders", "technicians", "scheduling", "workflows", "notifications", "reporting",
+    "work_orders",
+    "technicians",
+    "scheduling",
+    "workflows",
+    "notifications",
+    "reporting",
 )
 SERVICES = (*OPERATIONAL_SERVICES, "warehouse")
 
@@ -60,28 +67,34 @@ def read_environment(path: Path) -> dict[str, str]:
 
 
 def runtime_roles_sql(values: dict[str, str]) -> str:
-    roles = [(service_names(service)[1], values[f"{service.upper()}_APP_DB_PASSWORD"])
-             for service in SERVICES]
+    roles = [
+        (service_names(service)[1], values[f"{service.upper()}_APP_DB_PASSWORD"])
+        for service in SERVICES
+    ]
     roles.append(("fieldops_warehouse_reader", values["WAREHOUSE_READ_DB_PASSWORD"]))
     statements = []
     for role, password in roles:
         name = identifier(role)
         settings = "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS"
-        statements.append(block(f"""BEGIN
+        statements.append(
+            block(f"""BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname={literal(role)}) THEN
   CREATE ROLE {name} {settings} PASSWORD {literal(password)};
  ELSE
   ALTER ROLE {name} {settings} PASSWORD {literal(password)};
  END IF;
-END;"""))
+END;""")
+        )
         # Dedicated application identities must not inherit or SET ROLE into owners.
-        statements.append(block(f"""DECLARE membership record;
+        statements.append(
+            block(f"""DECLARE membership record;
 BEGIN
  FOR membership IN SELECT parent.rolname FROM pg_auth_members m
   JOIN pg_roles parent ON parent.oid=m.roleid JOIN pg_roles child ON child.oid=m.member
   WHERE child.rolname={literal(role)}
  LOOP EXECUTE format('REVOKE %I FROM %I',membership.rolname,{literal(role)}); END LOOP;
-END;"""))
+END;""")
+        )
     return "\n".join(statements)
 
 
@@ -90,19 +103,29 @@ def operational_grants_sql(service: str) -> str:
         raise ValueError("Operational grant policy requires a business service")
     owner, runtime = service_names(service)
     owner_id, app = identifier(owner), identifier(runtime)
+    preflight = block(f"""BEGIN
+ IF EXISTS(SELECT 1 FROM pg_database WHERE datname=current_database() AND datdba=(SELECT oid FROM pg_roles WHERE rolname={literal(runtime)}))
+ OR EXISTS(SELECT 1 FROM pg_namespace WHERE nspowner=(SELECT oid FROM pg_roles WHERE rolname={literal(runtime)}))
+ OR EXISTS(SELECT 1 FROM pg_class WHERE relowner=(SELECT oid FROM pg_roles WHERE rolname={literal(runtime)})) THEN
+  RAISE EXCEPTION 'Dedicated runtime role owns database objects; restore migration-owner ownership before granting runtime access';
+ END IF;
+END;""")
     protected = ["fieldops_schema_migrations"]
     if service == "reporting":
         protected.extend(["audit_events", "delivery_attempts"])
     protection = []
     for table in protected:
         rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts"} else "SELECT"
-        protection.append(block(f"""BEGIN
+        protection.append(
+            block(f"""BEGIN
  IF to_regclass('public.{table}') IS NOT NULL THEN
   REVOKE ALL ON TABLE public.{identifier(table)} FROM {app};
   GRANT {rights} ON TABLE public.{identifier(table)} TO {app};
  END IF;
-END;"""))
-    return f"""REVOKE ALL ON DATABASE {owner_id} FROM PUBLIC;
+END;""")
+        )
+    return f"""{preflight}
+REVOKE ALL ON DATABASE {owner_id} FROM PUBLIC;
 REVOKE ALL ON DATABASE {owner_id} FROM {app};
 GRANT CONNECT ON DATABASE {owner_id} TO {app};
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -125,17 +148,24 @@ def warehouse_grants_sql(root: Path) -> str:
 
 
 def init_sql(root: Path, values: dict[str, str]) -> str:
-    statements = ["-- Generated local bootstrap; contains secrets. Never commit.", "\\set ON_ERROR_STOP on"]
+    statements = [
+        "-- Generated local bootstrap; contains secrets. Never commit.",
+        "\\set ON_ERROR_STOP on",
+    ]
     for service in (*SERVICES, "keycloak"):
         owner = f"fieldops_{service}"
         database = "keycloak" if service == "keycloak" else owner
-        password = values["KEYCLOAK_DB_PASSWORD" if service == "keycloak" else f"{service.upper()}_DB_PASSWORD"]
-        statements.extend([
-            f"CREATE ROLE {identifier(owner)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {literal(password)};",
-            f"CREATE DATABASE {identifier(database)} OWNER {identifier(owner)};",
-            f"REVOKE ALL ON DATABASE {identifier(database)} FROM PUBLIC;",
-            f"GRANT CONNECT ON DATABASE {identifier(database)} TO {identifier(owner)};",
-        ])
+        password = values[
+            "KEYCLOAK_DB_PASSWORD" if service == "keycloak" else f"{service.upper()}_DB_PASSWORD"
+        ]
+        statements.extend(
+            [
+                f"CREATE ROLE {identifier(owner)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {literal(password)};",
+                f"CREATE DATABASE {identifier(database)} OWNER {identifier(owner)};",
+                f"REVOKE ALL ON DATABASE {identifier(database)} FROM PUBLIC;",
+                f"GRANT CONNECT ON DATABASE {identifier(database)} TO {identifier(owner)};",
+            ]
+        )
     statements.append(runtime_roles_sql(values))
     for service in OPERATIONAL_SERVICES:
         owner, _ = service_names(service)
@@ -147,7 +177,11 @@ def init_sql(root: Path, values: dict[str, str]) -> str:
 
 
 def reconciliation_sql(root: Path, values: dict[str, str]) -> str:
-    statements = ["\\set ON_ERROR_STOP on", "-- Add application roles/permissions; never drop data or change owner passwords.", runtime_roles_sql(values)]
+    statements = [
+        "\\set ON_ERROR_STOP on",
+        "-- Add application roles/permissions; never drop data or change owner passwords.",
+        runtime_roles_sql(values),
+    ]
     for service in OPERATIONAL_SERVICES:
         owner, _ = service_names(service)
         statements.extend([f"\\connect {owner}", operational_grants_sql(service)])

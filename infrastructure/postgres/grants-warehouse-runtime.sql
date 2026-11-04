@@ -1,6 +1,15 @@
 -- Nonsecret owner-run policy. Applied at bootstrap, reconciliation, and after
 -- warehouse migrations. Default future-table rights are append-only; mutable
 -- facts/dimensions receive UPDATE/DELETE explicitly after each deployment.
+DO $fieldops_warehouse_ownership$
+BEGIN
+ IF EXISTS(SELECT 1 FROM pg_database WHERE datname=current_database() AND datdba IN(SELECT oid FROM pg_roles WHERE rolname IN('fieldops_warehouse_app','fieldops_warehouse_reader')))
+ OR EXISTS(SELECT 1 FROM pg_namespace WHERE nspowner IN(SELECT oid FROM pg_roles WHERE rolname IN('fieldops_warehouse_app','fieldops_warehouse_reader')))
+ OR EXISTS(SELECT 1 FROM pg_class WHERE relowner IN(SELECT oid FROM pg_roles WHERE rolname IN('fieldops_warehouse_app','fieldops_warehouse_reader'))) THEN
+  RAISE EXCEPTION 'Dedicated warehouse runtime/reader roles own objects; restore migration-owner ownership before granting runtime access';
+ END IF;
+END;
+$fieldops_warehouse_ownership$;
 CREATE SCHEMA IF NOT EXISTS warehouse AUTHORIZATION fieldops_warehouse;
 CREATE SCHEMA IF NOT EXISTS analytics AUTHORIZATION fieldops_warehouse;
 REVOKE ALL ON DATABASE fieldops_warehouse FROM PUBLIC;
