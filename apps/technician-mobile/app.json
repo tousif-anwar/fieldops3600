@@ -4,9 +4,8 @@
     "slug": "fieldops-technician",
     "scheme": "fieldops360",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.fieldops360.technician",
       "supportsTablet": true
@@ -14,6 +13,7 @@
     "android": {
       "package": "com.fieldops360.technician"
     },
+    "web": { "output": "single" },
     "plugins": ["expo-router", "expo-secure-store", "expo-web-browser"],
     "experiments": { "typedRoutes": true }
   }

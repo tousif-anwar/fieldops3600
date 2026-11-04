@@ -11,6 +11,8 @@ function AuthenticatedApp() {
   if (!session) return <Login />;
   return <SessionRuntime key={session.subject}><Stack screenOptions={{
     headerTintColor: colors.ink,
+    headerTransparent: false,
+    headerStyle: { backgroundColor: colors.surface },
     headerTitleStyle: { fontWeight: '600' },
     headerRight: () => <Pressable accessibilityRole="button" accessibilityLabel="Sign out"
       onPress={() => { void logout(); }} style={{ padding: 12 }}><Text style={{ color: colors.blue }}>Sign out</Text></Pressable>,

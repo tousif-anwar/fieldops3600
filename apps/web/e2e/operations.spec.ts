@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { WorkOrder, Workflow } from "../src/types";
 
 const envPath = fileURLToPath(new URL("../../../.env", import.meta.url));
 const localEnvironment = existsSync(envPath)
@@ -16,6 +17,11 @@ test.skip(
 );
 
 async function signIn(page: Page, username: string) {
+  let authorization: string | undefined;
+  page.on("request", (request) => {
+    if (request.url().includes("/api/"))
+      authorization = request.headers().authorization ?? authorization;
+  });
   await page.goto("/");
   await page
     .getByRole("button", { name: "Continue to secure sign-in" })
@@ -26,6 +32,8 @@ async function signIn(page: Page, username: string) {
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
   ).toBeVisible({ timeout: 30000 });
+  await expect.poll(() => authorization).toBeTruthy();
+  return authorization!;
 }
 
 test("dispatcher creates a real request and confirms a feasible booking through PKCE", async ({
@@ -91,4 +99,84 @@ test("supervisor sees role-scoped analytics and read-only replay controls", asyn
     await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("link", { name: /Operational replay/ }).click();
   await expect(page.getByText("Read-only historical playback")).toBeVisible();
+});
+
+test("supervisor reviews completed dropdown history and replays evidence without operational mutations", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const authorization = await signIn(page, "supervisor");
+  const headers = { Authorization: authorization };
+  const workflowsResponse = await page.request.get("/api/workflows", {
+    headers,
+  });
+  expect(workflowsResponse.ok()).toBe(true);
+  const workflows: Workflow[] = await workflowsResponse.json();
+  const completed = workflows.find(
+    (workflow) => workflow.status === "Completed",
+  );
+  test.skip(
+    !completed,
+    "Run the real API demonstration first to create a completed eight-stage workflow.",
+  );
+  const ordersResponse = await page.request.get("/api/work-orders", {
+    headers,
+  });
+  expect(ordersResponse.ok()).toBe(true);
+  const orders: WorkOrder[] = await ordersResponse.json();
+  const order = orders.find((item) => item.id === completed!.workOrderId)!;
+  expect(order).toBeTruthy();
+  if ((page.viewportSize()?.width ?? 1440) <= 760)
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("link", { name: "My workflow", exact: true }).click();
+  const card = page.locator(".job-card").filter({
+    has: page.getByRole("heading", { name: order.title, exact: true }),
+  });
+  await card
+    .getByRole("button", { name: "Review service", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Service complete", exact: true }),
+  ).toBeVisible();
+  await page.locator(".workflow-stepper li").nth(2).getByRole("button").click();
+  await expect(
+    page.getByRole("heading", { name: "3. Initial Inspection", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("combobox").first()).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Submit & continue", exact: true }),
+  ).not.toBeVisible();
+  const commands: string[] = [];
+  page.on("request", (request) => {
+    if (
+      ["POST", "PUT", "PATCH", "DELETE"].includes(request.method()) &&
+      request.url().includes("/api/")
+    )
+      commands.push(request.url());
+  });
+  await page
+    .getByRole("button", { name: "View operational replay", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Event timeline", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".playback-count")).toHaveText(/Event\s+1\s+of/);
+  await page.getByRole("button", { name: "Next event", exact: true }).click();
+  await expect(page.locator(".playback-count")).toHaveText(/Event\s+2\s+of/);
+  await page
+    .getByRole("button", { name: "Previous event", exact: true })
+    .click();
+  await expect(page.locator(".playback-count")).toHaveText(/Event\s+1\s+of/);
+  const breach = page.getByRole("button", {
+    name: "First breach",
+    exact: true,
+  });
+  if (await breach.isEnabled()) await breach.click();
+  const csvDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "CSV", exact: true }).click();
+  expect((await csvDownload).suggestedFilename()).toMatch(/\.csv$/);
+  const pdfDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Incident PDF", exact: true }).click();
+  expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
+  expect(commands).toEqual([]);
 });

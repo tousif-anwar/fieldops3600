@@ -81,7 +81,7 @@ public static class OperationsApi
             if (order.Version != request.ExpectedVersion) throw new DomainException(409, "Work order changed. Refresh before saving.");
             ValidateText(request.Title, 3, 160, "title");
             if (!new[] { "Low", "Normal", "High", "Critical" }.Contains(request.Priority)) throw new DomainException(400, "Unknown priority.");
-            if (request.Status != order.Status && !(request.Status == "Cancelled" && order.Status is "Created" or "Scheduled")) throw new DomainException(409, "Only unstarted work orders may be cancelled. Workflow state controls completion.");
+            WorkOrderRules.RequireAllowedUpdate(order.Status, request.Status);
             order.Title = request.Title.Trim(); order.Priority = request.Priority; order.Status = request.Status; order.Version++;
             db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderUpdated.v1", order.Id, OrderPayload(order), order.Version, clock.GetUtcNow()));
             await db.SaveChangesAsync(ct);

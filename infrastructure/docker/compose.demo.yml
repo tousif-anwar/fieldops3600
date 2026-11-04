@@ -1,0 +1,11 @@
+# Explicit local-development override; never include in a production deployment.
+services:
+  workflows:
+    environment:
+      Sla__DurationSeconds: "30"
+      Sla__WarningSeconds: "20"
+      Sla__CriticalSeconds: "25"
+  reporting:
+    environment:
+      Demo__EnableConsumerFailure: "true"
+      Demo__FailEventType: StageWarningRaised.v1

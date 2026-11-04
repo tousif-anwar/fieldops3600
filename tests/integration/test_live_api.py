@@ -32,7 +32,7 @@ class LiveIntegrationTests(unittest.TestCase):
             headers["Content-Type"] = "application/json"
         request = urllib.request.Request(BASE + path, data=json.dumps(data).encode() if data is not None else None, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=20) as response:
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=20) as response:
                 body = response.read()
                 return response.status, json.loads(body) if "json" in response.headers.get("Content-Type", "") else body
         except urllib.error.HTTPError as error:

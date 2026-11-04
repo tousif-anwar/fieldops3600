@@ -1,6 +1,6 @@
 # FieldOps 360 technician mobile
 
-An Expo SDK 55 / React Native application for assigned jobs, today's appointments, eight guided service pages, dropdown forms, server SLA countdowns, assistance requests, notifications, offline drafts, and a durable synchronization queue. It uses the same gateway and resource-authorized backend APIs as the operations web app.
+An Expo SDK 58 / React Native 0.88 application for assigned jobs, today's appointments, eight guided service pages, dropdown forms, server SLA countdowns, assistance requests, notifications, offline drafts, and a durable synchronization queue. It uses the same gateway and resource-authorized backend APIs as the operations web app.
 
 ## Start a development build
 
@@ -64,8 +64,18 @@ $env:CI='1'
 npx expo export --platform android --output-dir dist/android
 ```
 
-The implementation was typechecked, all 12 offline/form tests passed, and an Android Hermes bundle was exported successfully through Metro. Expo's local SDK dependency compatibility check passed. Tests cover persistence/restart, stable idempotency, retry timing, concurrent flushes, remount races, conflicts, account isolation, terminal authorization failures, conditional fields, and hidden-answer removal.
+Before the SDK 58 upgrade, the SDK 55 implementation was typechecked, all 12 offline/form tests passed, and an Android Hermes bundle was exported successfully through Metro. Those results are historical and do not certify the upgraded native dependency graph. After installing SDK 58 packages, rerun every command above with `expo export --clear` and record the result in the repository implementation status. Tests cover persistence/restart, stable idempotency, retry timing, concurrent flushes, remount races, conflicts, account isolation, terminal authorization failures, conditional fields, and hidden-answer removal.
+
+## SDK 58 migration
+
+The dependency upgrade aligns Expo 58.0.23, React Native 0.88.1, React 19.3.0 and native module versions with Expo's bundled compatibility map. The application uses only the public React Native and Expo Router APIs; it has no deep React Native imports, custom navigator, removed InteractionManager/Touchable APIs, or legacy navigation-state persistence. AuthSession's code/PKCE flow and SecureStore's device-only token storage keep their existing interfaces.
+
+The obsolete `newArchEnabled` configuration was removed. Native layouts now use safe-area-context for edge insets, retain opaque stack headers explicitly, and request automatic scroll inset adjustment. This prevents the new iOS transparent-header default from placing controls under the navigation bar. Orientation is adaptive for resizable windows. The optional web preview explicitly retains single-page output; the operations web application remains the supported browser experience.
+
+Rebuild the development client after upgrading; an SDK 55 native binary cannot load the SDK 58 runtime. This repository uses Continuous Native Generation and does not commit generated Android/iOS directories. Let the new SDK generate them through `expo run:android` / `expo run:ios`; do not reuse old generated native projects. Use Node 22.13+, 24.3+, or 26+ on their supported even-numbered release lines. Native OAuth return, secure storage and foreground/offline behavior must be checked again on an emulator/device.
+
+Primary upgrade references: [SDK 58 release notes](https://expo.dev/changelog/sdk-58), [55-to-56 Router migration](https://docs.expo.dev/router/migrate/sdk-55-to-56/), and [57-to-58 Router migration](https://docs.expo.dev/router/migrate/sdk-57-to-58/).
 
 The native Android/iOS app has not been installed on an emulator or physical device in this session. Native OAuth browser return, SecureStore behavior on real devices, touch/VoiceOver/TalkBack interactions, and airplane-mode recovery require device validation before claiming a complete mobile release. There is no claim of a signed store artifact or real-device end-to-end pass.
 
-Primary references: [Expo authentication](https://docs.expo.dev/guides/authentication/), [AuthSession](https://docs.expo.dev/versions/v55.0.0/sdk/auth-session/), [SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/), and [development builds](https://docs.expo.dev/develop/development-builds/introduction/).
+Primary references: [Expo authentication](https://docs.expo.dev/guides/authentication/), [AuthSession](https://docs.expo.dev/versions/v58.0.0/sdk/auth-session/), [SecureStore](https://docs.expo.dev/versions/v58.0.0/sdk/securestore/), and [development builds](https://docs.expo.dev/develop/development-builds/introduction/).

@@ -1,6 +1,7 @@
 import { Link } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRuntime } from './runtime';
 
 export const colors = { ink: '#15283b', muted: '#526477', blue: '#075fa9', blueWash: '#edf5fc',
@@ -40,9 +41,12 @@ export function Button({ title, onPress, disabled = false, secondary = false }: 
 }
 
 export function Screen({ children }: React.PropsWithChildren) {
-  return <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.page}>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
+      contentInsetAdjustmentBehavior="automatic">
     <ConnectionBanner />{children}
-  </ScrollView>;
+    </ScrollView>
+  </SafeAreaView>;
 }
 
 export function ConnectionBanner() {

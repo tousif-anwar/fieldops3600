@@ -35,6 +35,7 @@ Tests include deterministic SLA/domain/authorization/replay checks and real Post
 - `RabbitMq:Host`, `RabbitMq:VirtualHost`, `RabbitMq:Username`, `RabbitMq:Password`: broker connection.
 - `Messaging:Enabled`: defaults to true. Disabling it is useful for isolated HTTP tests; events then remain in the local outbox.
 - `Services:WorkOrders`, `Services:Technicians`, `Services:Scheduling`, `Services:Workflows`: service HTTP base URLs. Requests forward the caller's signed bearer token, never an invented identity header.
+- `Services:Intelligence`: private intelligence base URL, required only for the optimized dispatch strategy. Optimizer unavailability produces an explicit error; the server does not silently substitute baseline results.
 - `Sla:DurationSeconds`, `Sla:WarningSeconds`, `Sla:CriticalSeconds`: defaults 1800/1200/1500. Shortening the stage deadline below 1800 seconds outside Development is rejected.
 - `Demo:EnableConsumerFailure`, `Demo:FailEventType`: Development-only deterministic first-attempt failure injection for a selected event type. The broker owns retry and `_error` queues.
 
@@ -57,11 +58,11 @@ All list responses are arrays. Property names are camelCase. Errors use RFC Prob
 | Method/path | Request |
 |---|---|
 | POST `/api/work-orders` | `{title,customerName,siteAddress,serviceCategory,priority,teamId}` |
-| PUT `/api/work-orders/{id}` | `{expectedVersion,title,priority,status}`; only cancellation of unstarted work is a manual status transition |
+| PUT `/api/work-orders/{id}` | `{expectedVersion,title,priority,status}`; only cancellation from `Created` is manual. Cancel the booking and refresh first when the order is `Scheduled`. |
 | POST `/api/bookings` | `{workOrderId,technicianId,startUtc,endUtc,overrideReason?}` |
 | PUT `/api/bookings/{id}` | `{expectedVersion,startUtc,endUtc,reason}` |
 | POST `/api/bookings/{id}/cancel` | `{expectedVersion,reason}` |
-| POST `/api/scheduling/recommendations` | `{workOrderId,startUtc,durationMinutes}`; feasible candidates ranked by booked workload, with explanations |
+| POST `/api/scheduling/recommendations` | `{workOrderId,startUtc,durationMinutes,strategy?:"baseline"\|"optimized"}`; whole-minute appointments within one UTC day. Baseline returns feasible candidates; optimized returns the CP-SAT selected candidate with measured runtime and solver status. |
 | GET `/api/workflows/templates/default` | Returns `{version,stages:[{index,name,fields:[{key,label,options,required,conditionField?,conditionValue?}]}]}` |
 | GET `/api/workflows?workOrderId={id}` | Authorized workflow array |
 | POST `/api/workflows` | `{workOrderId}`; confirmed booking required |
