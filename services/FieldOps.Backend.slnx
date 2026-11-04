@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/notifications/">
+    <Project Path="notifications/FieldOps.Notifications.csproj" />
+  </Folder>
+  <Folder Name="/reporting/">
+    <Project Path="reporting/FieldOps.Reporting.csproj" />
+  </Folder>
+  <Folder Name="/scheduling/">
+    <Project Path="scheduling/FieldOps.Scheduling.csproj" />
+  </Folder>
+  <Folder Name="/technicians/">
+    <Project Path="technicians/FieldOps.Technicians.csproj" />
+  </Folder>
+  <Folder Name="/work-orders/">
+    <Project Path="work-orders/FieldOps.WorkOrders.csproj" />
+  </Folder>
+  <Folder Name="/workflows/">
+    <Project Path="workflows/FieldOps.Workflows.csproj" />
+  </Folder>
+  <Project Path="../building-blocks/FieldOps.Core/FieldOps.Core.csproj" />
+  <Project Path="../building-blocks/FieldOps.ServiceHost/FieldOps.ServiceHost.csproj" />
+  <Project Path="../tests/backend/FieldOps.Tests.csproj" />
+</Solution>

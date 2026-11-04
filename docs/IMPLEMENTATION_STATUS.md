@@ -39,7 +39,14 @@ Updated: 2026-11-04. This is the execution checklist, not a completion claim.
 - Gateway black-box security suite: 6 tests passed against a real .NET 10 process (anonymous denial, forged identity headers, invalid bearer, query token boundary, cache headers, CORS).
 - Initial cached OpenTelemetry 1.12 dependencies failed NuGet vulnerability audit. Updated gateway to 1.20.1 and kept auditing enabled.
 - PostgreSQL, RabbitMQ and imported Keycloak realm are running and healthy in Docker Compose.
-- Service, frontend, mobile and intelligence validation remains in progress. Do not infer that gateway tests validate their security.
+- Backend: all six hosts build with stable SDK 10.0.403; 24/24 tests passed (18 domain/security/replay and 6 real PostgreSQL Testcontainers integration tests). Migration checksums and byte-preserving evidence hashes are tested.
+- Warehouse: 8/8 PostgreSQL tests passed. Independent review identified late metadata/version and utilization edge cases; fixes and new regressions are in progress.
+- Intelligence: 18/18 tests passed with pinned dependencies. Actual synthetic evaluation is in `intelligence/evaluation/REPORT.md`; time-limited solver results are feasible, not proven optimal.
+- Mobile: TypeScript check and 12 offline/form tests passed; Android Metro/Hermes export completed. Native device authentication is not verified.
+- Web: production build passed, npm audit is clean, 4 unauthenticated desktop/mobile browser tests passed. Authenticated UI and complete integration remain pending.
+- Live Keycloak PKCE verified. The `basic` OIDC scope was added after live inspection found missing `sub`; signed gateway session now resolves `dispatcher-01`.
+- First integrated startup exposed and fixed an EF seed enumeration bug. Six newly created databases were verified to contain zero work orders before replacing early bootstrap schemas with versioned migrations.
+- Operational optimized-dispatch wiring, detailed incident export, actual browser flow, resilience demonstration and security scans remain in progress.
 
 ## Resume instructions
 
