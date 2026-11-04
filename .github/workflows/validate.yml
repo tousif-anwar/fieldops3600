@@ -52,7 +52,7 @@ jobs:
       - run: pip install -r intelligence/requirements.txt -r intelligence/requirements-dev.txt
       - run: python -m pytest -c intelligence/pyproject.toml tests/intelligence -v
         env: {PYTHONPATH: intelligence, PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'}
-      - run: ruff check intelligence/fieldops_intelligence tests/intelligence
+      - run: ruff check --config intelligence/pyproject.toml intelligence/fieldops_intelligence tests/intelligence
   integrated:
     runs-on: ubuntu-latest
     timeout-minutes: 30

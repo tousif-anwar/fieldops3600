@@ -51,4 +51,3 @@ public static class EventFactory
             JsonSerializer.SerializeToElement(payload, Json.Options));
     }
 }
-

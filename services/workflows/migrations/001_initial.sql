@@ -49,5 +49,3 @@ CREATE INDEX "IX_outbox_messages_PublishedAtUtc_NextAttemptAtUtc" ON outbox_mess
 
 
 CREATE UNIQUE INDEX "IX_workflows_WorkOrderId" ON workflows ("WorkOrderId");
-
-

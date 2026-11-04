@@ -24,4 +24,3 @@ Advisory SLA prediction is a supervisor disclosure. Stage and elapsed time come 
 Component/unit tests cover order validation/mutations/server rejection, conditional fields, pause countdown, access errors, historical state boundaries, late-event filters, immutability of replay input, and retry grouping. Playwright checks unauthenticated route protection and login responsiveness. Full signed-in end-to-end verification requires the Compose services and an identity-provider account; the login checks do not claim to verify the distributed lifecycle.
 
 Accessibility: semantic headings, labels, visible keyboard focus, a skip link, text-based status indicators, form validation, accessible notification counts, native playback range, and reduced-motion support. A complete WCAG audit has not been performed. Supervisor intervention uses Fluent Dialog focus trapping and escape handling.
-

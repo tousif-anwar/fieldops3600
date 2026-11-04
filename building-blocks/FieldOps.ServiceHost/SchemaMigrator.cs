@@ -24,7 +24,7 @@ public static class SchemaMigrator
         if (resources.Length == 0) throw new InvalidOperationException($"No migrations were embedded for {db.ServiceName}.");
         foreach (var resource in resources)
         {
-            using var reader = new StreamReader(assembly.GetManifestResourceStream(resource)!); var sql = await reader.ReadToEndAsync();
+            using var reader = new StreamReader(assembly.GetManifestResourceStream(resource)!); var sql = Normalize(await reader.ReadToEndAsync());
             var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sql)));
             await using var read = new NpgsqlCommand("SELECT sha256 FROM fieldops_schema_migrations WHERE migration_id=@id", connection, transaction); read.Parameters.AddWithValue("id", resource);
             var applied = (string?)await read.ExecuteScalarAsync();
@@ -38,4 +38,6 @@ public static class SchemaMigrator
         }
         await transaction.CommitAsync();
     }
+
+    public static string Normalize(string sql) => sql.Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\r", "\n", StringComparison.Ordinal).TrimEnd() + "\n";
 }

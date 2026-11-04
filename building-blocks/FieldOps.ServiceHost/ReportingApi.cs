@@ -111,15 +111,36 @@ public static class ReportingApi
         {
             var records = await AuthorizedEvents(workOrderId, db, http, ct);
             var rows = ReplayEngine.Order(records.Select(x => Json.Read<AuditEvent>(x.Body)));
-            var csv = "EventId,EventType,OccurredAtUtc,ReceivedAtUtc,SourceService,ActorId,ActorRole,CorrelationId,TraceId,SequenceNumber,OrderingUncertain\r\n" + string.Join("\r\n", rows.Select(x => { var e = x.Event; var stored = records.Single(r => r.EventId == e.EventId); return string.Join(",", new[] { e.EventId.ToString(), e.EventType, e.OccurredAtUtc.ToString("O"), stored.ReceivedAtUtc.ToString("O"), e.SourceService, e.ActorId, e.ActorRole, e.CorrelationId, e.TraceId ?? "", e.SequenceNumber.ToString(), x.OrderingUncertain.ToString() }.Select(Csv)); }));
+            var ids = records.Select(x => x.EventId).ToArray();
+            var attempts = await db.DeliveryAttempts.AsNoTracking().Where(x => ids.Contains(x.EventId)).ToListAsync(ct);
+            var csv = "EventId,EventType,EventVersion,WorkOrderId,WorkflowId,StageInstanceId,OccurredAtUtc,RecordedAtUtc,ReceivedAtUtc,ProcessedAtUtc,SourceService,ActorId,ActorRole,CorrelationId,CausationId,TraceId,SpanId,SequenceNumber,OrderingUncertain,MissingCausation,RetryCount,ProcessingStatus,Payload\r\n" + string.Join("\r\n", rows.Select(x =>
+            {
+                var e = x.Event; var stored = records.Single(r => r.EventId == e.EventId);
+                return string.Join(",", new[] { e.EventId.ToString(), e.EventType, e.EventVersion.ToString(), e.WorkOrderId.ToString(), e.WorkflowId?.ToString() ?? "", e.StageInstanceId?.ToString() ?? "", e.OccurredAtUtc.ToString("O"), e.RecordedAtUtc.ToString("O"), stored.ReceivedAtUtc.ToString("O"), stored.ProcessedAtUtc.ToString("O"), e.SourceService, e.ActorId, e.ActorRole, e.CorrelationId, e.CausationId?.ToString() ?? "", e.TraceId ?? "", e.SpanId ?? "", e.SequenceNumber.ToString(), x.OrderingUncertain.ToString(), x.MissingCausation.ToString(), attempts.Count(a => a.EventId == e.EventId && a.Status == "Failed").ToString(), "Processed", Json.Write(e.EventPayload) }.Select(Csv));
+            }));
             return Results.File(Encoding.UTF8.GetBytes(csv), "text/csv", $"incident-{workOrderId}.csv");
         });
         replay.MapGet("/{workOrderId:guid}/export.pdf", async (Guid workOrderId, ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
             var records = await AuthorizedEvents(workOrderId, db, http, ct);
             var events = records.Select(x => Json.Read<AuditEvent>(x.Body)).ToArray();
-            var lines = new List<string> { "FieldOps 360 incident investigation", $"Work order: {workOrderId}", $"Recorded events: {events.Length}", "Facts (customer details excluded):" };
-            lines.AddRange(ReplayEngine.Order(events).Select(x => $"{x.Event.OccurredAtUtc:O} | {x.Event.EventType} | {x.Event.SourceService}"));
+            var summary = IncidentSummaries.Create(events);
+            var lines = new List<string> { "FieldOps 360 incident investigation", $"Work order: {workOrderId}", $"Incident: {summary.IncidentStartUtc:O} to {summary.IncidentEndUtc:O}", $"Final observed outcome: {summary.Outcome}", "Facts (customer details excluded):" };
+            lines.AddRange(summary.Facts);
+            foreach (var stage in summary.StageIncidents)
+            {
+                lines.Add($"Affected stage: {stage.AffectedStage} ({stage.StageInstanceId})");
+                lines.Add($"Breach deadline: {stage.SlaDeadlineUtc:O}; effective deadline after pauses: {stage.EffectiveDeadlineUtc:O}");
+                lines.Add($"Recorded completion: {stage.ActualCompletionAtUtc:O}; effective delay: {stage.DelayMinutes?.ToString("0.##", CultureInfo.InvariantCulture) ?? "not yet observed"} minutes; {stage.CompletionKind}");
+            }
+            lines.Add("Supervisor actions:");
+            lines.AddRange(summary.SupervisorActions.Select(x => $"{x.OccurredAtUtc:O} | {x.ActorId} ({x.ActorRole}) | {x.EventType} | {x.Reason}"));
+            var ids = records.Select(x => x.EventId).ToArray();
+            var attempts = await db.DeliveryAttempts.AsNoTracking().Where(x => ids.Contains(x.EventId)).OrderBy(x => x.ReceivedAtUtc).ToListAsync(ct);
+            lines.Add("Delivery attempts (separate from business actions):");
+            lines.AddRange(attempts.Select(a => $"Event {a.EventId}; attempt {a.Attempt}; {a.Status}; received {a.ReceivedAtUtc:O}; processed {a.ProcessedAtUtc:O}; {a.Error}"));
+            lines.Add("Chronological business evidence:");
+            lines.AddRange(ReplayEngine.Order(events).Select(x => $"{x.Event.OccurredAtUtc:O} | {x.Event.EventType} | {x.Event.SourceService} | {x.Event.ActorId}; uncertain order={x.OrderingUncertain}"));
             lines.Add("Inferred causes: None. Event evidence alone does not establish a root cause.");
             lines.Add("Trace identifiers:"); lines.AddRange(events.Where(x => x.TraceId is not null).Select(x => x.TraceId!).Distinct());
             return Results.File(Pdf.Create(lines), "application/pdf", $"incident-{workOrderId}.pdf");
@@ -133,12 +154,7 @@ public static class ReportingApi
         if (records.Count == 0) throw new DomainException(404, "No authorized replay evidence was found. Events may still be arriving.");
         return records;
     }
-    private static object Summary(AuditEvent[] events)
-    {
-        var breaches = events.Where(x => x.EventType == "StageSLABreached.v1").ToArray();
-        var interventions = events.Where(x => x.EventType is "StagePaused.v1" or "StageResumed.v1" or "SupervisorOverrideApplied.v1").ToArray();
-        return new { incidentStartUtc = events.Min(x => x.OccurredAtUtc), incidentEndUtc = events.Max(x => x.OccurredAtUtc), breachCount = breaches.Length, interventionCount = interventions.Length, outcome = events.Any(x => x.EventType == "WorkflowCompleted.v1") ? "Completed" : "In progress", facts = new[] { $"{events.Length} distinct business events recorded.", $"{breaches.Length} stage SLA breaches recorded.", $"{interventions.Length} supervisor interventions recorded." }, inferences = new[] { "No root cause is inferred automatically. Review recorded technician answers and interventions." } };
-    }
+    private static object Summary(AuditEvent[] events) => IncidentSummaries.Create(events);
     private static string Csv(string value)
     {
         if (value.Length > 0 && "=+-@\t\r".Contains(value[0])) value = "'" + value;
@@ -150,7 +166,7 @@ public static class Pdf
 {
     public static byte[] Create(IEnumerable<string> lines)
     {
-        var pages = lines.Chunk(44).ToArray();
+        var pages = lines.SelectMany(Wrap).Chunk(44).ToArray();
         if (pages.Length == 0) pages = [["No recorded facts."]];
         var objects = new List<string> { "<< /Type /Catalog /Pages 2 0 R >>", "", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>" };
         var pageIds = new List<int>();
@@ -158,7 +174,7 @@ public static class Pdf
         {
             var pageId = objects.Count + 1; var streamId = pageId + 1; pageIds.Add(pageId);
             objects.Add($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents {streamId} 0 R >>");
-            var content = "BT /F1 9 Tf 40 750 Td 15 TL\n" + string.Join("\n", page.Select(line => "(" + Escape(line.Length > 115 ? line[..115] : line) + ") Tj T*")) + "\nET";
+            var content = "BT /F1 9 Tf 40 750 Td 15 TL\n" + string.Join("\n", page.Select(line => "(" + Escape(line) + ") Tj T*")) + "\nET";
             objects.Add($"<< /Length {Encoding.ASCII.GetByteCount(content)} >>\nstream\n{content}\nendstream");
         }
         objects[1] = $"<< /Type /Pages /Kids [{string.Join(' ', pageIds.Select(id => $"{id} 0 R"))}] /Count {pages.Length} >>";
@@ -169,4 +185,9 @@ public static class Pdf
         output.Append(CultureInfo.InvariantCulture, $"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF"); return Encoding.ASCII.GetBytes(output.ToString());
     }
     private static string Escape(string value) => new string(value.Select(c => c is >= ' ' and <= '~' ? c : '?').ToArray()).Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+    private static IEnumerable<string> Wrap(string line)
+    {
+        if (line.Length == 0) { yield return ""; yield break; }
+        for (var offset = 0; offset < line.Length; offset += 105) yield return line.Substring(offset, Math.Min(105, line.Length - offset));
+    }
 }

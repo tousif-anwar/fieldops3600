@@ -109,5 +109,3 @@ CREATE INDEX "IX_delivery_attempts_EventId" ON delivery_attempts ("EventId");
 
 
 CREATE INDEX "IX_outbox_messages_PublishedAtUtc_NextAttemptAtUtc" ON outbox_messages ("PublishedAtUtc", "NextAttemptAtUtc");
-
-

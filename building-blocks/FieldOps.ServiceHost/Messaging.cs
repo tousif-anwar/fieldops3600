@@ -66,11 +66,13 @@ public sealed class SlaSweep(IServiceScopeFactory scopes, TimeProvider clock, Sl
         {
             var now = clock.GetUtcNow();
             var raised = WorkflowEngine.Evaluate(workflow, now, policy);
+            Guid? precedingMilestone = null;
             foreach (var type in raised)
             {
                 using var activity = Telemetry.Activities.StartActivity("sla.stage-transition", System.Diagnostics.ActivityKind.Internal);
                 var stage = workflow.Stages[workflow.CurrentStageIndex];
-                db.Enqueue(EventFactory.Create(null, "workflows", type, workflow.WorkOrderId, OperationsApi.StagePayload(workflow, stage), workflow.Version, now, workflow.Id, stage.Id));
+                var milestone = EventFactory.Create(null, "workflows", type, workflow.WorkOrderId, OperationsApi.StagePayload(workflow, stage), workflow.Version, now, workflow.Id, stage.Id, precedingMilestone);
+                db.Enqueue(milestone); precedingMilestone = milestone.EventId;
             }
         }
         try { await db.SaveChangesAsync(context.CancellationToken); }

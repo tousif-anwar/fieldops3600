@@ -22,4 +22,3 @@
     <EmbeddedResource Include="../../services/reporting/migrations/*.sql" LogicalName="reporting.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
-

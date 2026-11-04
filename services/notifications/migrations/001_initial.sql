@@ -49,5 +49,3 @@ CREATE UNIQUE INDEX "IX_notifications_EventId" ON notifications ("EventId");
 
 
 CREATE INDEX "IX_outbox_messages_PublishedAtUtc_NextAttemptAtUtc" ON outbox_messages ("PublishedAtUtc", "NextAttemptAtUtc");
-
-

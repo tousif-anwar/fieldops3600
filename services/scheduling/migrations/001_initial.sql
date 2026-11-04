@@ -47,5 +47,3 @@ CREATE INDEX "IX_bookings_WorkOrderId_Status" ON bookings ("WorkOrderId", "Statu
 
 
 CREATE INDEX "IX_outbox_messages_PublishedAtUtc_NextAttemptAtUtc" ON outbox_messages ("PublishedAtUtc", "NextAttemptAtUtc");
-
-

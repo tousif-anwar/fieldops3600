@@ -1,23 +1,275 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Field, Input, Select } from '@fluentui/react-components';
-import { BrainCircuit, ChevronDown, Sparkles } from 'lucide-react';
-import { post } from '../api';
-import { dateTime, percent } from '../format';
-import { InlineMessage, Panel, Status } from './common';
-import type { Stage, Workflow } from '../types';
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Field, Input, Select } from "@fluentui/react-components";
+import { BrainCircuit, ChevronDown, Sparkles } from "lucide-react";
+import { post } from "../api";
+import { dateTime, percent } from "../format";
+import { InlineMessage, Panel, Status } from "./common";
+import type { Stage, Workflow } from "../types";
 
-interface Prediction {breachRisk:number;riskCategory:string;factors:{feature:string;contribution:number;description:string}[];predictedAtUtc:string;modelVersion:string;syntheticTraining:boolean;advisory:boolean;suggestedIntervention:string;limitation:string}
-
-export function RiskAssessment({stage,workflow}:{stage:Stage;workflow:Workflow}){
-  const qc=useQueryClient();const [decisionReason,setDecisionReason]=useState('');
-  const [open,setOpen]=useState(false);const [category,setCategory]=useState('HVAC');const [priority,setPriority]=useState('Normal');const [equipment,setEquipment]=useState('Commercial');const [workload,setWorkload]=useState('0');const [historical,setHistorical]=useState('30');const [progress,setProgress]=useState('0');const [delays,setDelays]=useState('0');
-  const elapsed=stage.startedAtUtc?Math.max(0,((stage.pausedAtUtc?Date.parse(stage.pausedAtUtc):Date.now())-Date.parse(stage.startedAtUtc))/60000-(stage.pausedSeconds??0)/60):0;
-  const prediction=useMutation({onMutate:()=>{decision.reset();setDecisionReason('');},mutationFn:()=>post<Prediction>('/api/intelligence/predict',{serviceCategory:category,stageIndex:stage.index,technicianWorkload:Number(workload),historicalStageDurationMinutes:Number(historical),elapsedMinutes:Math.min(elapsed,240),progress:Number(progress)/100,priority,previousDelays:Number(delays),equipmentCategory:equipment})});
-  const decision=useMutation({mutationFn:(decision:'Accepted'|'Dismissed')=>post<Workflow>(`/api/workflows/${workflow.id}/interventions`,{expectedVersion:workflow.version,modelVersion:prediction.data!.modelVersion,breachRisk:prediction.data!.breachRisk,decision,reason:decisionReason}),onSuccess:next=>{qc.setQueryData(['workflow',workflow.id],next);void qc.invalidateQueries({queryKey:['workflows']});}});
-  return <Panel title="Advisory SLA risk assessment" description="A synthetic-data model supports supervisor judgment. It does not make operational decisions." action={<Button size="small" icon={<ChevronDown size={15}/>} aria-expanded={open} onClick={()=>setOpen(v=>!v)}>{open?'Hide inputs':'Review inputs'}</Button>}>
-    {!open?<div className="risk-intro"><BrainCircuit size={21}/><p>Review the model’s inputs before requesting a prediction. Unknown values are editable assumptions, never measurements.</p></div>:<form className="form-body risk-form" onSubmit={e=>{e.preventDefault();prediction.mutate();}}><div className="inline-message">Only elapsed time and stage index come from this workflow. Confirm category, priority, workload, history, progress, delays, and equipment below before evaluating.</div><div className="form-two" onChangeCapture={()=>{prediction.reset();decision.reset();setDecisionReason('');}}><Field label="Service category"><Select value={category} onChange={e=>setCategory(e.target.value)}>{['HVAC','Heating','Cooling','Ventilation'].map(v=><option key={v}>{v}</option>)}</Select></Field><Field label="Priority"><Select value={priority} onChange={e=>setPriority(e.target.value)}>{['Low','Normal','High','Critical'].map(v=><option key={v}>{v}</option>)}</Select></Field><Field label="Equipment category"><Select value={equipment} onChange={e=>setEquipment(e.target.value)}>{['Residential','Commercial','Industrial'].map(v=><option key={v}>{v}</option>)}</Select></Field><Field label="Current technician workload (jobs)"><Input type="number" min={0} max={30} required value={workload} onChange={e=>setWorkload(e.target.value)}/></Field><Field label="Historical mean stage minutes"><Input type="number" min={1} max={240} required value={historical} onChange={e=>setHistorical(e.target.value)}/></Field><Field label="Estimated stage progress (%)"><Input type="number" min={0} max={100} required value={progress} onChange={e=>setProgress(e.target.value)}/></Field><Field label="Previous delays"><Input type="number" min={0} max={7} required value={delays} onChange={e=>setDelays(e.target.value)}/></Field><Field label="Effective elapsed minutes"><Input readOnly value={elapsed.toFixed(1)}/></Field></div><Button appearance="primary" icon={<Sparkles size={16}/>} disabled={prediction.isPending} type="submit">{prediction.isPending?'Evaluating…':'Evaluate advisory risk'}</Button>{prediction.isError&&<InlineMessage>{prediction.error.message}</InlineMessage>}{prediction.data&&<div className="risk-result"><div><strong>{percent(prediction.data.breachRisk)}</strong><Status value={`${prediction.data.riskCategory} risk`}/></div><p>{prediction.data.suggestedIntervention}</p><ul>{prediction.data.factors.map(f=><li key={f.feature}>{f.description}</li>)}</ul><small>{prediction.data.modelVersion} · Predicted {dateTime(prediction.data.predictedAtUtc)}<br/>{prediction.data.limitation}</small><p className="risk-advisory">Advisory only. This prediction is based on synthetic training data and user-confirmed inputs. No employee is automatically ranked or penalized.</p><Field label="Supervisor decision reason" required><Input value={decisionReason} onChange={e=>setDecisionReason(e.target.value)} placeholder="Explain the intervention decision"/></Field><div className="risk-decision-actions"><Button disabled={decisionReason.trim().length<5||decision.isPending||decision.isSuccess} onClick={()=>decision.mutate('Accepted')}>Accept recommendation</Button><Button disabled={decisionReason.trim().length<5||decision.isPending||decision.isSuccess} onClick={()=>decision.mutate('Dismissed')}>Dismiss recommendation</Button></div>{decision.isError&&<InlineMessage>{decision.error.message}</InlineMessage>}{decision.isSuccess&&<InlineMessage success>Decision recorded in the audit history.</InlineMessage>}</div>}</form>}
-  </Panel>;
+interface Prediction {
+  breachRisk: number;
+  riskCategory: string;
+  factors: { feature: string; contribution: number; description: string }[];
+  predictedAtUtc: string;
+  modelVersion: string;
+  syntheticTraining: boolean;
+  advisory: boolean;
+  suggestedIntervention: string;
+  limitation: string;
 }
 
-
+export function RiskAssessment({
+  stage,
+  workflow,
+}: {
+  stage: Stage;
+  workflow: Workflow;
+}) {
+  const qc = useQueryClient();
+  const [decisionReason, setDecisionReason] = useState("");
+  const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState("HVAC");
+  const [priority, setPriority] = useState("Normal");
+  const [equipment, setEquipment] = useState("Commercial");
+  const [workload, setWorkload] = useState("0");
+  const [historical, setHistorical] = useState("30");
+  const [progress, setProgress] = useState("0");
+  const [delays, setDelays] = useState("0");
+  const elapsed = stage.startedAtUtc
+    ? Math.max(
+        0,
+        ((stage.pausedAtUtc ? Date.parse(stage.pausedAtUtc) : Date.now()) -
+          Date.parse(stage.startedAtUtc)) /
+          60000 -
+          (stage.pausedSeconds ?? 0) / 60,
+      )
+    : 0;
+  const prediction = useMutation({
+    onMutate: () => {
+      decision.reset();
+      setDecisionReason("");
+    },
+    mutationFn: () =>
+      post<Prediction>("/api/intelligence/predict", {
+        serviceCategory: category,
+        stageIndex: stage.index,
+        technicianWorkload: Number(workload),
+        historicalStageDurationMinutes: Number(historical),
+        elapsedMinutes: Math.min(elapsed, 240),
+        progress: Number(progress) / 100,
+        priority,
+        previousDelays: Number(delays),
+        equipmentCategory: equipment,
+      }),
+  });
+  const decision = useMutation({
+    mutationFn: (decision: "Accepted" | "Dismissed") =>
+      post<Workflow>(`/api/workflows/${workflow.id}/interventions`, {
+        expectedVersion: workflow.version,
+        modelVersion: prediction.data!.modelVersion,
+        breachRisk: prediction.data!.breachRisk,
+        decision,
+        reason: decisionReason,
+      }),
+    onSuccess: (next) => {
+      qc.setQueryData(["workflow", workflow.id], next);
+      void qc.invalidateQueries({ queryKey: ["workflows"] });
+    },
+  });
+  return (
+    <Panel
+      title="Advisory SLA risk assessment"
+      description="A synthetic-data model supports supervisor judgment. It does not make operational decisions."
+      action={
+        <Button
+          size="small"
+          icon={<ChevronDown size={15} />}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? "Hide inputs" : "Review inputs"}
+        </Button>
+      }
+    >
+      {!open ? (
+        <div className="risk-intro">
+          <BrainCircuit size={21} />
+          <p>
+            Review the model’s inputs before requesting a prediction. Unknown
+            values are editable assumptions, never measurements.
+          </p>
+        </div>
+      ) : (
+        <form
+          className="form-body risk-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            prediction.mutate();
+          }}
+        >
+          <div className="inline-message">
+            Only elapsed time and stage index come from this workflow. Confirm
+            category, priority, workload, history, progress, delays, and
+            equipment below before evaluating.
+          </div>
+          <div
+            className="form-two"
+            onChangeCapture={() => {
+              prediction.reset();
+              decision.reset();
+              setDecisionReason("");
+            }}
+          >
+            <Field label="Service category">
+              <Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {["HVAC", "Heating", "Cooling", "Ventilation"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Priority">
+              <Select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                {["Low", "Normal", "High", "Critical"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Equipment category">
+              <Select
+                value={equipment}
+                onChange={(e) => setEquipment(e.target.value)}
+              >
+                {["Residential", "Commercial", "Industrial"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Current technician workload (jobs)">
+              <Input
+                type="number"
+                min={0}
+                max={30}
+                required
+                value={workload}
+                onChange={(e) => setWorkload(e.target.value)}
+              />
+            </Field>
+            <Field label="Historical mean stage minutes">
+              <Input
+                type="number"
+                min={1}
+                max={240}
+                required
+                value={historical}
+                onChange={(e) => setHistorical(e.target.value)}
+              />
+            </Field>
+            <Field label="Estimated stage progress (%)">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                required
+                value={progress}
+                onChange={(e) => setProgress(e.target.value)}
+              />
+            </Field>
+            <Field label="Previous delays">
+              <Input
+                type="number"
+                min={0}
+                max={7}
+                required
+                value={delays}
+                onChange={(e) => setDelays(e.target.value)}
+              />
+            </Field>
+            <Field label="Effective elapsed minutes">
+              <Input readOnly value={elapsed.toFixed(1)} />
+            </Field>
+          </div>
+          <Button
+            appearance="primary"
+            icon={<Sparkles size={16} />}
+            disabled={prediction.isPending}
+            type="submit"
+          >
+            {prediction.isPending ? "Evaluating…" : "Evaluate advisory risk"}
+          </Button>
+          {prediction.isError && (
+            <InlineMessage>{prediction.error.message}</InlineMessage>
+          )}
+          {prediction.data && (
+            <div className="risk-result">
+              <div>
+                <strong>{percent(prediction.data.breachRisk)}</strong>
+                <Status value={`${prediction.data.riskCategory} risk`} />
+              </div>
+              <p>{prediction.data.suggestedIntervention}</p>
+              <ul>
+                {prediction.data.factors.map((f) => (
+                  <li key={f.feature}>{f.description}</li>
+                ))}
+              </ul>
+              <small>
+                {prediction.data.modelVersion} · Predicted{" "}
+                {dateTime(prediction.data.predictedAtUtc)}
+                <br />
+                {prediction.data.limitation}
+              </small>
+              <p className="risk-advisory">
+                Advisory only. This prediction is based on synthetic training
+                data and user-confirmed inputs. No employee is automatically
+                ranked or penalized.
+              </p>
+              <Field label="Supervisor decision reason" required>
+                <Input
+                  value={decisionReason}
+                  onChange={(e) => setDecisionReason(e.target.value)}
+                  placeholder="Explain the intervention decision"
+                />
+              </Field>
+              <div className="risk-decision-actions">
+                <Button
+                  disabled={
+                    decisionReason.trim().length < 5 ||
+                    decision.isPending ||
+                    decision.isSuccess
+                  }
+                  onClick={() => decision.mutate("Accepted")}
+                >
+                  Accept recommendation
+                </Button>
+                <Button
+                  disabled={
+                    decisionReason.trim().length < 5 ||
+                    decision.isPending ||
+                    decision.isSuccess
+                  }
+                  onClick={() => decision.mutate("Dismissed")}
+                >
+                  Dismiss recommendation
+                </Button>
+              </div>
+              {decision.isError && (
+                <InlineMessage>{decision.error.message}</InlineMessage>
+              )}
+              {decision.isSuccess && (
+                <InlineMessage success>
+                  Decision recorded in the audit history.
+                </InlineMessage>
+              )}
+            </div>
+          )}
+        </form>
+      )}
+    </Panel>
+  );
+}

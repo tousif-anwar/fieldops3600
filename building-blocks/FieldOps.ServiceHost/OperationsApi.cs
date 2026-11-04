@@ -12,7 +12,7 @@ public sealed record MoveBooking(int ExpectedVersion, DateTimeOffset StartUtc, D
 public sealed record StartWorkflow(Guid WorkOrderId);
 public sealed record SubmitStage(int ExpectedVersion, string IdempotencyKey, Dictionary<string, string> Answers, DateTimeOffset? ClientOccurredAtUtc, bool Offline = false);
 public sealed record Intervention(int ExpectedVersion, string Reason, int? TargetStageIndex);
-public sealed record RecommendationRequest(Guid WorkOrderId, DateTimeOffset StartUtc, int DurationMinutes = 60);
+public sealed record RecommendationRequest(Guid WorkOrderId, DateTimeOffset StartUtc, int DurationMinutes = 60, string Strategy = "baseline");
 public sealed record TimeOffRequest(DateTimeOffset StartUtc, DateTimeOffset EndUtc, string Reason);
 public sealed record RecommendationDecision(int ExpectedVersion, string ModelVersion, double BreachRisk, string Decision, string Reason, DateTimeOffset? PredictedAtUtc = null, Dictionary<string, string>? Features = null);
 
@@ -132,7 +132,7 @@ public static class OperationsApi
             ValidateText(request.Name, 2, 100, "name");
             try { TimeZoneInfo.FindSystemTimeZoneById(request.TimeZone); } catch (TimeZoneNotFoundException) { throw new DomainException(400, "Unknown time zone."); }
             tech.Name = request.Name; tech.Skills = request.Skills; tech.Certifications = request.Certifications; tech.WorkingStartHour = request.WorkingStartHour; tech.WorkingEndHour = request.WorkingEndHour; tech.TimeZone = request.TimeZone; tech.Available = request.Available; tech.Version++;
-            db.Enqueue(EventFactory.Create(http, "technicians", "TechnicianAvailabilityChanged.v1", Guid.Empty, new { technicianId = tech.Id, tech.TeamId, tech.Available, tech.Skills, tech.WorkingStartHour, tech.WorkingEndHour }, tech.Version, clock.GetUtcNow()));
+            db.Enqueue(EventFactory.Create(http, "technicians", "TechnicianAvailabilityChanged.v1", Guid.Empty, new { technicianId = tech.Id, tech.TeamId, tech.Available, tech.Skills, tech.WorkingStartHour, tech.WorkingEndHour, tech.TimeZone }, tech.Version, clock.GetUtcNow()));
             await db.SaveChangesAsync(ct); return Results.Ok(TechnicianView(tech));
         }).RequireAuthorization("supervise");
     }
@@ -184,26 +184,7 @@ public static class OperationsApi
             db.Enqueue(EventFactory.Create(http, "scheduling", "BookingCancelled.v1", booking.WorkOrderId, new { booking.Id, booking.WorkOrderId, booking.TeamId, booking.TechnicianId, request.Reason }, booking.Version, clock.GetUtcNow()));
             await db.SaveChangesAsync(ct); return Results.Ok(booking);
         }).RequireAuthorization("dispatch");
-        app.MapPost("/api/scheduling/recommendations", async (RecommendationRequest request, ServiceDb db, RemoteServices remote, HttpContext http, CancellationToken ct) =>
-        {
-            if (request.DurationMinutes is < 15 or > 480) throw new DomainException(400, "Duration must be 15–480 minutes.");
-            var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{request.WorkOrderId}", http, ct);
-            Caller.From(http.User).Demand(order.TeamId);
-            var technicians = await remote.Get<TechnicianDto[]>("Technicians", "/api/technicians", http, ct);
-            var end = request.StartUtc.AddMinutes(request.DurationMinutes);
-            var records = await db.Bookings.AsNoTracking().Where(x => x.Status == "Confirmed" && x.StartUtc >= request.StartUtc.AddDays(-1) && x.StartUtc < request.StartUtc.AddDays(1)).ToListAsync(ct);
-            var ranked = new List<object>();
-            foreach (var dto in technicians)
-            {
-                var technician = dto.ToEntity();
-                var timeOff = await remote.Get<TimeOff[]>("Technicians", $"/api/technicians/{technician.Id}/time-off", http, ct);
-                try { BookingRules.Validate(technician, order, request.StartUtc, end, timeOff); } catch (DomainException) { continue; }
-                if (records.Any(x => x.TechnicianId == technician.Id && BookingRules.Overlaps(x.StartUtc, x.EndUtc, request.StartUtc, end))) continue;
-                var booked = records.Where(x => x.TechnicianId == technician.Id).Sum(x => (x.EndUtc - x.StartUtc).TotalMinutes);
-                ranked.Add(new { technicianId = technician.Id, technicianName = technician.Name, score = 100 - booked / 6, bookedMinutes = booked, estimatedTravelMinutes = (double?)null, explanation = new[] { $"Qualified for {order.ServiceCategory} with HVAC Safety certification.", "Available during requested local working hours; no booking or time-off conflict.", $"{booked:0} minutes already booked in the evaluation day; lower workload ranks first.", "Travel is not ranked because geocoded route data is unavailable." } });
-            }
-            return Results.Ok(ranked.OrderByDescending(x => (double)x.GetType().GetProperty("score")!.GetValue(x)!).ToArray());
-        }).RequireAuthorization("dispatch");
+        app.MapPost("/api/scheduling/recommendations", SchedulingRecommendations.Handle).RequireAuthorization("dispatch");
     }
 
     private static async Task<Technician> GetTechnician(RemoteServices remote, string id, HttpContext http, CancellationToken ct) => (await remote.Get<TechnicianDto>("Technicians", $"/api/technicians/{id}", http, ct)).ToEntity();
@@ -269,9 +250,10 @@ public static class OperationsApi
             }
             var submission = EventFactory.Create(http, "workflows", "FormSubmitted.v1", workflow.WorkOrderId, new { workflow.TeamId, workflow.TechnicianId, stageName = completed.Name, request.Answers, request.ClientOccurredAtUtc, serverReceivedAtUtc = now }, workflow.Version, now, workflow.Id, completed.Id, causation);
             db.Enqueue(submission);
-            db.Enqueue(EventFactory.Create(http, "workflows", "StageCompleted.v1", workflow.WorkOrderId, StagePayload(workflow, completed), workflow.Version, now, workflow.Id, completed.Id, submission.EventId));
-            if (workflow.Status == "Completed") db.Enqueue(EventFactory.Create(http, "workflows", "WorkflowCompleted.v1", workflow.WorkOrderId, new { workflow.TeamId, workflow.TechnicianId, workflow.CompletedAtUtc, outcome = completed.Answers.GetValueOrDefault("outcome") }, workflow.Version, now, workflow.Id, completed.Id, submission.EventId));
-            else db.Enqueue(EventFactory.Create(http, "workflows", "StageStarted.v1", workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id, submission.EventId));
+            var completionEvent = EventFactory.Create(http, "workflows", "StageCompleted.v1", workflow.WorkOrderId, StagePayload(workflow, completed), workflow.Version, now, workflow.Id, completed.Id, submission.EventId);
+            db.Enqueue(completionEvent);
+            if (workflow.Status == "Completed") db.Enqueue(EventFactory.Create(http, "workflows", "WorkflowCompleted.v1", workflow.WorkOrderId, new { workflow.TeamId, workflow.TechnicianId, workflow.CompletedAtUtc, outcome = completed.Answers.GetValueOrDefault("outcome") }, workflow.Version, now, workflow.Id, completed.Id, completionEvent.EventId));
+            else db.Enqueue(EventFactory.Create(http, "workflows", "StageStarted.v1", workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id, completionEvent.EventId));
             var response = Json.Write(WorkflowView(workflow));
             db.Receipts.Add(new IdempotencyReceipt { Id = key, ActorId = actor.Id, RequestHash = hash, ResponseJson = response, CreatedAtUtc = now });
             try { await db.SaveChangesAsync(ct); }
@@ -324,8 +306,9 @@ public static class OperationsApi
                         workflow.CurrentStageIndex++; var next = states[workflow.CurrentStageIndex]; next.Status = "Active"; next.StartedAtUtc = now; next.DeadlineUtc = now.AddSeconds(policy.DurationSeconds); workflow.Stages = states; workflow.Version++; type = "SupervisorOverrideApplied.v1"; break;
                     default: stage = workflow.Stages[workflow.CurrentStageIndex]; type = "AssistanceRequested.v1"; workflow.Version++; break;
                 }
-                db.Enqueue(EventFactory.Create(http, "workflows", type, workflow.WorkOrderId, new { workflow.TeamId, workflow.TechnicianId, stageName = stage.Name, request.Reason, request.TargetStageIndex, stage.StartedAtUtc, stage.DeadlineUtc, stage.CompletedAtUtc, stage.PausedSeconds }, workflow.Version, now, workflow.Id, stage.Id));
-                if (operation == "override") db.Enqueue(EventFactory.Create(http, "workflows", "StageStarted.v1", workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id));
+                var interventionEvent = EventFactory.Create(http, "workflows", type, workflow.WorkOrderId, new { workflow.TeamId, workflow.TechnicianId, stageName = stage.Name, request.Reason, request.TargetStageIndex, stage.StartedAtUtc, stage.DeadlineUtc, stage.CompletedAtUtc, stage.PausedSeconds }, workflow.Version, now, workflow.Id, stage.Id);
+                db.Enqueue(interventionEvent);
+                if (operation == "override") db.Enqueue(EventFactory.Create(http, "workflows", "StageStarted.v1", workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id, interventionEvent.EventId));
                 await db.SaveChangesAsync(ct); return Results.Ok(WorkflowView(workflow));
             }).RequireAuthorization(operation == "assistance" ? "execute" : "supervise");
         }
