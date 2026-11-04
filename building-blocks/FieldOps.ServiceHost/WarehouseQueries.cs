@@ -35,8 +35,8 @@ public static class WarehouseQueries
             var command = new NpgsqlCommand(filter + sql, connection);
             command.Parameters.AddWithValue("admin", caller.IsAdministrator);
             command.Parameters.AddWithValue("team", caller.TeamId);
-            command.Parameters.AddWithValue("from", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)from ?? DBNull.Value);
-            command.Parameters.AddWithValue("to", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)to ?? DBNull.Value);
+            command.Parameters.AddWithValue("from", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)from?.ToUniversalTime() ?? DBNull.Value);
+            command.Parameters.AddWithValue("to", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)to?.ToUniversalTime() ?? DBNull.Value);
             command.Parameters.AddWithValue("technician", NpgsqlTypes.NpgsqlDbType.Text, (object?)technicianId ?? DBNull.Value);
             command.Parameters.AddWithValue("category", NpgsqlTypes.NpgsqlDbType.Text, (object?)serviceCategory ?? DBNull.Value);
             command.Parameters.AddWithValue("priority", NpgsqlTypes.NpgsqlDbType.Text, (object?)priority ?? DBNull.Value);

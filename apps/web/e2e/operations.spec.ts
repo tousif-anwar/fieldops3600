@@ -53,8 +53,8 @@ test("dispatcher creates a real request and confirms a feasible booking through 
   next.setUTCDate(next.getUTCDate() + 1);
   while ([0, 6].includes(next.getUTCDay()))
     next.setUTCDate(next.getUTCDate() + 1);
-    // 15:00 UTC is 10:00 in the synthetic team's America/New_York zone in November.
-    next.setUTCHours(15, 0, 0, 0);
+  // 15:00 UTC is 10:00 in the synthetic team's America/New_York zone in November.
+  next.setUTCHours(15, 0, 0, 0);
   await page
     .getByLabel("Appointment start (your local time)", { exact: false })
     .fill(next.toISOString().slice(0, 16));

@@ -3860,110 +3860,354 @@ tbody tr:hover {
 }
 
 /* Keep secondary operational text readable at normal zoom. */
-.page-heading p, .panel-heading p, .metric-note, .table-subline,
-.freshness, .muted, .breadcrumb, .workspace-switch small,
-.user-card small, .quick-actions small, .recent-order > p,
-.recent-order footer > small, .detail-list dt, .form-aside,
-.booking-content p, .booking-content > small, .job-card-stage small,
-.stepper-heading small, .stepper-note, .workflow-stepper li small,
-.history-note, .analytics-filter label, .category-bars > div > div:first-child,
-.utilization-list small, .notification-list p, .notification-list small,
-.admin-card-body > p, .incident-summary p, .incident-stats > span,
-.playback-count, .playback-caption, .historical-state > div > small,
-.timeline-title time, .timeline-event-body p, .ordering-note,
-.event-dl dt, .event-dl dd > small, .trace-card > small,
-.findings p, .findings ul, .risk-intro, .risk-result > p,
-.risk-result > ul, .risk-result > small, .detail-actions p {
+.page-heading p,
+.panel-heading p,
+.metric-note,
+.table-subline,
+.freshness,
+.muted,
+.breadcrumb,
+.workspace-switch small,
+.user-card small,
+.quick-actions small,
+.recent-order > p,
+.recent-order footer > small,
+.detail-list dt,
+.form-aside,
+.booking-content p,
+.booking-content > small,
+.job-card-stage small,
+.stepper-heading small,
+.stepper-note,
+.workflow-stepper li small,
+.history-note,
+.analytics-filter label,
+.category-bars > div > div:first-child,
+.utilization-list small,
+.notification-list p,
+.notification-list small,
+.admin-card-body > p,
+.incident-summary p,
+.incident-stats > span,
+.playback-count,
+.playback-caption,
+.historical-state > div > small,
+.timeline-title time,
+.timeline-event-body p,
+.ordering-note,
+.event-dl dt,
+.event-dl dd > small,
+.trace-card > small,
+.findings p,
+.findings ul,
+.risk-intro,
+.risk-result > p,
+.risk-result > ul,
+.risk-result > small,
+.detail-actions p {
   color: #66778d;
 }
-.nav-label, .eyebrow, .nav-new, .workspace-footer, .help-link {
+.nav-label,
+.eyebrow,
+.nav-new,
+.workspace-footer,
+.help-link {
   color: #6e7e94;
 }
-.nav-item { font-size: 13px; }
-.page-heading p { font-size: 13px; }
-.panel-heading h2 { font-size: 15px; }
-.panel-heading p { font-size: 12px; }
-.metric-top { font-size: 12px; }
-.metric-note { font-size: 11px; }
-.freshness { font-size: 10px; }
-th { font-size: 10px; color: #66778d; }
-td { font-size: 12px; color: #52657e; }
-.table-main-link { font-size: 12px; }
-.table-subline { font-size: 10px; }
-.status { font-size: 10px; }
-.status-success { color: #26715a; }
-.status-warning { color: #8c641a; }
-.status-danger { color: #a24135; }
-.status-neutral { color: #4b6a95; }
-.quick-actions strong { font-size: 12px; }
-.quick-actions small { font-size: 10px; line-height: 1.6; }
-.recent-order > strong { font-size: 13px; }
-.recent-order > p { font-size: 11px; }
-.recent-order footer > small { font-size: 9px; }
-.recent-order .status { font-size: 10px; }
-.form-body label, .editor-form label { font-size: 13px; }
-.form-body .fui-Input, .form-body .fui-Select { min-height: 35px; }
-.form-aside p, .form-aside ol { font-size: 13px; }
-.form-aside small { font-size: 11px; }
-.job-card-stage > span { font-size: 12px; }
-.job-card-stage small { font-size: 10px; }
-.workflow-stepper li strong { font-size: 11px; }
-.workflow-stepper li small { font-size: 9px; }
-.countdown-bar > p { font-size: 11px; color: #607b9b; }
-.countdown-bar small { color: #607b9b; font-size: 9px; }
-.workflow-help, .workflow-help button { font-size: 12px; color: #526f97; }
-.history-note { font-size: 11px; }
-.sla-guide p { color: #607896; font-size: 11px; }
-.sla-labels { font-size: 9px; color: #607896; }
-.sla-guide .eyebrow { color: #526d92; }
-.metric-definitions strong { font-size: 13px; color: #4e6c94; }
-.metric-definitions p { font-size: 12px; color: #607896; }
-.empty-state p, .error-state p, .inline-message { font-size: 12px; }
-.replay-search > div > strong { font-size: 13px; }
-.replay-search > div > small { font-size: 11px; color: #66778d; }
-.replay-intro > p { color: #66778d; font-size: 13px; }
-.replay-principles strong { font-size: 12px; color: #526c90; }
-.replay-principles small { font-size: 11px; color: #66778d; }
-.incident-summary p { font-size: 11px; }
-.incident-stats > span { font-size: 10px; }
-.historical-state > div > strong { font-size: 12px; color: #4e6e97; }
-.historical-state > div > small { font-size: 10px; }
-.historical-label { color: #4e6e97; font-size: 9px; }
-.timeline-title strong { font-size: 12px; color: #4e6d94; }
-.timeline-title time { font-size: 10px; }
-.timeline-event-body p { font-size: 10px; }
-.event-tag { font-size: 9px; color: #76628b; }
-.event-tag.warning { color: #846016; }
-.ordering-note, .trace-card > small { font-size: 10px; }
-.event-dl > div { font-size: 11px; }
-.event-dl dd { color: #587395; }
-.findings h4 { font-size: 12px; color: #536e92; }
-.findings ul, .findings p { font-size: 12px; }
-.login-box > p { color: #64758d; font-size: 13px; }
-.login-box > .eyebrow { color: #64758d; font-size: 9px; }
-.identity-note { color: #687a93; font-size: 11px; }
-.login-box > .login-assistance { color: #687a93; font-size: 11px; }
-.login-button { font-size: 13px !important; }
-.login-copy > p { color: #b3cae4; font-size: 14px; }
-.login-points > span { color: #b3cae4; font-size: 11px; }
-.login-kicker { color: #a8c6e8; font-size: 9px; }
-.illustration-card strong { color: #c1d5ec; font-size: 11px; }
-.illustration-card small { color: #a7c1e0; font-size: 10px; }
-.login-copyright { color: #93b4da; }
-.login-bottom { color: #6d7e96; font-size: 10px; }
-@media(max-width:760px) {
-  .page-heading p { font-size: 12px; }
-  .metric-top { font-size: 11px; }
-  .metric-note { font-size: 10px; }
-  .panel-heading h2 { font-size: 14px; }
-  .panel-heading p { font-size: 11px; }
-  .quick-actions strong { font-size: 11px; }
-  .quick-actions small { font-size: 9px; }
-  .workflow-stepper li strong { font-size: 9px; }
-  .workflow-stepper li small { font-size: 8px; }
-  .countdown-bar > p { font-size: 10px; }
-  .countdown-bar small { font-size: 8px; }
-  .timeline-title strong { font-size: 11px; }
-  .timeline-title time { font-size: 9px; }
-  .login-kicker { font-size: 8px; }
+.nav-item {
+  font-size: 13px;
+}
+.page-heading p {
+  font-size: 13px;
+}
+.panel-heading h2 {
+  font-size: 15px;
+}
+.panel-heading p {
+  font-size: 12px;
+}
+.metric-top {
+  font-size: 12px;
+}
+.metric-note {
+  font-size: 11px;
+}
+.freshness {
+  font-size: 10px;
+}
+th {
+  font-size: 10px;
+  color: #66778d;
+}
+td {
+  font-size: 12px;
+  color: #52657e;
+}
+.table-main-link {
+  font-size: 12px;
+}
+.table-subline {
+  font-size: 10px;
+}
+.status {
+  font-size: 10px;
+}
+.status-success {
+  color: #26715a;
+}
+.status-warning {
+  color: #8c641a;
+}
+.status-danger {
+  color: #a24135;
+}
+.status-neutral {
+  color: #4b6a95;
+}
+.quick-actions strong {
+  font-size: 12px;
+}
+.quick-actions small {
+  font-size: 10px;
+  line-height: 1.6;
+}
+.recent-order > strong {
+  font-size: 13px;
+}
+.recent-order > p {
+  font-size: 11px;
+}
+.recent-order footer > small {
+  font-size: 9px;
+}
+.recent-order .status {
+  font-size: 10px;
+}
+.form-body label,
+.editor-form label {
+  font-size: 13px;
+}
+.form-body .fui-Input,
+.form-body .fui-Select {
+  min-height: 35px;
+}
+.form-aside p,
+.form-aside ol {
+  font-size: 13px;
+}
+.form-aside small {
+  font-size: 11px;
+}
+.job-card-stage > span {
+  font-size: 12px;
+}
+.job-card-stage small {
+  font-size: 10px;
+}
+.workflow-stepper li strong {
+  font-size: 11px;
+}
+.workflow-stepper li small {
+  font-size: 9px;
+}
+.countdown-bar > p {
+  font-size: 11px;
+  color: #607b9b;
+}
+.countdown-bar small {
+  color: #607b9b;
+  font-size: 9px;
+}
+.workflow-help,
+.workflow-help button {
+  font-size: 12px;
+  color: #526f97;
+}
+.history-note {
+  font-size: 11px;
+}
+.sla-guide p {
+  color: #607896;
+  font-size: 11px;
+}
+.sla-labels {
+  font-size: 9px;
+  color: #607896;
+}
+.sla-guide .eyebrow {
+  color: #526d92;
+}
+.metric-definitions strong {
+  font-size: 13px;
+  color: #4e6c94;
+}
+.metric-definitions p {
+  font-size: 12px;
+  color: #607896;
+}
+.empty-state p,
+.error-state p,
+.inline-message {
+  font-size: 12px;
+}
+.replay-search > div > strong {
+  font-size: 13px;
+}
+.replay-search > div > small {
+  font-size: 11px;
+  color: #66778d;
+}
+.replay-intro > p {
+  color: #66778d;
+  font-size: 13px;
+}
+.replay-principles strong {
+  font-size: 12px;
+  color: #526c90;
+}
+.replay-principles small {
+  font-size: 11px;
+  color: #66778d;
+}
+.incident-summary p {
+  font-size: 11px;
+}
+.incident-stats > span {
+  font-size: 10px;
+}
+.historical-state > div > strong {
+  font-size: 12px;
+  color: #4e6e97;
+}
+.historical-state > div > small {
+  font-size: 10px;
+}
+.historical-label {
+  color: #4e6e97;
+  font-size: 9px;
+}
+.timeline-title strong {
+  font-size: 12px;
+  color: #4e6d94;
+}
+.timeline-title time {
+  font-size: 10px;
+}
+.timeline-event-body p {
+  font-size: 10px;
+}
+.event-tag {
+  font-size: 9px;
+  color: #76628b;
+}
+.event-tag.warning {
+  color: #846016;
+}
+.ordering-note,
+.trace-card > small {
+  font-size: 10px;
+}
+.event-dl > div {
+  font-size: 11px;
+}
+.event-dl dd {
+  color: #587395;
+}
+.findings h4 {
+  font-size: 12px;
+  color: #536e92;
+}
+.findings ul,
+.findings p {
+  font-size: 12px;
+}
+.login-box > p {
+  color: #64758d;
+  font-size: 13px;
+}
+.login-box > .eyebrow {
+  color: #64758d;
+  font-size: 9px;
+}
+.identity-note {
+  color: #687a93;
+  font-size: 11px;
+}
+.login-box > .login-assistance {
+  color: #687a93;
+  font-size: 11px;
+}
+.login-button {
+  font-size: 13px !important;
+}
+.login-copy > p {
+  color: #b3cae4;
+  font-size: 14px;
+}
+.login-points > span {
+  color: #b3cae4;
+  font-size: 11px;
+}
+.login-kicker {
+  color: #a8c6e8;
+  font-size: 9px;
+}
+.illustration-card strong {
+  color: #c1d5ec;
+  font-size: 11px;
+}
+.illustration-card small {
+  color: #a7c1e0;
+  font-size: 10px;
+}
+.login-copyright {
+  color: #93b4da;
+}
+.login-bottom {
+  color: #6d7e96;
+  font-size: 10px;
+}
+@media (max-width: 760px) {
+  .page-heading p {
+    font-size: 12px;
+  }
+  .metric-top {
+    font-size: 11px;
+  }
+  .metric-note {
+    font-size: 10px;
+  }
+  .panel-heading h2 {
+    font-size: 14px;
+  }
+  .panel-heading p {
+    font-size: 11px;
+  }
+  .quick-actions strong {
+    font-size: 11px;
+  }
+  .quick-actions small {
+    font-size: 9px;
+  }
+  .workflow-stepper li strong {
+    font-size: 9px;
+  }
+  .workflow-stepper li small {
+    font-size: 8px;
+  }
+  .countdown-bar > p {
+    font-size: 10px;
+  }
+  .countdown-bar small {
+    font-size: 8px;
+  }
+  .timeline-title strong {
+    font-size: 11px;
+  }
+  .timeline-title time {
+    font-size: 9px;
+  }
+  .login-kicker {
+    font-size: 8px;
+  }
 }
