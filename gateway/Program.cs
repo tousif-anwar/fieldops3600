@@ -13,7 +13,10 @@ using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseSerilog((_, log) => log.WriteTo.Console(new RenderedCompactJsonFormatter()));
+builder.Host.UseSerilog((_, log) => log
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.IdentityModel", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Console(new RenderedCompactJsonFormatter()));
 builder.Services.AddProblemDetails();
 var issuer = builder.Configuration["Auth:Authority"] ?? "http://localhost:8080/realms/fieldops";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>

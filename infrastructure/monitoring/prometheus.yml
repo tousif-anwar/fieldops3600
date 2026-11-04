@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+scrape_configs:
+  - job_name: fieldops-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - work-orders:8080
+          - technicians:8080
+          - scheduling:8080
+          - workflows:8080
+          - notifications:8080
+          - reporting:8080

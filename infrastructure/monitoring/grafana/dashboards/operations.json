@@ -1,0 +1,15 @@
+{
+  "uid": "fieldops-operations",
+  "title": "FieldOps 360 · Service health",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {"id": 1, "title": "Scrape availability by service", "type": "stat", "gridPos": {"x": 0, "y": 0, "w": 24, "h": 5}, "targets": [{"expr": "up{job=\"fieldops-services\"}", "legendFormat": "{{instance}}"}]},
+    {"id": 2, "title": "Request throughput", "type": "timeseries", "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8}, "targets": [{"expr": "sum by(instance) (rate(http_requests_received_total[5m]))", "legendFormat": "{{instance}}"}]},
+    {"id": 3, "title": "Server errors", "type": "timeseries", "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8}, "targets": [{"expr": "sum by(instance) (rate(http_requests_received_total{code=~\"5..\"}[5m]))", "legendFormat": "{{instance}}"}]},
+    {"id": 4, "title": "Managed memory", "type": "timeseries", "gridPos": {"x": 0, "y": 13, "w": 12, "h": 8}, "targets": [{"expr": "dotnet_total_memory_bytes", "legendFormat": "{{instance}}"}]},
+    {"id": 5, "title": "Process CPU seconds", "type": "timeseries", "gridPos": {"x": 12, "y": 13, "w": 12, "h": 8}, "targets": [{"expr": "rate(process_cpu_seconds_total[5m])", "legendFormat": "{{instance}}"}]}
+  ]
+}

@@ -1,0 +1,15 @@
+rules:
+  - id: jwt-validation-disabled
+    languages: [csharp]
+    message: JWT signature, issuer, audience and expiration validation must remain enabled.
+    severity: ERROR
+    pattern-either:
+      - pattern: ValidateIssuer = false
+      - pattern: ValidateAudience = false
+      - pattern: ValidateLifetime = false
+      - pattern: ValidateIssuerSigningKey = false
+  - id: unsafe-web-html
+    languages: [typescript, javascript]
+    message: Do not render untrusted operational data as HTML.
+    severity: ERROR
+    pattern: dangerouslySetInnerHTML={$VALUE}

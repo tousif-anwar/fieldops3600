@@ -1,0 +1,237 @@
+name: fieldops360
+
+x-backend-environment: &backend-environment
+  ASPNETCORE_ENVIRONMENT: Development
+  ASPNETCORE_URLS: http://+:8080
+  Database__Initialize: "true"
+  Auth__Authority: http://localhost:8080/realms/fieldops
+  Auth__MetadataAddress: http://keycloak:8080/realms/fieldops/.well-known/openid-configuration
+  Auth__Audience: fieldops-api
+  Auth__RequireHttpsMetadata: "false"
+  Messaging__Enabled: "true"
+  RabbitMq__Host: rabbitmq
+  RabbitMq__Username: fieldops
+  RabbitMq__Password: ${RABBITMQ_PASSWORD:?Run python scripts/init-local.py}
+  RabbitMq__VirtualHost: /
+  Services__WorkOrders: http://work-orders:8080
+  Services__Technicians: http://technicians:8080
+  Services__Scheduling: http://scheduling:8080
+  Services__Workflows: http://workflows:8080
+  Services__Intelligence: http://intelligence:8000
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+  Sla__DurationSeconds: "1800"
+  Sla__WarningSeconds: "1200"
+  Sla__CriticalSeconds: "1500"
+
+x-backend-dependencies: &backend-dependencies
+  postgres: {condition: service_healthy}
+  rabbitmq: {condition: service_healthy}
+  keycloak: {condition: service_healthy}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Run python scripts/init-local.py}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./infrastructure/postgres/init.generated.sql:/docker-entrypoint-initdb.d/10-fieldops.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: fieldops
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports: ["127.0.0.1:15672:15672"]
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: [start-dev, --import-realm]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: fieldops_keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: local-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+    ports: ["127.0.0.1:8080:8080"]
+    volumes: [./infrastructure/keycloak/realm.generated.json:/opt/keycloak/data/import/fieldops-realm.json:ro]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, "bash -c 'exec 3<>/dev/tcp/localhost/9000; printf \"GET /health/ready HTTP/1.0\\r\\n\\r\\n\" >&3; head -1 <&3 | grep -q 200'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+    restart: unless-stopped
+
+  work-orders:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/work-orders/FieldOps.WorkOrders.csproj, SERVICE_ASSEMBLY: FieldOps.WorkOrders.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_work_orders;Username=fieldops_work_orders;Password=${WORK_ORDERS_DB_PASSWORD}
+    depends_on: *backend-dependencies
+    restart: unless-stopped
+
+  technicians:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/technicians/FieldOps.Technicians.csproj, SERVICE_ASSEMBLY: FieldOps.Technicians.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_technicians;Username=fieldops_technicians;Password=${TECHNICIANS_DB_PASSWORD}
+    depends_on: *backend-dependencies
+    restart: unless-stopped
+
+  scheduling:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/scheduling/FieldOps.Scheduling.csproj, SERVICE_ASSEMBLY: FieldOps.Scheduling.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_scheduling;Username=fieldops_scheduling;Password=${SCHEDULING_DB_PASSWORD}
+    depends_on: *backend-dependencies
+    restart: unless-stopped
+
+  workflows:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/workflows/FieldOps.Workflows.csproj, SERVICE_ASSEMBLY: FieldOps.Workflows.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_workflows;Username=fieldops_workflows;Password=${WORKFLOWS_DB_PASSWORD}
+    depends_on: *backend-dependencies
+    restart: unless-stopped
+
+  notifications:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/notifications/FieldOps.Notifications.csproj, SERVICE_ASSEMBLY: FieldOps.Notifications.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_notifications;Username=fieldops_notifications;Password=${NOTIFICATIONS_DB_PASSWORD}
+    depends_on: *backend-dependencies
+    restart: unless-stopped
+
+  reporting:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/reporting/FieldOps.Reporting.csproj, SERVICE_ASSEMBLY: FieldOps.Reporting.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_reporting;Username=fieldops_reporting;Password=${REPORTING_DB_PASSWORD}
+      ConnectionStrings__Warehouse: Host=postgres;Database=fieldops_warehouse;Username=fieldops_warehouse;Password=${WAREHOUSE_DB_PASSWORD}
+    depends_on: *backend-dependencies
+    restart: unless-stopped
+
+  analytics-worker:
+    build: {context: ./analytics}
+    environment:
+      WAREHOUSE_DSN: host=postgres dbname=fieldops_warehouse user=fieldops_warehouse password=${WAREHOUSE_DB_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: fieldops
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    depends_on:
+      postgres: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    restart: unless-stopped
+
+  intelligence:
+    build: {context: ., dockerfile: intelligence/Dockerfile}
+    expose: ["8000"]
+    restart: unless-stopped
+
+  gateway:
+    build: {context: ., dockerfile: infrastructure/docker/Dockerfile.gateway}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Auth__Authority: http://localhost:8080/realms/fieldops
+      Auth__MetadataAddress: http://keycloak:8080/realms/fieldops/.well-known/openid-configuration
+      Services__work-orders: http://work-orders:8080
+      Services__technicians: http://technicians:8080
+      Services__scheduling: http://scheduling:8080
+      Services__workflows: http://workflows:8080
+      Services__notifications: http://notifications:8080
+      Services__reporting: http://reporting:8080
+      Services__intelligence: http://intelligence:8000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    ports: ["127.0.0.1:5100:8080"]
+    depends_on:
+      keycloak: {condition: service_healthy}
+      work-orders: {condition: service_started}
+      technicians: {condition: service_started}
+      scheduling: {condition: service_started}
+      workflows: {condition: service_started}
+      notifications: {condition: service_started}
+      reporting: {condition: service_started}
+      intelligence: {condition: service_started}
+    restart: unless-stopped
+
+  web:
+    build: {context: ., dockerfile: infrastructure/docker/Dockerfile.web}
+    ports: ["127.0.0.1:8088:8080"]
+    depends_on: [gateway]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    profiles: [monitoring]
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=7d]
+    volumes: [./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro, prometheus-data:/prometheus]
+    ports: ["127.0.0.1:9090:9090"]
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_USER: local-admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [prometheus]
+
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    profiles: [monitoring]
+    command: [--config, /etc/jaeger/config.yml]
+    volumes: [./infrastructure/monitoring/jaeger.yml:/etc/jaeger/config.yml:ro]
+    ports: ["127.0.0.1:16686:16686"]
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  prometheus-data:
+  grafana-data:

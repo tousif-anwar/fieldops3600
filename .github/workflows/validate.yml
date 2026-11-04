@@ -1,0 +1,86 @@
+name: Validate FieldOps 360
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '10.0.x'}
+      - run: dotnet restore services/FieldOps.Backend.slnx
+      - run: dotnet build services/FieldOps.Backend.slnx --no-restore -c Release
+      - run: dotnet test tests/backend/FieldOps.Tests.csproj --no-build -c Release --logger trx --results-directory artifacts/backend
+      - run: dotnet build gateway/FieldOps.Gateway.csproj -c Release
+      - run: dotnet list services/FieldOps.Backend.slnx package --vulnerable --include-transitive
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: backend-results, path: artifacts/backend}
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run: {working-directory: apps/web}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: apps/web/package-lock.json}
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm audit --audit-level=moderate
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run: {working-directory: apps/technician-mobile}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: apps/technician-mobile/package-lock.json}
+      - run: npm ci
+      - run: npm run check
+      - run: npx expo export --platform android --output-dir dist
+  intelligence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - run: pip install -r intelligence/requirements.txt -r intelligence/requirements-dev.txt
+      - run: python -m pytest -c intelligence/pyproject.toml tests/intelligence -v
+        env: {PYTHONPATH: intelligence, PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'}
+      - run: ruff check intelligence/fieldops_intelligence tests/intelligence
+  integrated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: python scripts/init-local.py
+      - run: docker compose up -d --build
+      - run: python scripts/wait-local.py
+      - run: docker compose run --rm -v "$PWD:/repo:ro" analytics-worker python /repo/tests/warehouse/test_projection.py -v
+      - run: python -m unittest discover -s tests/integration -v
+      - run: npm ci && npx playwright install --with-deps chromium && npm run test:e2e
+        working-directory: apps/web
+        env: {WEB_BASE_URL: 'http://localhost:8088', FIELDOPS_LIVE_E2E: '1'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: browser-results, path: 'apps/web/test-results'}
+      - run: docker compose down
+        if: always()
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python scripts/check-secrets.py
+      - run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0 git --source /repo --redact
+      - run: docker run --rm -v "$PWD:/src" semgrep/semgrep:1.139.0 semgrep scan --config /src/.semgrep.yml --error /src
+      - run: docker run --rm -v "$PWD:/repo" aquasec/trivy:0.67.2 fs --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 /repo

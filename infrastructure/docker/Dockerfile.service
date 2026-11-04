@@ -1,0 +1,14 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG SERVICE_PROJECT
+WORKDIR /src
+COPY building-blocks/ building-blocks/
+COPY services/ services/
+RUN test -n "$SERVICE_PROJECT" && dotnet publish "$SERVICE_PROJECT" -c Release -o /app
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+ARG SERVICE_ASSEMBLY
+ENV SERVICE_ASSEMBLY=$SERVICE_ASSEMBLY
+WORKDIR /app
+COPY --from=build /app .
+USER $APP_UID
+EXPOSE 8080
+ENTRYPOINT ["sh", "-c", "exec dotnet \"$SERVICE_ASSEMBLY\""]
