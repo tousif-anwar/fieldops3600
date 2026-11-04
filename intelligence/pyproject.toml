@@ -1,0 +1,9 @@
+[tool.pytest.ini_options]
+testpaths = ["../tests/intelligence"]
+addopts = "-ra"
+cache_dir = ".pytest_cache"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+cache-dir = ".ruff_cache"

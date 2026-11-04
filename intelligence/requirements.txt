@@ -1,0 +1,9 @@
+# Versions validated by the checked-in evaluation. Python 3.12 or later.
+fastapi==0.143.3
+uvicorn==0.54.0
+scikit-learn==1.8.0
+numpy==2.4.6
+pandas==3.0.3
+ortools==9.15.6755
+joblib==1.5.3
+pydantic==2.14.1

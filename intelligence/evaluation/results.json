@@ -1,0 +1,906 @@
+{
+  "executedAtUtc": "2026-11-04T22:15:56.413002+00:00",
+  "python": "3.14.4",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "dependencies": {
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scikit-learn": "1.8.0",
+    "ortools": "9.15.6755",
+    "fastapi": "0.143.3"
+  },
+  "prediction": {
+    "modelVersion": "synthetic-logistic-v1",
+    "synthetic": true,
+    "seed": 360,
+    "split": {
+      "train": {
+        "rows": 2924,
+        "from": "2025-01-01T00:00:00+00:00",
+        "through": "2025-02-20T18:40:00+00:00"
+      },
+      "calibration": {
+        "rows": 975,
+        "from": "2025-02-20T19:00:00+00:00",
+        "through": "2025-03-08T21:00:00+00:00"
+      },
+      "test": {
+        "rows": 975,
+        "from": "2025-03-08T21:20:00+00:00",
+        "through": "2025-03-25T07:20:00+00:00"
+      }
+    },
+    "features": {
+      "stageIndex": "Zero-based position in the eight-stage workflow.",
+      "technicianWorkload": "Assigned jobs still open at prediction time.",
+      "historicalStageDurationMinutes": "Mean of completed historical stages before the prediction.",
+      "elapsedMinutes": "Server-authoritative effective elapsed time excluding approved pauses.",
+      "progress": "Most recent technician-reported progress fraction; never inferred from the outcome.",
+      "previousDelays": "Earlier completed stages with a recorded delay, known before this snapshot.",
+      "serviceCategory": "Requested service category.",
+      "priority": "Work-order priority at prediction time.",
+      "equipmentCategory": "Equipment class known before inspection."
+    },
+    "target": "Eventual effective stage duration greater than 30 minutes",
+    "observedPrevalence": 0.5302564102564102,
+    "ruleBaseline": {
+      "precision": 0.6842105263157895,
+      "recall": 0.32688588007736946,
+      "f1": 0.4424083769633508,
+      "rocAuc": 0.625476168354548,
+      "precisionRecallAuc": 0.6665771625894688,
+      "brierScore": 0.3254214711569311,
+      "expectedCalibrationError": 0.26328311732941545,
+      "falseAlertRate": 0.1703056768558952,
+      "threshold": 0.5,
+      "calibrationBins": [
+        {
+          "lower": 0.0,
+          "upper": 0.1,
+          "count": 399,
+          "meanPredicted": 0.04141314042757711,
+          "observedRate": 0.43358395989974935
+        },
+        {
+          "lower": 0.1,
+          "upper": 0.2,
+          "count": 135,
+          "meanPredicted": 0.14170971295017526,
+          "observedRate": 0.4962962962962963
+        },
+        {
+          "lower": 0.2,
+          "upper": 0.3,
+          "count": 66,
+          "meanPredicted": 0.24298590131603173,
+          "observedRate": 0.5
+        },
+        {
+          "lower": 0.3,
+          "upper": 0.4,
+          "count": 68,
+          "meanPredicted": 0.3441326541347895,
+          "observedRate": 0.5882352941176471
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.5,
+          "count": 60,
+          "meanPredicted": 0.4502981178100138,
+          "observedRate": 0.5833333333333334
+        },
+        {
+          "lower": 0.5,
+          "upper": 0.6,
+          "count": 49,
+          "meanPredicted": 0.5412368398558299,
+          "observedRate": 0.5102040816326531
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.7,
+          "count": 54,
+          "meanPredicted": 0.6499054913232845,
+          "observedRate": 0.5925925925925926
+        },
+        {
+          "lower": 0.7,
+          "upper": 0.8,
+          "count": 59,
+          "meanPredicted": 0.7568985351609251,
+          "observedRate": 0.7627118644067796
+        },
+        {
+          "lower": 0.8,
+          "upper": 0.9,
+          "count": 80,
+          "meanPredicted": 0.8422516963759847,
+          "observedRate": 0.775
+        },
+        {
+          "lower": 0.9,
+          "upper": 1.0,
+          "count": 5,
+          "meanPredicted": 0.9053906216591093,
+          "observedRate": 1.0
+        }
+      ]
+    },
+    "calibratedLogistic": {
+      "precision": 0.7739307535641547,
+      "recall": 0.7350096711798839,
+      "f1": 0.753968253968254,
+      "rocAuc": 0.8248376170888482,
+      "precisionRecallAuc": 0.8372918158040167,
+      "brierScore": 0.1708097763851203,
+      "expectedCalibrationError": 0.029746665907398395,
+      "falseAlertRate": 0.2423580786026201,
+      "threshold": 0.5,
+      "calibrationBins": [
+        {
+          "lower": 0.0,
+          "upper": 0.1,
+          "count": 67,
+          "meanPredicted": 0.06312353728697012,
+          "observedRate": 0.1044776119402985
+        },
+        {
+          "lower": 0.1,
+          "upper": 0.2,
+          "count": 130,
+          "meanPredicted": 0.14604986795220817,
+          "observedRate": 0.15384615384615385
+        },
+        {
+          "lower": 0.2,
+          "upper": 0.3,
+          "count": 92,
+          "meanPredicted": 0.2466424113872715,
+          "observedRate": 0.2391304347826087
+        },
+        {
+          "lower": 0.3,
+          "upper": 0.4,
+          "count": 111,
+          "meanPredicted": 0.35250603826052146,
+          "observedRate": 0.42342342342342343
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.5,
+          "count": 84,
+          "meanPredicted": 0.4475226059092321,
+          "observedRate": 0.4880952380952381
+        },
+        {
+          "lower": 0.5,
+          "upper": 0.6,
+          "count": 83,
+          "meanPredicted": 0.551634526562164,
+          "observedRate": 0.5783132530120482
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.7,
+          "count": 93,
+          "meanPredicted": 0.6525906281731607,
+          "observedRate": 0.6236559139784946
+        },
+        {
+          "lower": 0.7,
+          "upper": 0.8,
+          "count": 116,
+          "meanPredicted": 0.7553169649886651,
+          "observedRate": 0.8103448275862069
+        },
+        {
+          "lower": 0.8,
+          "upper": 0.9,
+          "count": 100,
+          "meanPredicted": 0.8505354022114622,
+          "observedRate": 0.87
+        },
+        {
+          "lower": 0.9,
+          "upper": 1.0,
+          "count": 99,
+          "meanPredicted": 0.939522947795747,
+          "observedRate": 0.9393939393939394
+        }
+      ]
+    },
+    "latency": {
+      "batchRows": 975,
+      "batchMilliseconds": 24.117000022670254,
+      "singlePredictionMedianMs": 19.819099994492717,
+      "singlePredictionP95Ms": 35.241139998834115
+    },
+    "limitation": "Entirely synthetic data. No real-world predictive performance is established. Runtime is machine-specific."
+  },
+  "scheduling": {
+    "synthetic": true,
+    "seed": 360,
+    "jobs": 22,
+    "technicians": 6,
+    "baseline": {
+      "strategy": "baseline",
+      "solverStatus": "GREEDY",
+      "assignments": [
+        {
+          "jobId": "job-001",
+          "technicianId": "tech-01",
+          "startMinute": 480,
+          "endMinute": 525,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 29 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 315 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 29
+        },
+        {
+          "jobId": "job-006",
+          "technicianId": "tech-02",
+          "startMinute": 480,
+          "endMinute": 570,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 23 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 255 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 23
+        },
+        {
+          "jobId": "job-008",
+          "technicianId": "tech-05",
+          "startMinute": 480,
+          "endMinute": 540,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 8 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 8
+        },
+        {
+          "jobId": "job-010",
+          "technicianId": "tech-00",
+          "startMinute": 480,
+          "endMinute": 525,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 72 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 225 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 72
+        },
+        {
+          "jobId": "job-012",
+          "technicianId": "tech-04",
+          "startMinute": 480,
+          "endMinute": 570,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 48 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 270 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 48
+        },
+        {
+          "jobId": "job-014",
+          "technicianId": "tech-03",
+          "startMinute": 480,
+          "endMinute": 570,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 19 minutes (straight-line proxy).",
+            "Existing workload 45 minutes; proposed daily service total 195 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 19
+        },
+        {
+          "jobId": "job-002",
+          "technicianId": "tech-00",
+          "startMinute": 540,
+          "endMinute": 600,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 540; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 43 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 225 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 43
+        },
+        {
+          "jobId": "job-018",
+          "technicianId": "tech-05",
+          "startMinute": 540,
+          "endMinute": 585,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 540; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 64 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 64
+        },
+        {
+          "jobId": "job-013",
+          "technicianId": "tech-04",
+          "startMinute": 570,
+          "endMinute": 630,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 570; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 14 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 270 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 14
+        },
+        {
+          "jobId": "job-005",
+          "technicianId": "tech-00",
+          "startMinute": 600,
+          "endMinute": 660,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 600; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 26 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 225 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 26
+        },
+        {
+          "jobId": "job-011",
+          "technicianId": "tech-01",
+          "startMinute": 600,
+          "endMinute": 645,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 600; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 60 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 315 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 60
+        },
+        {
+          "jobId": "job-021",
+          "technicianId": "tech-02",
+          "startMinute": 600,
+          "endMinute": 645,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 600; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 7 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 255 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 7
+        },
+        {
+          "jobId": "job-019",
+          "technicianId": "tech-00",
+          "startMinute": 660,
+          "endMinute": 720,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 660; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 30 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 225 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 30
+        },
+        {
+          "jobId": "job-000",
+          "technicianId": "tech-05",
+          "startMinute": 780,
+          "endMinute": 870,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 26 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 26
+        },
+        {
+          "jobId": "job-004",
+          "technicianId": "tech-01",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 38 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 315 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 38
+        },
+        {
+          "jobId": "job-007",
+          "technicianId": "tech-02",
+          "startMinute": 780,
+          "endMinute": 870,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 11 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 255 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 11
+        },
+        {
+          "jobId": "job-015",
+          "technicianId": "tech-04",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 26 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 270 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 26
+        },
+        {
+          "jobId": "job-017",
+          "technicianId": "tech-03",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 30 minutes (straight-line proxy).",
+            "Existing workload 45 minutes; proposed daily service total 195 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 30
+        },
+        {
+          "jobId": "job-003",
+          "technicianId": "tech-01",
+          "startMinute": 840,
+          "endMinute": 900,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 840; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 22 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 315 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 22
+        },
+        {
+          "jobId": "job-020",
+          "technicianId": "tech-05",
+          "startMinute": 870,
+          "endMinute": 930,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 870; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 23 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 23
+        },
+        {
+          "jobId": "job-009",
+          "technicianId": "tech-01",
+          "startMinute": 900,
+          "endMinute": 945,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 900; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 9 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 315 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 9
+        },
+        {
+          "jobId": "job-016",
+          "technicianId": "tech-01",
+          "startMinute": 945,
+          "endMinute": 990,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 945; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 19 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 315 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 19
+        }
+      ],
+      "unassigned": [],
+      "metrics": {
+        "feasible": true,
+        "hardConstraintViolations": [],
+        "assignedJobs": 22,
+        "unassignedJobs": 0,
+        "estimatedTravelMinutes": 647,
+        "workloadMinutes": {
+          "tech-00": 225,
+          "tech-01": 315,
+          "tech-02": 255,
+          "tech-03": 195,
+          "tech-04": 270,
+          "tech-05": 330
+        },
+        "workloadStandardDeviationMinutes": 47.16990566028302,
+        "expectedSlaRiskProxy": 0.4602,
+        "runtimeMilliseconds": 6.380399980116636
+      },
+      "advisory": true,
+      "limitations": [
+        "The SLA metric is a workload proxy, not a validated probability.",
+        "Travel is an estimate from technician depot; traffic and between-job routing are not modeled.",
+        "Dispatch recommendations do not reserve capacity. The database transaction is the final conflict check."
+      ]
+    },
+    "optimized": {
+      "strategy": "optimized",
+      "solverStatus": "FEASIBLE",
+      "assignments": [
+        {
+          "jobId": "job-001",
+          "technicianId": "tech-05",
+          "startMinute": 480,
+          "endMinute": 525,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 50 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 50
+        },
+        {
+          "jobId": "job-010",
+          "technicianId": "tech-04",
+          "startMinute": 480,
+          "endMinute": 525,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 53 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 285 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 53
+        },
+        {
+          "jobId": "job-012",
+          "technicianId": "tech-02",
+          "startMinute": 480,
+          "endMinute": 570,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 14 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 315 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 14
+        },
+        {
+          "jobId": "job-014",
+          "technicianId": "tech-03",
+          "startMinute": 480,
+          "endMinute": 570,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 19 minutes (straight-line proxy).",
+            "Existing workload 45 minutes; proposed daily service total 240 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 19
+        },
+        {
+          "jobId": "job-018",
+          "technicianId": "tech-01",
+          "startMinute": 480,
+          "endMinute": 525,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 480; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 53 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 210 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 53
+        },
+        {
+          "jobId": "job-008",
+          "technicianId": "tech-05",
+          "startMinute": 525,
+          "endMinute": 585,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 525; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 8 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 8
+        },
+        {
+          "jobId": "job-013",
+          "technicianId": "tech-04",
+          "startMinute": 525,
+          "endMinute": 585,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 525; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 14 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 285 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 14
+        },
+        {
+          "jobId": "job-005",
+          "technicianId": "tech-00",
+          "startMinute": 541,
+          "endMinute": 601,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 541; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 26 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 210 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 26
+        },
+        {
+          "jobId": "job-006",
+          "technicianId": "tech-02",
+          "startMinute": 570,
+          "endMinute": 660,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 570; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 23 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 315 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 23
+        },
+        {
+          "jobId": "job-002",
+          "technicianId": "tech-04",
+          "startMinute": 585,
+          "endMinute": 645,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 585; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 17 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 285 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 17
+        },
+        {
+          "jobId": "job-019",
+          "technicianId": "tech-00",
+          "startMinute": 601,
+          "endMinute": 661,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 601; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 30 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 210 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 30
+        },
+        {
+          "jobId": "job-011",
+          "technicianId": "tech-03",
+          "startMinute": 620,
+          "endMinute": 665,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 620; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 52 minutes (straight-line proxy).",
+            "Existing workload 45 minutes; proposed daily service total 240 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 52
+        },
+        {
+          "jobId": "job-021",
+          "technicianId": "tech-02",
+          "startMinute": 660,
+          "endMinute": 705,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 660; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 7 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 315 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 7
+        },
+        {
+          "jobId": "job-004",
+          "technicianId": "tech-02",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 24 minutes (straight-line proxy).",
+            "Existing workload 30 minutes; proposed daily service total 315 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 24
+        },
+        {
+          "jobId": "job-007",
+          "technicianId": "tech-00",
+          "startMinute": 780,
+          "endMinute": 870,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 74 minutes (straight-line proxy).",
+            "Existing workload 0 minutes; proposed daily service total 210 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 74
+        },
+        {
+          "jobId": "job-009",
+          "technicianId": "tech-01",
+          "startMinute": 780,
+          "endMinute": 825,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 9 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 210 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 9
+        },
+        {
+          "jobId": "job-015",
+          "technicianId": "tech-04",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 26 minutes (straight-line proxy).",
+            "Existing workload 60 minutes; proposed daily service total 285 minutes.",
+            "High priority receives weight 4 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 26
+        },
+        {
+          "jobId": "job-017",
+          "technicianId": "tech-03",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 30 minutes (straight-line proxy).",
+            "Existing workload 45 minutes; proposed daily service total 240 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 30
+        },
+        {
+          "jobId": "job-020",
+          "technicianId": "tech-05",
+          "startMinute": 780,
+          "endMinute": 840,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 780; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 23 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 23
+        },
+        {
+          "jobId": "job-000",
+          "technicianId": "tech-05",
+          "startMinute": 840,
+          "endMinute": 930,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 840; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 26 minutes (straight-line proxy).",
+            "Existing workload 75 minutes; proposed daily service total 330 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 26
+        },
+        {
+          "jobId": "job-016",
+          "technicianId": "tech-01",
+          "startMinute": 840,
+          "endMinute": 885,
+          "explanation": [
+            "Meets all 1 required skills and 1 certifications.",
+            "Fits working hours and availability at minute 840; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 19 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 210 minutes.",
+            "Normal priority receives weight 2 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 19
+        },
+        {
+          "jobId": "job-003",
+          "technicianId": "tech-01",
+          "startMinute": 885,
+          "endMinute": 945,
+          "explanation": [
+            "Meets all 1 required skills and 0 certifications.",
+            "Fits working hours and availability at minute 885; no confirmed booking overlaps.",
+            "Estimated round-trip travel from depot: 22 minutes (straight-line proxy).",
+            "Existing workload 15 minutes; proposed daily service total 210 minutes.",
+            "Critical priority receives weight 8 when comparing unassigned work."
+          ],
+          "estimatedTravelMinutes": 22
+        }
+      ],
+      "unassigned": [],
+      "metrics": {
+        "feasible": true,
+        "hardConstraintViolations": [],
+        "assignedJobs": 22,
+        "unassignedJobs": 0,
+        "estimatedTravelMinutes": 619,
+        "workloadMinutes": {
+          "tech-00": 210,
+          "tech-01": 210,
+          "tech-02": 315,
+          "tech-03": 240,
+          "tech-04": 285,
+          "tech-05": 330
+        },
+        "workloadStandardDeviationMinutes": 47.958315233127195,
+        "expectedSlaRiskProxy": 0.4477,
+        "runtimeMilliseconds": 3048.458800010849
+      },
+      "advisory": true,
+      "limitations": [
+        "The SLA metric is a workload proxy, not a validated probability.",
+        "Travel is an estimate from technician depot; traffic and between-job routing are not modeled.",
+        "Dispatch recommendations do not reserve capacity. The database transaction is the final conflict check."
+      ],
+      "objectiveValue": 2571.0,
+      "bestObjectiveBound": -11997601.0
+    }
+  }
+}
