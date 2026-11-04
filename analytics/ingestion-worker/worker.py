@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -300,8 +301,17 @@ def project(connection, event: dict) -> bool:
 def run() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     dsn = os.environ["WAREHOUSE_DSN"]
-    with psycopg.connect(dsn) as database:
-        migrate(database)
+    migrate_only = "--migrate-only" in sys.argv[1:]
+    initialize = os.environ.get("DATABASE_INITIALIZE", "false").lower() == "true"
+    if migrate_only or initialize:
+        with psycopg.connect(dsn) as database:
+            migrate(database)
+            grants = os.environ.get("DATABASE_RUNTIME_GRANTS_PATH")
+            if grants:
+                database.execute(Path(grants).read_text(encoding="utf-8"))
+    if migrate_only:
+        LOG.info("warehouse migrations completed; consumer was not started")
+        return
     credentials = pika.PlainCredentials(
         os.environ.get("RABBITMQ_USER", "fieldops"), os.environ["RABBITMQ_PASSWORD"]
     )

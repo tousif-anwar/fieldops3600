@@ -81,7 +81,7 @@ HTTP requests create OpenTelemetry traces. Outbox publication restores the origi
 - A correlation ID groups a business operation; it is not itself a trace ID or proof of ordering.
 - Producer event time, broker delivery attempt time and consumer processing time describe different observations.
 - Missing/expired Jaeger spans do not erase immutable business events. Trace retention is configured independently from replay retention.
-- A stored trace ID is not a guarantee that the trace is still queryable. The backend retains metadata but does not currently query Jaeger to certify availability before returning a replay link.
+- A stored trace ID is not a guarantee that the trace is still queryable. The authenticated `/api/replay/{workOrderId}/traces/{traceId}/availability` endpoint first verifies team access and that the trace belongs to this order, then checks internal Jaeger with a three-second timeout. It returns aggregate availability/count only. An expired trace is 404 `not_retained`; an unreachable service is 503 with an explicit reason. The browser opens a public Jaeger trace link only after an available response.
 - Independent events without a complete causation relationship may have uncertain relative order. Replay marks uncertainty rather than treating client timestamps as a reliable total order.
 - Current notification live delivery is best effort after its database transaction commits. A disconnected client reloads persisted history; there is no guarantee that every transient SignalR message is delivered once.
 

@@ -42,4 +42,12 @@ public sealed class DispatchAdapterTests
         Assert.Equal(SchemaMigrator.Normalize("SELECT 1;\r\n\r\n"), SchemaMigrator.Normalize("SELECT 1;\n"));
         Assert.NotEqual(SchemaMigrator.Normalize("SELECT 1;"), SchemaMigrator.Normalize("SELECT 2;"));
     }
+
+    [Fact]
+    public void RuntimeRoleConfigurationRejectsMalformedIdentifiersBeforePrivilegedSql()
+    {
+        SchemaMigrator.ValidateRuntimeRoleName("fieldops_reporting_app");
+        Assert.Throws<InvalidOperationException>(() => SchemaMigrator.ValidateRuntimeRoleName("role; DROP TABLE audit_events"));
+        Assert.Throws<InvalidOperationException>(() => SchemaMigrator.ValidateRuntimeRoleName(new string('x', 64)));
+    }
 }

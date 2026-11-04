@@ -114,7 +114,7 @@ public static class DatabaseBootstrap
         // Schema bootstrap is opt-in. Deployment migration job should hold DDL privileges;
         // the long-running application role does not need them.
         if (!app.Configuration.GetValue("Database:Initialize", false)) return;
-        await SchemaMigrator.Apply(db);
+        await SchemaMigrator.Apply(db, app.Configuration["Database:RuntimeRole"]);
         if (db.ServiceName == "technicians" && app.Environment.IsDevelopment() && !await db.Technicians.AnyAsync())
         {
             db.Technicians.AddRange(

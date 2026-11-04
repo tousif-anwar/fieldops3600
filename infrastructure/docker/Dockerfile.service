@@ -11,4 +11,4 @@ WORKDIR /app
 COPY --from=build /app .
 USER $APP_UID
 EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "exec dotnet \"$SERVICE_ASSEMBLY\""]
+ENTRYPOINT ["sh", "-c", "exec dotnet \"$SERVICE_ASSEMBLY\" \"$@\"", "fieldops-service"]

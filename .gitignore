@@ -23,6 +23,8 @@ playwright-report/
 *.log
 *.tsbuildinfo
 tests/backend/results/
+apps/technician-mobile/android/
+apps/technician-mobile/ios/
 *.joblib
 *.pkl
 *.pem

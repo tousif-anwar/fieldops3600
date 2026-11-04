@@ -686,6 +686,7 @@ export function ReplayPage() {
                         />
                         <TraceEvidence
                           key={selected.eventId}
+                          workOrderId={workOrderId}
                           traceId={selected.traceId}
                           correlationId={selected.correlationId}
                         />

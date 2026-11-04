@@ -240,7 +240,7 @@ public static class OperationsApi
             var expectedVersion = request.ExpectedVersion;
             WorkflowEngine.RequireVersion(workflow, expectedVersion);
             var warnings = WorkflowEngine.Evaluate(workflow, now, policy);
-            foreach (var type in warnings) db.Enqueue(EventFactory.Create(http, "workflows", type, workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id));
+            SlaAudit.Enqueue(db, http, workflow, warnings, now);
             var completed = WorkflowEngine.Submit(workflow, workflow.Version, request.Answers, now, policy);
             Guid? causation = null;
             if (request.Offline)
@@ -294,12 +294,12 @@ public static class OperationsApi
                 switch (operation)
                 {
                     case "pause":
-                        foreach (var warning in WorkflowEngine.Evaluate(workflow, now, policy)) db.Enqueue(EventFactory.Create(http, "workflows", warning, workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id));
+                        SlaAudit.Enqueue(db, http, workflow, WorkflowEngine.Evaluate(workflow, now, policy), now);
                         stage = WorkflowEngine.Pause(workflow, workflow.Version, now); type = "StagePaused.v1"; break;
                     case "resume": stage = WorkflowEngine.Resume(workflow, request.ExpectedVersion, now); type = "StageResumed.v1"; break;
                     case "override":
                         if (workflow.Status != "Active" || request.TargetStageIndex != workflow.CurrentStageIndex + 1 || workflow.CurrentStageIndex >= 7) throw new DomainException(400, "An override can advance exactly one active stage; completion requires a final form.");
-                        foreach (var warning in WorkflowEngine.Evaluate(workflow, now, policy)) db.Enqueue(EventFactory.Create(http, "workflows", warning, workflow.WorkOrderId, StagePayload(workflow, workflow.Stages[workflow.CurrentStageIndex]), workflow.Version, now, workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id));
+                        SlaAudit.Enqueue(db, http, workflow, WorkflowEngine.Evaluate(workflow, now, policy), now);
                         var states = workflow.Stages; stage = states[workflow.CurrentStageIndex];
                         if (stage.PausedAtUtc is not null) throw new DomainException(409, "Resume before applying an override.");
                         stage.Status = "Overridden"; stage.CompletedAtUtc = now;

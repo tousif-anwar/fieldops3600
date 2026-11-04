@@ -41,6 +41,41 @@ public sealed class PostgresIntegrationTests(PostgresFixture fixture)
         await db.Database.ExecuteSqlRawAsync("UPDATE fieldops_schema_migrations SET sha256='changed' WHERE migration_id LIKE '%001_initial%'");
         await Assert.ThrowsAsync<InvalidOperationException>(() => SchemaMigrator.Apply(db));
     }
+
+    [Fact]
+    public async Task RuntimeRoleCanAppendEvidenceButCannotRewriteItOrChangeSchema()
+    {
+        var cs = await fixture.Database("reporting", false);
+        var role = "runtime_" + Guid.NewGuid().ToString("N"); var password = Guid.NewGuid().ToString("N");
+        await using (var administrator = new NpgsqlConnection(fixture.Container.GetConnectionString()))
+        {
+            await administrator.OpenAsync();
+            await using var create = new NpgsqlCommand($"CREATE ROLE {role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD '{password}'", administrator);
+            await create.ExecuteNonQueryAsync();
+        }
+        await using (var owner = PostgresFixture.Db(cs, "reporting")) await SchemaMigrator.Apply(owner, role);
+        var runtimeConnection = new NpgsqlConnectionStringBuilder(cs) { Username = role, Password = password }.ConnectionString;
+        await using var runtime = PostgresFixture.Db(runtimeConnection, "reporting");
+        var now = DateTimeOffset.UtcNow;
+        var original = EventFactory.Create(null, "work-orders", "WorkOrderCreated.v1", Guid.NewGuid(), new { teamId = "north" }, 1, now);
+        runtime.Events.Add(FaultEvidence.Store(original, now));
+        runtime.DeliveryAttempts.Add(new DeliveryAttempt { EventId = original.EventId, Attempt = 1, Status = "Processed", OccurredAtUtc = now, ReceivedAtUtc = now, ProcessedAtUtc = now });
+        runtime.ReplayProjections.Add(new ReplayProjection { WorkOrderId = original.WorkOrderId, TeamId = "north", StateJson = "{}", EventCount = 1, UpdatedAtUtc = now });
+        await runtime.SaveChangesAsync();
+        Assert.Equal(1, await runtime.Events.AsNoTracking().CountAsync());
+        var projection = await runtime.ReplayProjections.SingleAsync(); projection.EventCount = 2; await runtime.SaveChangesAsync();
+        foreach (var forbidden in new[]
+        {
+            "UPDATE audit_events SET \"Body\"='tampered'", "DELETE FROM audit_events", "TRUNCATE audit_events",
+            "UPDATE delivery_attempts SET \"Status\"='Processed'", "DELETE FROM delivery_attempts", "TRUNCATE delivery_attempts",
+            "ALTER TABLE audit_events DISABLE TRIGGER ALL", "CREATE TABLE public.unauthorized_schema_change(id integer)",
+            "UPDATE fieldops_schema_migrations SET sha256='tampered'"
+        })
+        {
+            var rejected = await Assert.ThrowsAsync<PostgresException>(() => runtime.Database.ExecuteSqlRawAsync(forbidden));
+            Assert.Equal("42501", rejected.SqlState);
+        }
+    }
     [Fact]
     public async Task DatabaseExclusionConstraintPreventsConcurrentDoubleBooking()
     {

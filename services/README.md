@@ -27,7 +27,8 @@ Tests include deterministic SLA/domain/authorization/replay checks and real Post
 
 - `ConnectionStrings:Database`: required service-owned PostgreSQL database.
 - `ConnectionStrings:Warehouse`: read-only reporting warehouse connection, Reporting only.
-- `Database:Initialize`: opt-in SQL migration application. Defaults to false. The local Compose environment enables it. For deployment, run once with a migration identity and `--migrate-only`, then use an application identity without DDL privileges.
+- `Database:Initialize`: opt-in SQL migration application. Defaults to false. Run a migration job with an owner identity and `--migrate-only`; long-lived services use runtime identities with initialization disabled.
+- `Database:RuntimeRole`: existing, separate PostgreSQL runtime role to grant after migration. Elevated identities, database/table owners, and identities inheriting the migration owner are rejected. Ordinary tables receive DML; the migration ledger is read-only; Reporting evidence tables receive SELECT/INSERT only. Runtime identities receive no schema CREATE, TRUNCATE or trigger-management privilege.
 - `Auth:Authority`: expected public Keycloak issuer, e.g. `http://localhost:8080/realms/fieldops` in local development.
 - `Auth:MetadataAddress`: discovery endpoint reachable from the service network.
 - `Auth:Audience`: defaults to `fieldops-api`.
@@ -36,6 +37,7 @@ Tests include deterministic SLA/domain/authorization/replay checks and real Post
 - `Messaging:Enabled`: defaults to true. Disabling it is useful for isolated HTTP tests; events then remain in the local outbox.
 - `Services:WorkOrders`, `Services:Technicians`, `Services:Scheduling`, `Services:Workflows`: service HTTP base URLs. Requests forward the caller's signed bearer token, never an invented identity header.
 - `Services:Intelligence`: private intelligence base URL, required only for the optimized dispatch strategy. Optimizer unavailability produces an explicit error; the server does not silently substitute baseline results.
+- `Services:Jaeger`: internal Jaeger query API base URL (for example `http://jaeger:16686`). Authorized replay trace availability is checked server-side with a three-second timeout; raw spans are not returned to the browser.
 - `Sla:DurationSeconds`, `Sla:WarningSeconds`, `Sla:CriticalSeconds`: defaults 1800/1200/1500. Shortening the stage deadline below 1800 seconds outside Development is rejected.
 - `Demo:EnableConsumerFailure`, `Demo:FailEventType`: Development-only deterministic first-attempt failure injection for a selected event type. `Demo:AlwaysFailConsumer=true` keeps failing that selected type until retries exhaust. Either failure option is rejected outside Development. The broker owns retry and `_error` queues.
 
@@ -73,6 +75,7 @@ All list responses are arrays. Property names are camelCase. Errors use RFC Prob
 | GET `/api/reports/summary`, `/export.csv`, `/export.pdf` | Optional `from,to,technicianId,serviceCategory,priority` query filters with a half-open date interval |
 | GET `/api/replay/{workOrderId}` | Optional `eventType,service,actor,correlationId,traceId,from,to` |
 | GET `/api/replay/{workOrderId}/export.csv`, `/export.pdf` | Authorized incident evidence without customer fields |
+| GET `/api/replay/{workOrderId}/traces/{traceId}/availability` | Authorized associated trace only; 200 retained, 404 absent/expired, 503 unavailable. Response includes `available`, `reason`, `checkedAtUtc`, and aggregate `spanCount`; never raw spans. |
 | POST `/api/replay/projections/rebuild` | Administrator-only rebuild from immutable evidence |
 
 Stage submissions are idempotent per actor/workflow/key. Reusing a key with different request content fails with 409. An identical duplicate returns the original response; refresh afterward to see any subsequent changes. Concurrent distinct submissions use optimistic concurrency so only one stage transition/outbox transaction commits. An SLA sweep may increment the version before a technician submits; the client must refresh on conflict.

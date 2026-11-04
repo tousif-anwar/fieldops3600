@@ -3,7 +3,7 @@ name: fieldops360
 x-backend-environment: &backend-environment
   ASPNETCORE_ENVIRONMENT: Development
   ASPNETCORE_URLS: http://+:8080
-  Database__Initialize: "true"
+  Database__Initialize: "false"
   Auth__Authority: http://localhost:8080/realms/fieldops
   Auth__MetadataAddress: http://keycloak:8080/realms/fieldops/.well-known/openid-configuration
   Auth__Audience: fieldops-api
@@ -18,10 +18,16 @@ x-backend-environment: &backend-environment
   Services__Scheduling: http://scheduling:8080
   Services__Workflows: http://workflows:8080
   Services__Intelligence: http://intelligence:8000
+  Services__Jaeger: http://jaeger:16686
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
   Sla__DurationSeconds: "1800"
   Sla__WarningSeconds: "1200"
   Sla__CriticalSeconds: "1500"
+
+x-migration-environment: &migration-environment
+  ASPNETCORE_ENVIRONMENT: Development
+  Database__Initialize: "true"
+  Messaging__Enabled: "false"
 
 x-backend-dependencies: &backend-dependencies
   postgres: {condition: service_healthy}
@@ -85,83 +91,182 @@ services:
     restart: unless-stopped
 
   work-orders:
-    build:
+    image: fieldops360-work-orders:local
+    build: &work-orders-build
       context: .
       dockerfile: infrastructure/docker/Dockerfile.service
       args: {SERVICE_PROJECT: services/work-orders/FieldOps.WorkOrders.csproj, SERVICE_ASSEMBLY: FieldOps.WorkOrders.dll}
     environment:
       <<: *backend-environment
-      ConnectionStrings__Database: Host=postgres;Database=fieldops_work_orders;Username=fieldops_work_orders;Password=${WORK_ORDERS_DB_PASSWORD}
-    depends_on: *backend-dependencies
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_work_orders;Username=fieldops_work_orders_app;Password=${WORK_ORDERS_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-work-orders: {condition: service_completed_successfully}
     restart: unless-stopped
 
   technicians:
-    build:
+    image: fieldops360-technicians:local
+    build: &technicians-build
       context: .
       dockerfile: infrastructure/docker/Dockerfile.service
       args: {SERVICE_PROJECT: services/technicians/FieldOps.Technicians.csproj, SERVICE_ASSEMBLY: FieldOps.Technicians.dll}
     environment:
       <<: *backend-environment
-      ConnectionStrings__Database: Host=postgres;Database=fieldops_technicians;Username=fieldops_technicians;Password=${TECHNICIANS_DB_PASSWORD}
-    depends_on: *backend-dependencies
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_technicians;Username=fieldops_technicians_app;Password=${TECHNICIANS_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-technicians: {condition: service_completed_successfully}
     restart: unless-stopped
 
   scheduling:
-    build:
+    image: fieldops360-scheduling:local
+    build: &scheduling-build
       context: .
       dockerfile: infrastructure/docker/Dockerfile.service
       args: {SERVICE_PROJECT: services/scheduling/FieldOps.Scheduling.csproj, SERVICE_ASSEMBLY: FieldOps.Scheduling.dll}
     environment:
       <<: *backend-environment
-      ConnectionStrings__Database: Host=postgres;Database=fieldops_scheduling;Username=fieldops_scheduling;Password=${SCHEDULING_DB_PASSWORD}
-    depends_on: *backend-dependencies
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_scheduling;Username=fieldops_scheduling_app;Password=${SCHEDULING_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-scheduling: {condition: service_completed_successfully}
     restart: unless-stopped
 
   workflows:
-    build:
+    image: fieldops360-workflows:local
+    build: &workflows-build
       context: .
       dockerfile: infrastructure/docker/Dockerfile.service
       args: {SERVICE_PROJECT: services/workflows/FieldOps.Workflows.csproj, SERVICE_ASSEMBLY: FieldOps.Workflows.dll}
     environment:
       <<: *backend-environment
-      ConnectionStrings__Database: Host=postgres;Database=fieldops_workflows;Username=fieldops_workflows;Password=${WORKFLOWS_DB_PASSWORD}
-    depends_on: *backend-dependencies
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_workflows;Username=fieldops_workflows_app;Password=${WORKFLOWS_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-workflows: {condition: service_completed_successfully}
     restart: unless-stopped
 
   notifications:
-    build:
+    image: fieldops360-notifications:local
+    build: &notifications-build
       context: .
       dockerfile: infrastructure/docker/Dockerfile.service
       args: {SERVICE_PROJECT: services/notifications/FieldOps.Notifications.csproj, SERVICE_ASSEMBLY: FieldOps.Notifications.dll}
     environment:
       <<: *backend-environment
-      ConnectionStrings__Database: Host=postgres;Database=fieldops_notifications;Username=fieldops_notifications;Password=${NOTIFICATIONS_DB_PASSWORD}
-    depends_on: *backend-dependencies
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_notifications;Username=fieldops_notifications_app;Password=${NOTIFICATIONS_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-notifications: {condition: service_completed_successfully}
     restart: unless-stopped
 
   reporting:
-    build:
+    image: fieldops360-reporting:local
+    build: &reporting-build
       context: .
       dockerfile: infrastructure/docker/Dockerfile.service
       args: {SERVICE_PROJECT: services/reporting/FieldOps.Reporting.csproj, SERVICE_ASSEMBLY: FieldOps.Reporting.dll}
     environment:
       <<: *backend-environment
-      ConnectionStrings__Database: Host=postgres;Database=fieldops_reporting;Username=fieldops_reporting;Password=${REPORTING_DB_PASSWORD}
-      ConnectionStrings__Warehouse: Host=postgres;Database=fieldops_warehouse;Username=fieldops_warehouse;Password=${WAREHOUSE_DB_PASSWORD}
-    depends_on: *backend-dependencies
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_reporting;Username=fieldops_reporting_app;Password=${REPORTING_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+      ConnectionStrings__Warehouse: Host=postgres;Database=fieldops_warehouse;Username=fieldops_warehouse_reader;Password=${WAREHOUSE_READ_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-reporting: {condition: service_completed_successfully}
     restart: unless-stopped
 
   analytics-worker:
-    build: {context: ./analytics}
+    image: fieldops360-analytics-worker:local
+    build: &analytics-build {context: ./analytics}
     environment:
-      WAREHOUSE_DSN: host=postgres dbname=fieldops_warehouse user=fieldops_warehouse password=${WAREHOUSE_DB_PASSWORD}
+      WAREHOUSE_DSN: host=postgres dbname=fieldops_warehouse user=fieldops_warehouse_app password=${WAREHOUSE_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+      DATABASE_INITIALIZE: "false"
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: fieldops
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       postgres: {condition: service_healthy}
       rabbitmq: {condition: service_healthy}
+      migrate-warehouse: {condition: service_completed_successfully}
     restart: unless-stopped
+
+  migrate-work-orders:
+    image: fieldops360-work-orders:local
+    build: *work-orders-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_work_orders_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_work_orders;Username=fieldops_work_orders;Password=${WORK_ORDERS_DB_PASSWORD}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-technicians:
+    image: fieldops360-technicians:local
+    build: *technicians-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_technicians_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_technicians;Username=fieldops_technicians;Password=${TECHNICIANS_DB_PASSWORD}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-scheduling:
+    image: fieldops360-scheduling:local
+    build: *scheduling-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_scheduling_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_scheduling;Username=fieldops_scheduling;Password=${SCHEDULING_DB_PASSWORD}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-workflows:
+    image: fieldops360-workflows:local
+    build: *workflows-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_workflows_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_workflows;Username=fieldops_workflows;Password=${WORKFLOWS_DB_PASSWORD}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-notifications:
+    image: fieldops360-notifications:local
+    build: *notifications-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_notifications_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_notifications;Username=fieldops_notifications;Password=${NOTIFICATIONS_DB_PASSWORD}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-reporting:
+    image: fieldops360-reporting:local
+    build: *reporting-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_reporting_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_reporting;Username=fieldops_reporting;Password=${REPORTING_DB_PASSWORD}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-warehouse:
+    image: fieldops360-analytics-worker:local
+    build: *analytics-build
+    command: [python, ingestion-worker/worker.py, --migrate-only]
+    environment:
+      WAREHOUSE_DSN: host=postgres dbname=fieldops_warehouse user=fieldops_warehouse password=${WAREHOUSE_DB_PASSWORD}
+      DATABASE_INITIALIZE: "true"
+      DATABASE_RUNTIME_GRANTS_PATH: /bootstrap/grants-warehouse-runtime.sql
+    volumes: [./infrastructure/postgres/grants-warehouse-runtime.sql:/bootstrap/grants-warehouse-runtime.sql:ro]
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
 
   intelligence:
     build: {context: ., dockerfile: intelligence/Dockerfile}

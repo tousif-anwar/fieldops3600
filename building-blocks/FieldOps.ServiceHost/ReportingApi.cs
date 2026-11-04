@@ -87,6 +87,14 @@ public static class ReportingApi
         });
 
         var replay = app.MapGroup("/api/replay").RequireAuthorization("replay");
+        replay.MapGet("/{workOrderId:guid}/traces/{traceId}/availability", async (Guid workOrderId, string traceId, ServiceDb db, IConfiguration configuration, IHttpClientFactory clients, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        {
+            TraceProbe.ValidateId(traceId);
+            var evidence = await AuthorizedEvents(workOrderId, db, http, ct);
+            if (!evidence.Any(e => string.Equals(e.TraceId, traceId, StringComparison.OrdinalIgnoreCase))) throw new DomainException(404, "No authorized trace metadata was found for this work order.");
+            var result = await TraceProbe.Check(configuration["Services:Jaeger"], traceId, clients.CreateClient("services"), clock, ct);
+            return Results.Json(result.Response, statusCode: result.HttpStatus);
+        });
         replay.MapPost("/projections/rebuild", async (ServiceDb db, TimeProvider clock, CancellationToken ct) =>
         {
             var stored = await db.Events.AsNoTracking().Where(x => x.WorkOrderId != Guid.Empty).ToListAsync(ct);
