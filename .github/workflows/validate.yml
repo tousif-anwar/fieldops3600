@@ -16,6 +16,8 @@ jobs:
       - run: dotnet build services/FieldOps.Backend.slnx --no-restore -c Release
       - run: dotnet test tests/backend/FieldOps.Tests.csproj --no-build -c Release --logger trx --results-directory artifacts/backend
       - run: dotnet build gateway/FieldOps.Gateway.csproj -c Release
+      - run: python tests/security/test_gateway.py -v
+        env: {GATEWAY_BUILD_CONFIGURATION: Release}
       - run: dotnet list services/FieldOps.Backend.slnx package --vulnerable --include-transitive
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()

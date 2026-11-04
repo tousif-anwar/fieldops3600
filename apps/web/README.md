@@ -63,6 +63,8 @@ npm run test:e2e
 
 `npm test` runs 23 unit/component checks covering order validation and successful/rejected mutations, conditional form visibility, approved-pause countdowns, access errors, historical state boundaries, replay input immutability, original-time filtering of late arrivals, retry grouping, rendered completion progress, and unknown terminal-fault provenance. The 17 existing checks passed; six focused trace cases then passed in a separate invocation, including same-origin bearer authentication, confirmed availability, authorized missing traces, unreachable providers, and restricted resources. TypeScript and formatting checks passed after the trace update. Full dependency audit returned zero reported vulnerabilities after pinning patched packages. These results do not replace backend, live integration, accessibility, or penetration tests.
 
+`npm run check:replay-layout` uses a synthetic offline Chromium fixture with the real application CSS to check that long work-order options keep the replay search controls within five viewport widths. It does not authenticate, contact services, or generate product screenshots.
+
 The default Playwright command runs desktop and mobile Chromium checks for unauthenticated route protection, keyboard focus, and login layout. It starts Vite automatically when `WEB_BASE_URL` is unset. Live checks are opt-in because they create synthetic work orders and bookings:
 
 ```powershell

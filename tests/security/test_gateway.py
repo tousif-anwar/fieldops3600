@@ -18,7 +18,7 @@ class GatewaySecurityTests(unittest.TestCase):
         cls.runtime = ROOT / ".tools/dotnet/dotnet.exe"
         if not cls.runtime.exists():
             cls.runtime = Path("dotnet")
-        cls.assembly = ROOT / "gateway/bin/Debug/net10.0/FieldOps.Gateway.dll"
+        cls.assembly = ROOT / "gateway/bin" / os.environ.get("GATEWAY_BUILD_CONFIGURATION", "Debug") / "net10.0/FieldOps.Gateway.dll"
         if not cls.assembly.exists():
             raise RuntimeError("Build gateway/FieldOps.Gateway.csproj first.")
         with socket.socket() as sock:

@@ -29,7 +29,7 @@ Stage warnings occur at the configured 20/25/30-minute thresholds. Authorized su
 
 ## Analyze and investigate
 
-The [analytics workspace](screenshots/analytics-dashboard.png) displays warehouse-derived volume, completion, SLA, stage-duration, category, and utilization aggregates, with date/category/technician filters, freshness, definitions, and CSV/PDF exports. The short service durations in this capture come from an accelerated synthetic test lifecycle and are not production performance claims.
+The [analytics workspace](screenshots/analytics-dashboard.png) displays warehouse-derived volume, completion, SLA, stage-duration, category, and utilization aggregates, with date/category/technician filters, freshness, definitions, and CSV/PDF exports. The short service durations in this capture come from a quickly executed synthetic test lifecycle and are not production performance claims.
 
 Open **Operational replay**, choose a work order, and select **Investigate**. Step through evidence with previous/next, play/pause, speed, timestamp, breach, and intervention controls. The historical cursor changes only reconstructed state; it never re-executes workflow commands. Use event, service, actor, time, correlation, and trace filters to narrow the timeline.
 
