@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 145,
+  "EndLine": 145,
+  "StartColumn": 24,
+  "EndColumn": 62,
+  "Match": "idempotencyKey\":\"REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "docs/presentation/API_REFERENCE.md",
+  "SymlinkFile": "",
+  "Commit": "bb405e927f35fcb12f2405b48afc3f57359e3abd",
+  "Entropy": 3.5225716,
+  "Author": "copilot-swe-agent[bot]",
+  "Email": "198982749+Copilot@users.noreply.github.com",
+  "Date": "2026-11-05T05:09:38Z",
+  "Message": "Initial plan",
+  "Tags": [],
+  "Fingerprint": "bb405e927f35fcb12f2405b48afc3f57359e3abd:docs/presentation/API_REFERENCE.md:generic-api-key:145"
+ }
+]
