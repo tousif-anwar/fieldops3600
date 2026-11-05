@@ -120,18 +120,20 @@ for (const role of roles) {
   });
   if (await loginButton.isVisible().catch(() => false)) {
     if (role.key === "technician") {
-      await page.screenshot({
-        path: path.join(evidenceRoot, "shared", phase, "login.png"),
-        fullPage: true,
-      }).catch(async () => {
-        mkdirSync(path.join(evidenceRoot, "shared", phase), {
-          recursive: true,
-        });
-        await page.screenshot({
+      await page
+        .screenshot({
           path: path.join(evidenceRoot, "shared", phase, "login.png"),
           fullPage: true,
+        })
+        .catch(async () => {
+          mkdirSync(path.join(evidenceRoot, "shared", phase), {
+            recursive: true,
+          });
+          await page.screenshot({
+            path: path.join(evidenceRoot, "shared", phase, "login.png"),
+            fullPage: true,
+          });
         });
-      });
     }
     await loginButton.click();
     await page.locator("#username").waitFor({ timeout: 30000 });
@@ -199,4 +201,6 @@ writeFileSync(
   path.join(auditRoot, `${phase}-role-audit.json`),
   JSON.stringify(audit, null, 2),
 );
-console.log(`Wrote ${audit.length} audit rows to artifacts/${phase}-role-audit.json`);
+console.log(
+  `Wrote ${audit.length} audit rows to artifacts/${phase}-role-audit.json`,
+);

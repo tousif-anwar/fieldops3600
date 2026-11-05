@@ -60,8 +60,13 @@ export function roleDescription(role: Role | null, teamId?: string): string {
 }
 
 export function profileName(profile: Record<string, unknown>): string {
-  const named = [profile.name, profile.given_name, profile.preferred_username].find(
-    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  const named = [
+    profile.name,
+    profile.given_name,
+    profile.preferred_username,
+  ].find(
+    (value): value is string =>
+      typeof value === "string" && value.trim().length > 0,
   );
   if (!named) return "there";
   const clean = named.trim().split(/\s+/)[0];
