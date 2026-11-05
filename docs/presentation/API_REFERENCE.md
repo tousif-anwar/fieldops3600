@@ -142,7 +142,7 @@ Content-Type: application/json
 POST /api/workflows/60000000-0000-4000-8000-000000000002/submit
 Content-Type: application/json
 
-{"expectedVersion":1,"idempotencyKey":"synthetic-accept-0001","answers":{"assignment":"Accept","readiness":"Ready"},"offline":false}
+{"expectedVersion":1,"idempotencyKey":"accept1","answers":{"assignment":"Accept","readiness":"Ready"},"offline":false}
 ```
 
 The response is the entire WorkflowView: id, workOrderId, technicianId, teamId, templateVersion, currentStageIndex, version, status, stages, startedAtUtc and completedAtUtc. Each stage retains start/deadline/completion/pause/SLA/answers state. A stale version returns 409; do not change the key to disguise an identical retry. Reusing one key with a different request body returns 409.
