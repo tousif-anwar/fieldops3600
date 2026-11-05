@@ -3,6 +3,25 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Cache the shared application runtime and keep the charting engine out
+        // of routes that do not render charts. Fluent UI remains tree-shaken in
+        // the route chunks that actually use each component.
+        manualChunks: {
+          "app-vendor": [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "@tanstack/react-query",
+            "oidc-client-ts",
+          ],
+          charts: ["recharts"],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
