@@ -23,12 +23,12 @@ Updated 2026-11-05 after an independent resume audit and a successful native And
 | Transactional outbox, retries, DLQ evidence | COMPLETE | Backend fault/outbox/inbox tests; prior broker-outage and error-queue demonstration artifacts |
 | Analytics warehouse and ingestion worker | COMPLETE | 26/26 PostgreSQL cases and zero-defect quality checks re-run 2026-11-05; schema, late/source ordering, deduplication, archive recovery and metric grains pass. |
 | Reporting APIs, exports and warehouse metrics | COMPLETE | Backend warehouse analytics tests run today; nullable-cohort, UTC grouping, deduplication and zero-vs-unknown cases pass |
-| Web operations UI | COMPLETE | `npm ci` clean; 33/33 unit/component tests; production build succeeds; `format:check` passes |
+| Web operations UI | COMPLETE | `npm ci` clean; 33/33 unit/component tests; production build succeeds; `format:check` passes; 10/10 live Playwright checks passed at desktop and Pixel 7 sizes after focus/autoFocus fixes |
 | Warehouse pattern visualizations (SLA trend, stage durations, supervisor actions) | COMPLETE | Newly added component now covered by 4 tests (nullable rate, empty histogram, empty and populated action volume); 33/33 web suite green |
 | Expo technician app (source) | COMPLETE | TypeScript 6 typecheck plus 17/17 offline/form/session tests |
 | Native Android build and launch | COMPLETE | Debug APK (93,150,707 bytes) built and installed on `emulator-5556`; Metro bundles and the dev-client deep link load the JS application. |
 | Native mobile OAuth round trip | COMPLETE | 2026-11-05: real Keycloak PKCE login as `technician`, return through `fieldops360://oauth/callback`, `fieldops-mobile` token exchange, and authenticated **My jobs** dashboard for Jordan Rivera. Force-stop/relaunch restored the SecureStore session with no new authorization. |
-| Native guided stage and offline recovery | PARTIAL | Source tests cover queue/idempotency/conflicts (17/17), but stage submission and offline queue recovery were not exercised in the native emulator pass. |
+| Native guided stage and offline recovery | PARTIAL | 2026-11-05: started the guided service for synthetic `WO-20261105-FB162B`; stage 1/8 (Job Accepted) became Active and rendered the Assignment/Readiness form with the SLA countdown. Native stage submission and offline queue recovery were not completed; source tests still cover queue/idempotency/conflicts (17/17). |
 | iOS native execution | BLOCKED | Requires macOS/Xcode; not available on this host |
 | Intelligence (SLA prediction, optimizer evaluation) | COMPLETE | 18/18 pytest cases re-run 2026-11-05; deterministic synthetic training, leakage guards and OR-Tools constraints pass; the measured report is unchanged. |
 | Operational Replay console and exports | COMPLETE | Incident-summary role-filter regression test restored and passing; prior live replay integrity, authorization, export and viewport checks |
@@ -51,10 +51,10 @@ The final commits add warehouse analytics patterns and reshuffle `IncidentSummar
 
 ## Remaining work, prioritized
 
-1. **Native guided workflow and offline recovery (Priority 1).** OAuth, callback, token exchange and SecureStore restore are verified. Still exercise a stage submission, assistance request, queued offline submission and conflict recovery on the emulator.
+1. **Native guided workflow and offline recovery (Priority 1).** OAuth, callback, token exchange and SecureStore restore are verified. The guided service now starts and stage 1 renders its real form, but a native stage submission, assistance request, queued offline submission and conflict recovery remain to be completed on the emulator.
 2. **Remote CI and clean-checkout verification (Priority 2).** Warehouse 26/26, quality checks and intelligence 18/18 were re-run locally on 2026-11-05. Run GitHub Actions on a clean checkout and record the result; no remote run is claimed yet.
 3. **Operational hardening (Priority 3).** TLS, MFA/device policy, secret rotation, approved retention/backup and a restore drill.
-4. **Accessibility and responsive review (Priority 3).** A real WCAG 2.2 AA audit, not only the five-viewport overflow check.
+4. **Accessibility and responsive review (Priority 3).** Scoped focus/autoFocus fixes and desktop/mobile browser checks passed; a real WCAG 2.2 AA audit (including assistive technology and contrast tooling), not only the five-viewport overflow check, remains.
 5. **Warehouse depth (Priority 4).** SCD2 staff/hour history and time-off/weekend capacity exclusions.
 6. **Template administration (Priority 5).** Only immutable HVAC template v1 ships; runtime authoring is absent.
 7. **Consumer attempt evidence (Priority 5).** Terminal faults are recorded, but every intermediate delivery attempt is not.
@@ -69,3 +69,16 @@ The final commits add warehouse analytics patterns and reshuffle `IncidentSummar
 - Jaeger retention is bounded/in-memory; a trace ID is not a retention guarantee.
 - The SLA model is advisory and trained/evaluated on synthetic data; no real-world accuracy is claimed.
 - No signed store release, physical-device certification, production deployment or external CI run is claimed.
+
+## Agent skills selected for this pass
+
+Detailed evidence, findings and limitations: [engineering/SKILL_USAGE.md](engineering/SKILL_USAGE.md).
+
+- **`find-skills`** — used for accessibility/testing discovery; no extra skill installed because the existing review skill and Playwright covered the need.
+- **`agent-browser`** — unavailable (CLI not installed); the existing Playwright suite was used for real login, dispatcher booking, supervisor analytics/replay and responsive checks.
+- **`web-design-guidelines`** — applied to the web shell, forms, analytics and replay screens; removed two focus-outline suppressions and three mobile-unfriendly `autoFocus` props, then revalidated tests/build/E2E.
+- **`frontend-design` and `high-end-visual-design`** — used for a restrained visual and hierarchy review; Fluent UI was preserved and no template-style rewrite or decorative churn was introduced.
+- **`performance-optimization`** — measured API/web smoke latency and bundle output; no change was justified because no measured bottleneck existed and route splitting is already present.
+- **`improve-codebase-architecture`** — applied a focused deletion-test and role-gate review; no high-confidence deepening or rewrite was justified.
+- **`design-mobile-apps`** — blocked by a missing `SLEEK_API_KEY`; ADB/emulator inspection was used instead. The native guided service reached stage 1, but submission/offline recovery remains partial.
+- **`tailwind-design-system` and `nodejs-backend-patterns`** — not applicable; the project intentionally uses Fluent UI and ASP.NET Core/.NET.

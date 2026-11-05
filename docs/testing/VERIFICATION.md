@@ -13,10 +13,11 @@ This host's system SDK is .NET 11 preview, which fails static-web-asset validati
 | Live OR-Tools adapter | 1/1 | Actual scoped Scheduling → intelligence HTTP; valid selection/status/runtime, null travel, invalid inputs |
 | Web unit/component | 33/33 (re-run 2026-11-05) | Forms/history, authentication utilities, replay, delivery grouping, trace availability, nullable warehouse metrics and the three pattern views |
 | Web build and formatting | Passed (2026-11-05) | Production `tsc -b && vite build`; repository `format:check` now passes after formatting previously unformatted committed sources |
-| Web end-to-end | 10/10, no skips | Authenticated dispatcher/supervisor flows, readonly history/playback, responsive layouts |
+| Web end-to-end | 10/10, no skips (re-run 2026-11-05 after focus/autoFocus changes) | Authenticated dispatcher/supervisor flows, real booking with dynamic free-slot selection, readonly history/playback, desktop and Pixel 7 layouts |
+| Web accessibility source review | Scoped pass (2026-11-05) | Removed two `outline:none` suppressions, added a visible `:focus-within` list-search border and removed three mobile-unfriendly `autoFocus` props; not a WCAG audit |
 | Replay responsive regression | Five Chromium viewport checks | No document overflow at 1512/1280/1024/760/390 pixels with long valid option text |
 | Expo mobile | 17/17 plus TS6 typecheck (re-run 2026-11-05) | Queue persistence/restart/backoff/conflicts/isolation, conditional forms and session lifecycle |
-| Native Android OAuth | Passed (2026-11-05) | Debug APK installed; real Keycloak login as `technician`; callback returned through `fieldops360://oauth/callback`; Keycloak issued a `fieldops-mobile` token; authenticated **My jobs** dashboard rendered for Jordan Rivera; force-stop/relaunch restored the SecureStore session with no new authorization. Guided stage submission and offline queue recovery were not exercised on-device |
+| Native Android OAuth + guided entry | Passed (2026-11-05) | Debug APK installed; real Keycloak login as `technician`; callback returned through `fieldops360://oauth/callback`; Keycloak issued a `fieldops-mobile` token; authenticated **My jobs** dashboard rendered for Jordan Rivera; force-stop/relaunch restored the SecureStore session with no new authorization. Guided service then started for synthetic `WO-20261105-FB162B`; stage 1/8 (Job Accepted) became Active and rendered the Assignment/Readiness form. Stage submission and offline queue recovery were not exercised on-device |
 | Expo compatibility / bundle | Passed | SDK 58 compatibility; clean Android Hermes export, 1,266 modules; not a native-device release test |
 | Warehouse | 26/26 PostgreSQL cases (re-run 2026-11-05) | Late/source ordering, cohorts/DST/intervals, deduplication/collision, archive recovery |
 | Warehouse quality | Zero defects (re-run 2026-11-05) | Checked-in invariants against the current local warehouse |
@@ -28,7 +29,7 @@ This host's system SDK is .NET 11 preview, which fails static-web-asset validati
 | Terminal consumer failure | Passed | Notifications retry exhaustion; original message independently found in its RabbitMQ error queue and requeued; separate sanitized immutable Replay diagnostics |
 | Live SignalR | Passed | Actual WebSocket through served web → gateway; supervisor notice matches persisted history; analyst/anonymous hub requests denied |
 
-Native Android OAuth is now verified through the authenticated dashboard and a SecureStore restore after force-stop. The guided stage submission, offline queue recovery, notification delivery and physical-device behavior were not exercised in that native run; do not infer them from this login pass. iOS execution remains blocked on macOS.
+Native Android OAuth is verified through the authenticated dashboard and a SecureStore restore after force-stop. The guided service was then started and stage 1's real checklist rendered, but a stage submission, offline queue recovery, notification delivery and physical-device behavior were not exercised; do not infer them from this entry pass. iOS execution remains blocked on macOS.
 
 ## Repeat source and service checks
 
