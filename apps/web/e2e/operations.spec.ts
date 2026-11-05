@@ -59,19 +59,37 @@ test("dispatcher creates a real request and confirms a feasible booking through 
     .click();
   const next = new Date();
   next.setUTCDate(next.getUTCDate() + 1);
-  while ([0, 6].includes(next.getUTCDay()))
+  const advanceBusinessDay = () => {
     next.setUTCDate(next.getUTCDate() + 1);
+    while ([0, 6].includes(next.getUTCDay()))
+      next.setUTCDate(next.getUTCDate() + 1);
+  };
+  while ([0, 6].includes(next.getUTCDay())) advanceBusinessDay();
   // 15:00 UTC is 10:00 in the synthetic team's America/New_York zone in November.
   next.setUTCHours(15, 0, 0, 0);
-  await page
-    .getByLabel("Appointment start (your local time)", { exact: false })
-    .fill(next.toISOString().slice(0, 16));
-  await page
-    .getByRole("button", { name: "Find qualified technicians" })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Recommended technicians" }),
-  ).toBeVisible();
+  const appointment = page.getByLabel("Appointment start (your local time)", {
+    exact: false,
+  });
+  // Pick the first business-day slot with capacity. A fixed slot becomes
+  // unavailable after repeated local runs have booked every qualified technician.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await appointment.fill(next.toISOString().slice(0, 16));
+    await page
+      .getByRole("button", { name: "Find qualified technicians" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Recommended technicians" }),
+    ).toBeVisible();
+    const hasRecommendation = await page
+      .getByRole("radio")
+      .first()
+      .waitFor({ state: "visible", timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasRecommendation) break;
+    await expect(page.getByText("No feasible assignments")).toBeVisible();
+    advanceBusinessDay();
+  }
   await page.getByRole("radio").first().check();
   await page.getByRole("button", { name: "Confirm booking" }).click();
   await expect(
