@@ -4,12 +4,17 @@ export const visibleFields = (fields: FormField[], answers: Record<string, strin
   field => !field.conditionField || answers[field.conditionField] === field.conditionValue,
 );
 
+export function validateField(field: FormField, answers: Record<string, string>): string | null {
+  const answer = answers[field.key];
+  if (!answer && field.required) return `Select ${field.label.toLowerCase()}.`;
+  if (answer && !field.options.includes(answer)) return `${field.label} contains an invalid selection.`;
+  return null;
+}
+
 export function validateAnswers(fields: FormField[], answers: Record<string, string>): string[] {
   return visibleFields(fields, answers).flatMap(field => {
-    const answer = answers[field.key];
-    if (!answer && field.required) return [`Select ${field.label.toLowerCase()}.`];
-    if (answer && !field.options.includes(answer)) return [`${field.label} contains an invalid selection.`];
-    return [];
+    const message = validateField(field, answers);
+    return message ? [message] : [];
   });
 }
 

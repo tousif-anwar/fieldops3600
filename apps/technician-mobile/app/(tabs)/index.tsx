@@ -1,32 +1,79 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { requestApi } from '../src/api';
-import { useAuth } from '../src/auth';
-import type { WorkOrder } from '../src/contracts';
-import { Badge, ErrorMessage, Loading, Screen, colors, styles } from '../src/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import { requestApi } from '../../src/api';
+import { useAuth } from '../../src/auth';
+import type { WorkOrder } from '../../src/contracts';
+import { useBookings } from '../../src/use-bookings';
+import {
+  EmptyState, ErrorState, JobListItem, LoadingState, Screen, ScreenHeader, Section,
+} from '../../src/ui';
+import { appointmentForJob, sortJobs } from '../../src/ui/model';
+import { colors, spacing, typography } from '../../src/ui/tokens';
 
 export default function MyJobs() {
   const { session, getAccessToken } = useAuth();
-  const query = useQuery({ queryKey: ['work-orders'], queryFn: async () =>
-    (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data });
-  const jobs = (query.data ?? []).filter(job => job.status !== 'Completed' && job.status !== 'Cancelled');
-  return <Screen>
-    <View><Text style={styles.muted}>WELCOME BACK, {session?.displayName.toUpperCase()}</Text>
-      <Text accessibilityRole="header" style={styles.title}>My jobs</Text>
-      <Text style={styles.body}>Your assigned work, ready for the next step.</Text></View>
-    {query.isPending && <Loading label="Loading assigned jobs…" />}
-    {query.error && <ErrorMessage error={query.error} retry={() => { void query.refetch(); }} />}
-    {query.data && jobs.length === 0 && <View style={styles.card}><Text style={styles.subtitle}>You’re all caught up</Text>
-      <Text style={styles.muted}>No open jobs are assigned to you.</Text></View>}
-    {jobs.map(job => <Link key={job.id} href={{ pathname: '/job/[id]', params: { id: job.id } }} asChild>
-      <Pressable accessibilityRole="button" style={({ pressed }) => [styles.card, { opacity: pressed ? .7 : 1 }]}>
-        <View style={styles.row}><Text style={[styles.subtitle, { color: colors.blue }]}>{job.number}</Text><Badge>{job.priority}</Badge></View>
-        <Text style={styles.subtitle}>{job.title}</Text>
-        <Text style={styles.body}>{job.siteAddress}</Text>
-        <Text style={styles.muted}>{job.serviceCategory} · {job.status}</Text>
-        <Text style={styles.secondaryText}>Open job →</Text>
-      </Pressable>
-    </Link>)}
-  </Screen>;
+  const query = useQuery({
+    queryKey: ['work-orders'],
+    queryFn: async () => (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data,
+  });
+  const bookings = useBookings();
+  const jobs = sortJobs(
+    (query.data ?? []).filter(job => job.status !== 'Completed' && job.status !== 'Cancelled'),
+    bookings.data ?? [],
+  );
+  const active = jobs.find(job => job.status === 'InProgress');
+  const otherJobs = active ? jobs.filter(job => job.id !== active.id) : jobs;
+  const date = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  return (
+    <Screen topInset>
+      <ScreenHeader
+        title="My jobs"
+        meta={date}
+        description={`${session?.displayName ?? 'Technician'} · ${jobs.length} open job${jobs.length === 1 ? '' : 's'}`}
+      />
+      {query.isPending && !query.data ? <LoadingState label="Loading assigned jobs…" /> : null}
+      {query.error && !query.data ? (
+        <ErrorState error={query.error} retry={() => { void query.refetch(); }} />
+      ) : null}
+      {query.data && jobs.length === 0 ? (
+        <EmptyState
+          title="You’re caught up"
+          description="No open jobs are assigned to you. New work will appear here when a dispatcher assigns it."
+        />
+      ) : null}
+      {active ? (
+        <Section title="Current job" description="Continue where you left off.">
+          <JobListItem
+            job={active}
+            booking={appointmentForJob(bookings.data ?? [], active.id)}
+            featured
+          />
+        </Section>
+      ) : null}
+      {otherJobs.length ? (
+        <Section
+          title={active ? 'Other assigned work' : 'Assigned work'}
+          description={active ? 'Next appointments and other open jobs.' : 'Open a job to review the site and service step.'}
+        >
+          <View style={styles.list}>
+            {otherJobs.map(job => (
+              <JobListItem
+                key={job.id}
+                job={job}
+                booking={appointmentForJob(bookings.data ?? [], job.id)}
+              />
+            ))}
+          </View>
+        </Section>
+      ) : null}
+      {!active && jobs.length > 1 ? (
+        <Text style={styles.footnote}>Your next appointment is listed first. Priority breaks ties between jobs at the same time.</Text>
+      ) : null}
+    </Screen>
+  );
 }
+
+const styles = StyleSheet.create({
+  list: { gap: spacing.md },
+  footnote: { ...typography.small, color: colors.subtle, marginTop: spacing.xs },
+});

@@ -4,29 +4,52 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/auth';
 import { Login } from '../src/login';
 import { SessionRuntime } from '../src/runtime';
-import { colors } from '../src/ui';
+import { colors, spacing, touch, typography } from '../src/ui';
+
+function SignOut() {
+  const { logout } = useAuth();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Sign out"
+      onPress={() => { void logout(); }}
+      style={{ minHeight: touch.minimum, justifyContent: 'center', paddingHorizontal: spacing.sm }}
+    >
+      <Text style={{ ...typography.label, color: colors.primary }}>Sign out</Text>
+    </Pressable>
+  );
+}
 
 function AuthenticatedApp() {
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   if (!session) return <Login />;
-  return <SessionRuntime key={session.subject}><Stack screenOptions={{
-    headerTintColor: colors.ink,
-    headerTransparent: false,
-    headerStyle: { backgroundColor: colors.surface },
-    headerTitleStyle: { fontWeight: '600' },
-    headerRight: () => <Pressable accessibilityRole="button" accessibilityLabel="Sign out"
-      onPress={() => { void logout(); }} style={{ padding: 12 }}><Text style={{ color: colors.blue }}>Sign out</Text></Pressable>,
-  }}>
-    <Stack.Screen name="index" options={{ title: 'FieldOps 360' }} />
-    <Stack.Screen name="schedule" options={{ title: 'Today’s schedule' }} />
-    <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-    <Stack.Screen name="sync" options={{ title: 'Synchronization' }} />
-    <Stack.Screen name="job/[id]" options={{ title: 'Job details' }} />
-    <Stack.Screen name="job/[id]/stage/[stage]" options={{ title: 'Guided service' }} />
-    <Stack.Screen name="oauth/callback" options={{ headerShown: false }} />
-  </Stack></SessionRuntime>;
+  return (
+    <SessionRuntime key={session.subject}>
+      <Stack
+        screenOptions={{
+          headerTintColor: colors.ink,
+          headerTransparent: false,
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { fontWeight: '600', color: colors.ink },
+          headerShadowVisible: true,
+          headerRight: () => <SignOut />,
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="job/[id]" options={{ title: 'Job details' }} />
+        <Stack.Screen name="job/[id]/stage/[stage]" options={{ title: 'Guided service' }} />
+        <Stack.Screen name="oauth/callback" options={{ headerShown: false }} />
+      </Stack>
+    </SessionRuntime>
+  );
 }
 
 export default function RootLayout() {
-  return <SafeAreaProvider><AuthProvider><AuthenticatedApp /></AuthProvider></SafeAreaProvider>;
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
 }
