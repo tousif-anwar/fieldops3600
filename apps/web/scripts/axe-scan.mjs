@@ -126,7 +126,10 @@ for (const [username, pages] of Object.entries(plans)) {
   for (const [label, path] of pages) {
     if (label === "Create work order") {
       // The quick action lives on Home; return there before using it.
-      await page.getByRole("link", { name: "Home", exact: true }).click();
+      await page
+        .getByRole("navigation", { name: "Main navigation" })
+        .getByRole("link", { name: "Home", exact: true })
+        .click();
       await page.waitForURL((url) => new URL(url).pathname === "/");
     }
     if (label) {

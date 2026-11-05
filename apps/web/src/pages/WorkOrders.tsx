@@ -186,7 +186,9 @@ export function WorkOrders() {
                   <th>Priority</th>
                   <th>Status</th>
                   <th>Created</th>
-                  <th />
+                  <th>
+                    <span className="visually-hidden">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

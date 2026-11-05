@@ -2270,6 +2270,41 @@ summary:focus-visible {
 .login-bottom > span {
   color: #5f6f82;
 }
+/* List readability corrections verified with axe. */
+.job-card-stage > span {
+  color: #44566c;
+  font-size: 12px;
+}
+.job-card-stage small {
+  color: #526376;
+  font-size: 12px;
+}
+.notification-list .acknowledged {
+  opacity: 1;
+  background: #fafbfc;
+}
+.notification-list .acknowledged p,
+.notification-list .acknowledged small {
+  color: #526376;
+}
+.home-coverage-list strong {
+  margin-left: auto;
+}
+.brand-copy > small {
+  font-size: 12px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar,
   .login-page *,

@@ -74,6 +74,7 @@ for (const width of [320, 768]) {
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await page.getByRole("heading", { name: "Analytics", exact: true }).waitFor();
   await page.getByRole("tab", { name: "Stage durations" }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await shot(page, "after-analytics-tab-duration.png", 1200);
   await context.close();
 }
