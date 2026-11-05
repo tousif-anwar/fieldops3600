@@ -1,6 +1,6 @@
 # FieldOps 360 implementation status
 
-Updated 2026-11-05 after an independent resume audit. Statuses below reflect code inspection plus commands executed on this host, not directory names or inherited documentation.
+Updated 2026-11-05 after an independent resume audit and a successful native Android acceptance pass. Statuses below reflect code inspection plus commands executed on this host, not directory names or inherited documentation.
 
 ## Verification environment
 
@@ -21,13 +21,14 @@ Updated 2026-11-05 after an independent resume audit. Statuses below reflect cod
 | 30-minute SLA engine (20/25/30) | COMPLETE | Persisted-deadline, pause/resume, restart and breach tests; prior accelerated live demonstration |
 | Scheduling: baseline + OR-Tools advice | COMPLETE | Constraint, overlap and scoped-availability tests; prior live optimizer contract check; travel estimate intentionally null without routing data |
 | Transactional outbox, retries, DLQ evidence | COMPLETE | Backend fault/outbox/inbox tests; prior broker-outage and error-queue demonstration artifacts |
-| Analytics warehouse and ingestion worker | UNVERIFIED (this audit) | Implementation and 26 prior PostgreSQL cases exist; the suite was not re-executed today. No warehouse-affecting change was made. |
+| Analytics warehouse and ingestion worker | COMPLETE | 26/26 PostgreSQL cases and zero-defect quality checks re-run 2026-11-05; schema, late/source ordering, deduplication, archive recovery and metric grains pass. |
 | Reporting APIs, exports and warehouse metrics | COMPLETE | Backend warehouse analytics tests run today; nullable-cohort, UTC grouping, deduplication and zero-vs-unknown cases pass |
 | Web operations UI | COMPLETE | `npm ci` clean; 33/33 unit/component tests; production build succeeds; `format:check` passes |
 | Warehouse pattern visualizations (SLA trend, stage durations, supervisor actions) | COMPLETE | Newly added component now covered by 4 tests (nullable rate, empty histogram, empty and populated action volume); 33/33 web suite green |
 | Expo technician app (source) | COMPLETE | TypeScript 6 typecheck plus 17/17 offline/form/session tests |
-| Native Android build and launch | PARTIAL | Debug APK (93,150,707 bytes) built, installed on `emulator-5556`; Metro bundled 1,386 modules; app rendered its real sign-in screen |
-| Native mobile OAuth round trip | PARTIAL / UNVERIFIED | Tapping **Sign in securely** opened a Chrome custom tab at the real Keycloak login page. Submitting the demo technician credentials returned to the app's sign-in screen; token exchange, callback handling, SecureStore persistence and offline recovery were **not** observed on-device |
+| Native Android build and launch | COMPLETE | Debug APK (93,150,707 bytes) built and installed on `emulator-5556`; Metro bundles and the dev-client deep link load the JS application. |
+| Native mobile OAuth round trip | COMPLETE | 2026-11-05: real Keycloak PKCE login as `technician`, return through `fieldops360://oauth/callback`, `fieldops-mobile` token exchange, and authenticated **My jobs** dashboard for Jordan Rivera. Force-stop/relaunch restored the SecureStore session with no new authorization. |
+| Native guided stage and offline recovery | PARTIAL | Source tests cover queue/idempotency/conflicts (17/17), but stage submission and offline queue recovery were not exercised in the native emulator pass. |
 | iOS native execution | BLOCKED | Requires macOS/Xcode; not available on this host |
 | Intelligence (SLA prediction, optimizer evaluation) | UNVERIFIED (this audit) | 18 prior tests and the measured synthetic report exist; not re-executed today and unaffected by today's changes |
 | Operational Replay console and exports | COMPLETE | Incident-summary role-filter regression test restored and passing; prior live replay integrity, authorization, export and viewport checks |
@@ -42,6 +43,7 @@ Updated 2026-11-05 after an independent resume audit. Statuses below reflect cod
 3. **CI `format:check` failure on committed code.** `Analytics.tsx`, `styles.css` and `types.ts` were not Prettier-clean, so the web workflow would fail before tests. They are formatted (`5502841`), and the new component/tests are formatted too.
 4. **Uncovered new analytics views.** Added four tests for nullable compliance, empty duration histograms, empty action populations and recorded action volume (`15b455d`).
 5. **Local install instability.** Concurrent `npm ci` runs and orphaned `esbuild.exe` processes produced Windows `EPERM` extraction errors. Clearing `node_modules` and installing serially resolved it; this is a local environment note, not a repository defect.
+6. **Native OAuth evidence was incomplete.** The earlier audit captured only the sign-in screen. A reproduced run loaded the saved Metro bundle, completed the callback and token exchange, rendered the authenticated dashboard, and restored the session from SecureStore after a force-stop. The previous observation is superseded by this evidence.
 
 ## What the previous agent was most likely doing
 
@@ -49,20 +51,20 @@ The final commits add warehouse analytics patterns and reshuffle `IncidentSummar
 
 ## Remaining work, prioritized
 
-1. **Native mobile end-to-end (Priority 1).** Reproduce the OAuth submission with form-fill verification, confirm the `fieldops360://oauth/callback` return, token exchange, SecureStore persistence, a guided workflow stage, and offline queue recovery on the emulator. Capture Metro/app logs for any authorize or token error.
-2. **Re-run warehouse and intelligence suites (Priority 2).** The code is unchanged, but the prior 26/26 and 18/18 results are inherited, not re-executed in this audit. Also re-run the quality checks under the restricted writer identity.
-3. **First remote CI run (Priority 2).** The workflow now has a locally passing format path; run it on GitHub to validate the Compose/browser/security jobs.
-4. **Operational hardening (Priority 3).** TLS, MFA/device policy, secret rotation, approved retention/backup and a restore drill.
-5. **Accessibility and responsive review (Priority 3).** A real WCAG 2.2 AA audit, not only the five-viewport overflow check.
-6. **Warehouse depth (Priority 4).** SCD2 staff/hour history and time-off/weekend capacity exclusions.
-7. **Template administration (Priority 5).** Only immutable HVAC template v1 ships; runtime authoring is absent.
-8. **Consumer attempt evidence (Priority 5).** Terminal faults are recorded, but every intermediate delivery attempt is not.
+1. **Native guided workflow and offline recovery (Priority 1).** OAuth, callback, token exchange and SecureStore restore are verified. Still exercise a stage submission, assistance request, queued offline submission and conflict recovery on the emulator.
+2. **Remote CI and clean-checkout verification (Priority 2).** Warehouse 26/26, quality checks and intelligence 18/18 were re-run locally on 2026-11-05. Run GitHub Actions on a clean checkout and record the result; no remote run is claimed yet.
+3. **Operational hardening (Priority 3).** TLS, MFA/device policy, secret rotation, approved retention/backup and a restore drill.
+4. **Accessibility and responsive review (Priority 3).** A real WCAG 2.2 AA audit, not only the five-viewport overflow check.
+5. **Warehouse depth (Priority 4).** SCD2 staff/hour history and time-off/weekend capacity exclusions.
+6. **Template administration (Priority 5).** Only immutable HVAC template v1 ships; runtime authoring is absent.
+7. **Consumer attempt evidence (Priority 5).** Terminal faults are recorded, but every intermediate delivery attempt is not.
 
 ## Preserved known limits
 
 - Cross-service profile/time-off edits and cancellation racing an unprojected booking are not distributed serializable transactions. Cancel the booking first; direct cancellation of a scheduled order returns 409.
 - SignalR is best effort; persisted notification history is authoritative.
 - Mobile AsyncStorage drafts are not application-encrypted; OS-protected devices and synthetic data are assumed.
+- Native Android login and SecureStore restore are verified; guided stage submission, offline queue recovery, notification delivery and physical-device behavior are not.
 - Historical staff/capacity dimensions are type 1; time off/weekends are not excluded from utilization.
 - Jaeger retention is bounded/in-memory; a trace ID is not a retention guarantee.
 - The SLA model is advisory and trained/evaluated on synthetic data; no real-world accuracy is claimed.

@@ -1,6 +1,6 @@
 # FieldOps 360 delivery report
 
-Evidence date: November 4, 2026. This is a working local engineering system with verified operational paths, not a claim that every master acceptance item is complete. Native APK/emulator acceptance, production deployment controls, and the remaining limits below stay open. All demonstration data is synthetic.
+Evidence date: November 5, 2026 (November 4 suites are marked as inherited where applicable). This is a working local engineering system with verified operational paths, not a claim that every master acceptance item is complete. Native Android OAuth is verified; native guided workflow/offline recovery, production deployment controls and the remaining limits below stay open. All demonstration data is synthetic.
 
 ## 1. Project overview
 
@@ -30,7 +30,7 @@ The six hosts share infrastructure code while owning separate databases and rest
 ## 5. Web and mobile capabilities
 
 The web app implements role-aware navigation, order management, dispatch, eight-stage forms, supervisor controls, analytics, notifications, and replay playback/filtering/exports. [Web guide](../../apps/web/README.md) · [actual UI walkthrough](../UI_WALKTHROUGH.md).
-The Expo SDK 58 technician app implements PKCE/SecureStore integration, jobs/schedule/details, conditional forms, countdowns, assistance, account-isolated drafts and a durable synchronization queue with backoff, stable idempotency and explicit conflicts. Typecheck, 17 tests, compatibility checks, and Android Hermes export passed. A native debug APK is built and installed on the local emulator; the app renders its sign-in screen and its OAuth flow reaches the real Keycloak login page. The callback/token exchange, secure-storage and offline behavior were not observed on-device, so native OAuth acceptance remains open; iOS execution requires macOS. [Mobile guide](../../apps/technician-mobile/README.md).
+The Expo SDK 58 technician app implements PKCE/SecureStore integration, jobs/schedule/details, conditional forms, countdowns, assistance, account-isolated drafts and a durable synchronization queue with backoff, stable idempotency and explicit conflicts. Typecheck, 17 tests, compatibility checks, and Android Hermes export passed. A native debug APK is built and installed on the local emulator. A reproduced run completed the real Keycloak PKCE login as `technician`, returned through `fieldops360://oauth/callback`, exchanged a `fieldops-mobile` token, and rendered the authenticated **My jobs** dashboard for Jordan Rivera. Force-stop and relaunch restored the SecureStore session with no new authorization. Guided stage submission and offline queue recovery were not exercised on-device; iOS execution requires macOS. [Mobile guide](../../apps/technician-mobile/README.md).
 
 ## 6. Workflow and SLA design
 
@@ -78,9 +78,9 @@ Shared host infrastructure reduces duplication but couples infrastructure upgrad
 | Live HTTP                   | 3/3 lifecycle tests, 3/3 resource-authorization cases, 1/1 real optimizer-adapter contract.                                                         |
 | Web                         | Production build, 33/33 unit/component tests and passing `format:check` (2026-11-05); 10/10 desktop/mobile browser checks from the prior evidence date. |
 | Replay layout               | Five Chromium viewport checks at 1512/1280/1024/760/390; long option text no longer expands the document.                                           |
-| Mobile / intelligence       | 17/17 mobile tests plus typecheck (2026-11-05); compatibility/Hermes export and 18/18 intelligence tests from the prior evidence date.               |
-| Native Android smoke        | APK installed; sign-in screen and real Keycloak page rendered; OAuth callback/token exchange not verified.                                           |
-| Warehouse / bootstrap       | 26/26 PostgreSQL cases; zero current quality defects; 5/5 bootstrap checks; live runtime grants verified.                                           |
+| Mobile / intelligence       | 17/17 mobile tests plus typecheck (2026-11-05); 18/18 intelligence tests re-run 2026-11-05; compatibility/Hermes export from the prior evidence date. |
+| Native Android OAuth        | Real Keycloak login, `fieldops360://oauth/callback`, `fieldops-mobile` token exchange, authenticated dashboard and SecureStore restore after force-stop (2026-11-05); guided stage/offline recovery not exercised. |
+| Warehouse / bootstrap       | 26/26 PostgreSQL cases and zero quality defects re-run 2026-11-05; 5/5 bootstrap checks; live runtime grants verified.                               |
 | Reliability / observability | Restart/retry/breach/broker recovery passed; terminal-fault/error-queue evidence passed; six healthy metrics targets and an 11-span trace verified. |
 
 These suites overlap; their counts are not a fictional independent coverage percentage. Full commands, scan scope and remaining ZAP warnings are in [executed verification](../testing/VERIFICATION.md). Native APK/emulator tests, authenticated penetration testing, load benchmarks and a complete WCAG audit are not counted as passed.
@@ -96,7 +96,7 @@ Use the [documentation index](../INDEX.md) for C4 context/container/component vi
 
 ## 16. Incremental Git history
 
-Reviewed on `main` through checkpoint `15b455d` on 2026-11-05. Verified earlier milestones include `56d2e56` foundation, `6e584cb` gateway, `8fb96c1` domain/SLA/replay, `6257006` persistent services, `6350c77` intelligence and `071b003` mobile, followed by preserved integration, security and template checkpoints. The resume audit added `cb0051c` (restored regression test), `5502841` (formatting required by CI) and `15b455d` (analytics label fix and new view coverage). This is real incremental history, not fabricated commits; use `git log --oneline` and `git status` for later checkpoints. No commit or push is performed by this report.
+Reviewed on `main` through checkpoint `e905545` on 2026-11-05; the native acceptance evidence is recorded in the current docs update. Verified earlier milestones include `56d2e56` foundation, `6e584cb` gateway, `8fb96c1` domain/SLA/replay, `6257006` persistent services, `6350c77` intelligence and `071b003` mobile, followed by preserved integration, security and template checkpoints. The resume audit added `cb0051c` (restored regression test), `5502841` (formatting required by CI) and `15b455d` (analytics label fix and new view coverage). This is real incremental history, not fabricated commits; use `git log --oneline` and `git status` for later checkpoints. No commit or push is performed by this report.
 
 ## 17. Reproducible demonstration
 
@@ -112,7 +112,7 @@ The scripts create labeled synthetic records, preserve immutable evidence, and r
 
 ## 18. Known limitations and acceptance still open
 
-- Native Android is built, installed and renders the sign-in screen, and its OAuth flow reaches Keycloak; the callback/token exchange and offline recovery are still unobserved. No signed mobile release, iOS execution or native OAuth/offline acceptance is claimed.
+- Native Android OAuth, token exchange and SecureStore restore are verified. Guided stage submission, offline queue recovery, notification delivery and physical-device behavior remain unverified; no signed mobile release or iOS execution is claimed.
 - Cross-service profile/time-off edits and cancellation racing an unprojected booking are not distributed serializable transactions; cancel a confirmed booking before its order. SignalR is best effort; persisted history is authoritative.
 - Only immutable HVAC template v1 is shipped; runtime template authoring is absent. Not every proposed analytic chart/filter or administrative screen is implemented. Mobile AsyncStorage drafts are not application-encrypted.
 - Operational routing/travel, multi-day route optimization, SCD2 staff/hour history and time-off/weekend capacity exclusions are absent. Advisory snapshots are submitted evidence, not cryptographically verified model-result receipts.
@@ -122,4 +122,4 @@ The scripts create labeled synthetic records, preserve immutable evidence, and r
 ## 19. Portfolio case study
 
 The engineering result is an inspectable chain from authenticated service demand to conflict-protected dispatch, ordered field execution, advisory intervention and preserved incident evidence. Its strongest demonstration is the same synthetic incident viewed as authoritative workflow state, delayed/retried messaging, a warehouse fact, a factual export and a correlated trace. Measured solver/model results and explicit unknowns make the tradeoffs reviewable.
-The next acceptance priorities are native-device validation, final clean-repository/deployment reconciliation, production hardening and validated operational retention/restore practice. The portfolio should present the executed evidence and these boundaries together, rather than equating a broad feature list with production readiness.
+The next acceptance priorities are native guided workflow/offline validation, final clean-repository/deployment reconciliation, production hardening and validated operational retention/restore practice. The portfolio should present the executed evidence and these boundaries together, rather than equating a broad feature list with production readiness.

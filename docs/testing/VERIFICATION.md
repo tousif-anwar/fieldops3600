@@ -1,6 +1,6 @@
 # Executed verification
 
-Local evidence date: 2026-11-05 (re-verified subset) and 2026-11-04 (inherited suites). Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
+Local evidence date: 2026-11-05 (re-verified subset, including native Android OAuth) and 2026-11-04 (inherited suites). Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
 
 This host's system SDK is .NET 11 preview, which fails static-web-asset validation for this solution. All .NET results below were produced with the git-ignored repository SDK `.tools/dotnet` **10.0.403**; CI pins `10.0.x`.
 
@@ -16,19 +16,19 @@ This host's system SDK is .NET 11 preview, which fails static-web-asset validati
 | Web end-to-end | 10/10, no skips | Authenticated dispatcher/supervisor flows, readonly history/playback, responsive layouts |
 | Replay responsive regression | Five Chromium viewport checks | No document overflow at 1512/1280/1024/760/390 pixels with long valid option text |
 | Expo mobile | 17/17 plus TS6 typecheck (re-run 2026-11-05) | Queue persistence/restart/backoff/conflicts/isolation, conditional forms and session lifecycle |
-| Native Android smoke | Partial | Debug APK built and installed; Metro bundled 1,386 modules; app rendered the sign-in screen; OAuth opened the real Keycloak login page. Credential submission returned to the app sign-in screen, so callback/token/SecureStore acceptance is **not** claimed |
+| Native Android OAuth | Passed (2026-11-05) | Debug APK installed; real Keycloak login as `technician`; callback returned through `fieldops360://oauth/callback`; Keycloak issued a `fieldops-mobile` token; authenticated **My jobs** dashboard rendered for Jordan Rivera; force-stop/relaunch restored the SecureStore session with no new authorization. Guided stage submission and offline queue recovery were not exercised on-device |
 | Expo compatibility / bundle | Passed | SDK 58 compatibility; clean Android Hermes export, 1,266 modules; not a native-device release test |
-| Warehouse | 26/26 PostgreSQL cases | Late/source ordering, cohorts/DST/intervals, deduplication/collision, archive recovery |
-| Warehouse quality | Zero defects | Checked-in invariants against the current local warehouse |
+| Warehouse | 26/26 PostgreSQL cases (re-run 2026-11-05) | Late/source ordering, cohorts/DST/intervals, deduplication/collision, archive recovery |
+| Warehouse quality | Zero defects (re-run 2026-11-05) | Checked-in invariants against the current local warehouse |
 | Bootstrap | 5/5 | Existing secrets preserved, additive credentials and SQL/grant policy |
 | Runtime database grants | Passed against live containers | Six restricted app identities, audit insert-only, warehouse writer/reader; owners absent from runtime DSNs |
-| Intelligence | 18/18 | Chronological dataset/model and independent solver constraints; measured evaluation linked below |
+| Intelligence | 18/18 (re-run 2026-11-05) | Chronological dataset/model and independent solver constraints; measured evaluation linked below |
 | Observability | Six healthy targets; retained business trace with 11 spans | Includes authorized replay trace-availability check; trace retention is bounded/in-memory |
 | Accelerated resilience demo | Passed | Persisted deadline across restart; warning failure/retry; breach/intervention; completed immutable replay; broker-outage recovery |
 | Terminal consumer failure | Passed | Notifications retry exhaustion; original message independently found in its RabbitMQ error queue and requeued; separate sanitized immutable Replay diagnostics |
 | Live SignalR | Passed | Actual WebSocket through served web → gateway; supervisor notice matches persisted history; analyst/anonymous hub requests denied |
 
-Native Android is now installed and renders the real sign-in screen, and its OAuth flow reaches Keycloak. The callback/token exchange and offline behavior were not observed on-device, so no native OAuth pass is claimed. Do not infer native success from Metro export or code tests.
+Native Android OAuth is now verified through the authenticated dashboard and a SecureStore restore after force-stop. The guided stage submission, offline queue recovery, notification delivery and physical-device behavior were not exercised in that native run; do not infer them from this login pass. iOS execution remains blocked on macOS.
 
 ## Repeat source and service checks
 
@@ -46,6 +46,9 @@ python tests/backend/verify_optimizer_http.py -v
 python scripts/verify-database-permissions.py
 docker compose run --rm -v "${PWD}:/repo:ro" migrate-warehouse python /repo/tests/warehouse/test_projection.py -v
 docker compose run --rm -v "${PWD}:/repo:ro" analytics-worker python /repo/analytics/quality-tests/run_checks.py
+
+# On Git Bash, prefix Docker runs with MSYS_NO_PATHCONV=1 and pass the mount via
+# cygpath -m "$PWD"; otherwise /repo arguments are rewritten to Windows paths.
 ```
 
 Gateway tests default to a Debug assembly; set GATEWAY_BUILD_CONFIGURATION=Release for a Release build. Docker is required for PostgreSQL/Testcontainers. This Windows host uses the ignored .tools/dotnet LTS SDK; the system preview SDK was deliberately not used.

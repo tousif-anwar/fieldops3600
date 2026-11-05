@@ -49,7 +49,7 @@ Migration files are append-only after use. Make a new migration instead of editi
 | `http://localhost:9090` | Prometheus, monitoring profile |
 | `http://localhost:3000` | Grafana, monitoring profile |
 
-Demo users share the locally generated `DEMO_PASSWORD`; the administrator console instead uses `local-admin` and `KEYCLOAK_ADMIN_PASSWORD`. Grafana uses `admin` and `GRAFANA_PASSWORD`; RabbitMQ uses `fieldops` and `RABBITMQ_PASSWORD`. These are development identities only. Production needs TLS, managed secrets, rotation, MFA/device policy and distinct least-privilege administrative identities.
+Demo users share the locally generated `DEMO_PASSWORD`; the administrator console instead uses `local-admin` and `KEYCLOAK_ADMIN_PASSWORD`. Grafana uses `local-admin` and `GRAFANA_PASSWORD`; RabbitMQ uses `fieldops` and `RABBITMQ_PASSWORD`. These are development identities only. Production needs TLS, managed secrets, rotation, MFA/device policy and distinct least-privilege administrative identities.
 
 Keep `localhost` consistent across browser origin, issuer and redirect URLs. Vite development uses port 5173; Compose uses 8088. Keycloak public clients require code flow/S256 PKCE; password grant is disabled. Existing realms may need `reconcile-local-identity.py` to restore the built-in `basic` scope so subject claims are issued.
 
