@@ -74,8 +74,8 @@ export function MyJobs() {
     <>
       <PageHeader
         eyebrow="TECHNICIAN WORKSPACE"
-        title="Good work, one step at a time."
-        description="Open an assigned job and follow the eight-stage guided service pipeline."
+        title="My work"
+        description="Open an assigned job and continue its guided service workflow."
       />
       {orders.isPending ? (
         <Loading />

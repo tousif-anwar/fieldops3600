@@ -88,13 +88,11 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
     <>
       <PageHeader
         eyebrow={supervisor ? "REAL-TIME OPERATIONS" : "OPERATIONS AT A GLANCE"}
-        title={
-          supervisor ? "Keep your team moving." : "A clear view of your day."
-        }
+        title={supervisor ? "SLA monitoring" : "Operations overview"}
         description={
           supervisor
-            ? "See where attention matters. Help your team before a delay becomes a disruption."
-            : `${today} · Your team, work, and service performance in one place.`
+            ? `${today} · At-risk work, overdue stages, and recorded interventions.`
+            : `${today} · Work, service performance, and recent activity for your team.`
         }
         actions={
           <>

@@ -6,9 +6,11 @@ import { AuthProvider, useAuth } from "./auth";
 import { Shell } from "./components/Shell";
 import { ErrorState, Loading } from "./components/common";
 import { Login } from "./pages/Login";
+import { Home } from "./pages/Home";
 import { lazy, Suspense, useMemo, type ReactNode } from "react";
 import type { Role } from "./types";
 import "./styles.css";
+import "./enterprise.css";
 
 const Overview = lazy(() =>
   import("./pages/Overview").then((m) => ({ default: m.Overview })),
@@ -43,6 +45,9 @@ const Notifications = lazy(() =>
 const Administration = lazy(() =>
   import("./pages/Administration").then((m) => ({ default: m.Administration })),
 );
+const Workspaces = lazy(() =>
+  import("./pages/Workspaces").then((m) => ({ default: m.Workspaces })),
+);
 
 function SessionQueries() {
   const { user } = useAuth();
@@ -74,12 +79,23 @@ function SessionQueries() {
 }
 const theme = {
   ...webLightTheme,
-  colorBrandBackground: "#285fb7",
-  colorBrandBackgroundHover: "#204e99",
-  colorBrandBackgroundPressed: "#173f82",
-  colorBrandForeground1: "#285fb7",
-  borderRadiusMedium: "7px",
-  fontFamilyBase: '"Segoe UI", system-ui, sans-serif',
+  colorBrandBackground: "#1f5aa6",
+  colorBrandBackgroundHover: "#194b8c",
+  colorBrandBackgroundPressed: "#143c70",
+  colorBrandForeground1: "#1f5aa6",
+  borderRadiusMedium: "6px",
+  borderRadiusLarge: "8px",
+  fontFamilyBase:
+    '"Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif',
+  fontSizeBase100: "12px",
+  fontSizeBase200: "13px",
+  fontSizeBase300: "14px",
+  fontSizeBase400: "16px",
+  fontSizeBase500: "20px",
+  fontSizeBase600: "24px",
+  lineHeightBase300: "20px",
+  lineHeightBase400: "24px",
+  lineHeightBase500: "28px",
 };
 function RequireRole({
   roles,
@@ -109,7 +125,16 @@ function App() {
     <Suspense fallback={<Loading />}>
       <Routes>
         <Route element={<Shell />}>
-          <Route index element={<Overview />} />
+          <Route index element={<Home />} />
+          <Route path="workspaces" element={<Workspaces />} />
+          <Route
+            path="overview"
+            element={
+              <RequireRole roles={["Dispatcher", "Supervisor", "OperationsManager"]}>
+                <Overview />
+              </RequireRole>
+            }
+          />
           <Route
             path="work-orders"
             element={
@@ -205,7 +230,7 @@ function App() {
             path="analytics"
             element={
               <RequireRole
-                roles={["Analyst", "Supervisor", "OperationsManager"]}
+                roles={["Analyst", "Supervisor", "OperationsManager", "Administrator"]}
               >
                 <Analytics />
               </RequireRole>
@@ -214,7 +239,9 @@ function App() {
           <Route
             path="replay"
             element={
-              <RequireRole roles={["Supervisor", "OperationsManager"]}>
+              <RequireRole
+                roles={["Supervisor", "OperationsManager", "Administrator"]}
+              >
                 <ReplayPage />
               </RequireRole>
             }
@@ -223,7 +250,7 @@ function App() {
           <Route
             path="administration"
             element={
-              <RequireRole roles={[]}>
+              <RequireRole roles={["Administrator"]}>
                 <Administration />
               </RequireRole>
             }

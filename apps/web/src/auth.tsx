@@ -29,19 +29,40 @@ export const manager = new UserManager({
   loadUserInfo: false,
 });
 
-export function rolesFromUser(user: User | null): Role[] {
-  if (!user) return [];
+const knownRoles: Role[] = [
+  "Technician",
+  "Dispatcher",
+  "Supervisor",
+  "OperationsManager",
+  "Analyst",
+  "Administrator",
+];
+
+export function rolesFromToken(accessToken?: string | null): Role[] {
+  if (!accessToken) return [];
   // Keycloak realm roles are in the signed access token; API validates the signature.
   try {
-    const token = JSON.parse(
-      atob(
-        user.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"),
-      ),
+    const payload = accessToken.split(".")[1];
+    if (!payload) return [];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
     );
-    return (token.realm_access?.roles ?? []) as Role[];
+    const token = JSON.parse(atob(padded));
+    const realmRoles = Array.isArray(token.realm_access?.roles)
+      ? token.realm_access.roles
+      : [];
+    return realmRoles.filter((role: unknown): role is Role =>
+      knownRoles.includes(role as Role),
+    );
   } catch {
     return [];
   }
+}
+
+export function rolesFromUser(user: User | null): Role[] {
+  return rolesFromToken(user?.access_token);
 }
 
 interface Auth {
@@ -115,7 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       await manager.signinRedirect({
-        state: window.location.pathname + window.location.search,
+        state:
+          window.location.pathname +
+          window.location.search +
+          window.location.hash,
       });
     } catch (e) {
       setError(

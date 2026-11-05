@@ -41,7 +41,7 @@ test("dispatcher creates a real request and confirms a feasible booking through 
 }) => {
   test.setTimeout(90000);
   await signIn(page, "dispatcher");
-  await page.getByRole("button", { name: "Create work order" }).first().click();
+  await page.getByRole("link", { name: /Create work order/ }).click();
   const title = `Synthetic E2E cooling inspection ${Date.now()}`;
   await page.getByLabel("Work order title", { exact: false }).fill(title);
   await page
@@ -106,9 +106,7 @@ test("supervisor sees role-scoped analytics and read-only replay controls", asyn
     await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(
-    page.getByRole("heading", {
-      name: "See the patterns. Improve the next day.",
-    }),
+    page.getByRole("heading", { name: "Analytics", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Total work orders", { exact: true }),
@@ -146,7 +144,7 @@ test("supervisor reviews completed dropdown history and replays evidence without
   expect(order).toBeTruthy();
   if ((page.viewportSize()?.width ?? 1440) <= 760)
     await page.getByRole("button", { name: "Open navigation" }).click();
-  await page.getByRole("link", { name: "My workflow", exact: true }).click();
+  await page.getByRole("link", { name: "My work", exact: true }).click();
   const card = page.locator(".job-card").filter({
     has: page.getByRole("heading", { name: order.title, exact: true }),
   });

@@ -32,7 +32,7 @@ export function Notifications() {
     <>
       <PageHeader
         eyebrow="TEAM COMMUNICATION"
-        title="The right signal, at the right time."
+        title="Notifications"
         description="SLA warnings, escalations, and service updates for your authorized work."
       />
       <Panel

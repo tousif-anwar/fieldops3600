@@ -127,8 +127,8 @@ export function ReplayPage() {
     <>
       <PageHeader
         eyebrow="INVESTIGATION WORKSPACE"
-        title="Every event tells part of the story."
-        description="Reconstruct recorded history, understand an incident, and follow the evidence across services."
+        title="Operational replay"
+        description="Reconstruct recorded history and follow an incident across services without changing operations."
         actions={
           <span className="read-only-tag">
             <ShieldCheck size={15} />

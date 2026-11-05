@@ -3,9 +3,8 @@ import {
   ArrowRight,
   Check,
   Compass,
-  History,
   LockKeyhole,
-  Workflow,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { InlineMessage } from "../components/common";
@@ -14,85 +13,52 @@ export function Login() {
   const auth = useAuth();
   return (
     <main className="login-page">
-      <div className="login-story">
+      <section className="login-story" aria-label="FieldOps 360 overview">
         <a className="brand login-brand" href="/">
           <span className="brand-symbol">
-            <Compass size={28} />
+            <Compass size={26} aria-hidden="true" />
           </span>
-          <span>
+          <span className="brand-copy">
             FieldOps <b>360</b>
-            <small>SERVICE OPERATIONS</small>
+            <small>Service operations</small>
           </span>
         </a>
         <div className="login-copy">
-          <span className="login-kicker">
-            <span /> A CLEARER VIEW OF FIELD SERVICE
-          </span>
-          <h1>
-            Good service starts
-            <br />
-            with connected
-            <br />
-            <em>operations.</em>
-          </h1>
-          <p>
-            Bring your people, workflows, and decisions together. From the first
-            dispatch to the final detail.
+          <p className="login-kicker">Operations workspace</p>
+          <h1>Field service, in one place.</h1>
+          <p className="login-intro">
+            Dispatch work, complete guided service, and understand what happened
+            without leaving the operational record.
           </p>
-          <div className="login-points">
-            <span>
-              <Check size={17} />
-              Confident dispatch
-            </span>
-            <span>
-              <Check size={17} />
-              Guided field work
-            </span>
-            <span>
-              <Check size={17} />
-              Complete visibility
-            </span>
-          </div>
-          <div className="login-illustration" aria-hidden="true">
-            <div className="illustration-route">
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-            <div className="illustration-card one">
-              <Workflow size={22} />
-              <div>
-                <strong>One connected workflow</strong>
-                <small>Every step moves service forward</small>
-              </div>
-              <span className="illustration-check">
-                <Check size={16} />
-              </span>
-            </div>
-            <div className="illustration-card two">
-              <History size={21} />
-              <div>
-                <strong>The full operational story</strong>
-                <small>Recorded. Traceable. Understandable.</small>
-              </div>
-            </div>
-          </div>
+          <ul className="login-points">
+            <li>
+              <Check size={17} aria-hidden="true" />
+              Dispatch and scheduling
+            </li>
+            <li>
+              <Check size={17} aria-hidden="true" />
+              Guided field workflows
+            </li>
+            <li>
+              <Check size={17} aria-hidden="true" />
+              Audit-ready service history
+            </li>
+          </ul>
         </div>
-        <small className="login-copyright">
-          FIELDOPS 360 · BUILT FOR THE PEOPLE IN THE FIELD
-        </small>
-      </div>
-      <div className="login-form-side">
+        <div className="login-story-footer">
+          <ShieldCheck size={16} aria-hidden="true" />
+          Authorized users only · FieldOps 360
+        </div>
+      </section>
+      <section className="login-form-side" aria-label="Sign in">
         <div className="login-box">
           <span className="login-lock">
-            <LockKeyhole size={25} />
+            <LockKeyhole size={22} aria-hidden="true" />
           </span>
-          <span className="eyebrow">YOUR OPERATIONS WORKSPACE</span>
+          <p className="login-kicker">Secure access</p>
           <h2>Welcome back.</h2>
-          <p>
-            Sign in with your organization account to pick up where your team
-            left off.
+          <p className="login-description">
+            Sign in with your organization account to open your workspace.
           </p>
           {auth.error && <InlineMessage>{auth.error}</InlineMessage>}
           {auth.ready ? (
@@ -102,38 +68,27 @@ export function Login() {
               className="login-button"
               onClick={() => void auth.login()}
               iconPosition="after"
-              icon={<ArrowRight size={18} />}
+              icon={<ArrowRight size={18} aria-hidden="true" />}
             >
               Continue to secure sign-in
             </Button>
           ) : (
             <Spinner size="small" label="Checking your session…" />
           )}
-          <div className="identity-note">
-            <ShieldIcon />
-            <span>
-              Protected with Keycloak single sign-on.
-              <br />
-              Your access follows your team and role.
-            </span>
-          </div>
-          <div className="login-divider" />
+          <p className="login-identity-note">
+            <LockKeyhole size={15} aria-hidden="true" />
+            Keycloak single sign-on. Access follows your assigned role and team.
+          </p>
           <p className="login-assistance">
-            Need an account or help signing in?
-            <br />
-            Contact your organization administrator.
+            Need an account or help signing in? Contact your organization
+            administrator.
           </p>
         </div>
         <div className="login-bottom">
-          <span>
-            <LockKeyhole size={13} /> Secure by design
-          </span>
           <span>FieldOps 360</span>
+          <span>Secure by design</span>
         </div>
-      </div>
+      </section>
     </main>
   );
-}
-function ShieldIcon() {
-  return <LockKeyhole size={16} />;
 }

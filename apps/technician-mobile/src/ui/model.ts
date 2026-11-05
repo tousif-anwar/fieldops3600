@@ -20,6 +20,13 @@ const statusLabels: Record<string, string> = {
   Failed: 'Couldn’t sync',
 };
 
+export function greetingFor(now = new Date()): string {
+  const hour = now.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export function formatStatus(value: string): string {
   if (statusLabels[value]) return statusLabels[value];
   const spaced = value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase();

@@ -97,8 +97,8 @@ export function Schedule() {
     <>
       <PageHeader
         eyebrow="DISPATCH & CAPACITY"
-        title="Put the right person on the job."
-        description="Match qualifications, respect availability, and prevent overlapping bookings."
+        title="Dispatch board"
+        description="Assign qualified technicians, review availability, and prevent overlapping bookings."
       />
       <div className="schedule-grid">
         {auth.can("Dispatcher", "OperationsManager") && (

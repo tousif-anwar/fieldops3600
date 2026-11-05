@@ -15,8 +15,8 @@ export function Administration() {
     <>
       <PageHeader
         eyebrow="ADMINISTRATION"
-        title="A secure foundation for your team."
-        description="Identity, permissions, and versioned operating standards."
+        title="Administration"
+        description="Review identity access, workflow standards, and audit boundaries."
       />
       <div className="admin-grid">
         <Panel

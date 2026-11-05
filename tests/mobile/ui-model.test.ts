@@ -4,8 +4,8 @@ import type { Booking, WorkOrder, WorkflowStage } from '../../apps/technician-mo
 import { contrastRatio } from '../../apps/technician-mobile/src/ui/contrast';
 import { colors } from '../../apps/technician-mobile/src/ui/palette';
 import {
-  formatRemaining, friendlySyncError, humanizeFieldKey, slaPresentation, sortJobs,
-  syncPresentation,
+  formatRemaining, friendlySyncError, greetingFor, humanizeFieldKey, slaPresentation,
+  sortJobs, syncPresentation,
 } from '../../apps/technician-mobile/src/ui/model';
 
 const job = (overrides: Partial<WorkOrder>): WorkOrder => ({
@@ -36,6 +36,12 @@ test('active jobs sort before scheduled jobs, then by priority and appointment',
   ];
   const sorted = sortJobs(jobs, [booking({ workOrderId: 'early', startUtc: '2026-11-06T09:00:00Z' })]);
   assert.deepEqual(sorted.map(item => item.id), ['active', 'early', 'scheduled']);
+});
+
+test('technician Home greets by the technician device time', () => {
+  assert.equal(greetingFor(new Date('2026-11-05T08:00:00')), 'Good morning');
+  assert.equal(greetingFor(new Date('2026-11-05T14:00:00')), 'Good afternoon');
+  assert.equal(greetingFor(new Date('2026-11-05T19:00:00')), 'Good evening');
 });
 
 test('remaining time uses plain minutes and distinguishes overdue work', () => {

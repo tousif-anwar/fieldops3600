@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Link,
@@ -47,8 +47,25 @@ export function WorkOrders() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get("q") ?? "");
-  const [status, setStatus] = useState("");
-  const [priority, setPriority] = useState("");
+  const [status, setStatus] = useState(params.get("status") ?? "");
+  const [priority, setPriority] = useState(params.get("priority") ?? "");
+  useEffect(() => {
+    setSearch(params.get("q") ?? "");
+    setStatus(params.get("status") ?? "");
+    setPriority(params.get("priority") ?? "");
+  }, [params]);
+  const updateFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next, { replace: true });
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setStatus("");
+    setPriority("");
+    setParams({}, { replace: true });
+  };
   const orders = useQuery({
     queryKey: ["work-orders"],
     queryFn: () => api<WorkOrder[]>("/api/work-orders"),
@@ -66,7 +83,7 @@ export function WorkOrders() {
       <PageHeader
         eyebrow="SERVICE MANAGEMENT"
         title="Work orders"
-        description="Every service request, from the first call to a job well done."
+        description="Search, assign, and track service requests in your authorized scope."
         actions={
           auth.can("Dispatcher", "OperationsManager") && (
             <Button
@@ -92,16 +109,17 @@ export function WorkOrders() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setParams(e.target.value ? { q: e.target.value } : {}, {
-                  replace: true,
-                });
+                updateFilter("q", e.target.value);
               }}
             />
           </div>
           <Select
             aria-label="Filter status"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              updateFilter("status", e.target.value);
+            }}
           >
             <option value="">All statuses</option>
             {[...new Set((orders.data ?? []).map((o) => o.status))].map((v) => (
@@ -111,13 +129,21 @@ export function WorkOrders() {
           <Select
             aria-label="Filter priority"
             value={priority}
-            onChange={(e) => setPriority(e.target.value)}
+            onChange={(e) => {
+              setPriority(e.target.value);
+              updateFilter("priority", e.target.value);
+            }}
           >
             <option value="">All priorities</option>
             {["Low", "Normal", "High", "Critical"].map((v) => (
               <option key={v}>{v}</option>
             ))}
           </Select>
+          {(search || status || priority) && (
+            <Button appearance="subtle" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
         </div>
         {orders.isPending ? (
           <Loading />
@@ -256,7 +282,7 @@ export function CreateOrder() {
       <PageHeader
         eyebrow="NEW SERVICE REQUEST"
         title="Create a work order"
-        description="Start with the details your team needs to deliver great service."
+        description="Record the customer, site, and service details needed to dispatch the job."
       />
       <div className="form-layout">
         <Panel

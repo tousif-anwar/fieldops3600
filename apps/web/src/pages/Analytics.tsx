@@ -72,8 +72,8 @@ export function Analytics() {
     <>
       <PageHeader
         eyebrow="OPERATIONAL INTELLIGENCE"
-        title="See the patterns. Improve the next day."
-        description="Warehouse-backed service metrics with clear definitions and traceable history."
+        title="Analytics"
+        description="Validated service performance, capacity, and trends from the reporting warehouse."
         actions={
           <>
             <Button
@@ -427,7 +427,7 @@ export function Analytics() {
               </Panel>
             </div>
             <WarehousePatterns report={r} />
-            <div className="metric-definitions">
+            <div className="metric-definitions" id="definitions">
               <Info size={18} />
               <div>
                 <strong>Understand the numbers</strong>
