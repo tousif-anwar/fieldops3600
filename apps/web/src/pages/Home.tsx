@@ -2,29 +2,14 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@fluentui/react-components";
-import {
-  Activity,
-  ArrowRight,
-  BarChart3,
-  Bell,
-  CalendarDays,
-  CheckCircle2,
-  ClipboardList,
-  Clock3,
-  History,
-  LayoutGrid,
-  Settings2,
-  ShieldCheck,
-  TriangleAlert,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { ErrorState, Loading, Status } from "../components/common";
 import { dateTime, humanize, percent, time } from "../format";
 import {
   additionalRoles,
+  homeDestination,
   currentStage,
   greetingFor,
   profileName,
@@ -34,6 +19,12 @@ import {
   roleLabel,
   teamLabel,
 } from "../home";
+import {
+  figuresFor,
+  quickActionsFor,
+  type Action,
+  type Figure,
+} from "./home/content";
 import type {
   Booking,
   Notification,
@@ -42,20 +33,6 @@ import type {
   Workflow,
   WorkOrder,
 } from "../types";
-
-interface Figure {
-  label: string;
-  value: ReactNode;
-  detail: string;
-  tone?: "default" | "warning" | "danger" | "success";
-}
-
-interface Action {
-  to: string;
-  label: string;
-  description: string;
-  icon: ReactNode;
-}
 
 function Panel({
   title,
@@ -154,7 +131,11 @@ function QuickActions({ actions }: { actions: Action[] }) {
     <Panel title="Quick access" className="home-quick">
       <div className="home-actions">
         {actions.map((action) => (
-          <Link to={action.to} className="home-action" key={`${action.to}-${action.label}`}>
+          <Link
+            to={action.to}
+            className="home-action"
+            key={`${action.to}-${action.label}`}
+          >
             <span className="home-action-icon">{action.icon}</span>
             <span>
               <strong>{action.label}</strong>
@@ -209,7 +190,9 @@ export function Home() {
   const teamId = String(
     auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
   );
-  const name = profileName((auth.user?.profile ?? {}) as Record<string, unknown>);
+  const name = profileName(
+    (auth.user?.profile ?? {}) as Record<string, unknown>,
+  );
   const otherRoles = role ? additionalRoles(auth.roles, role) : [];
   const now = new Date();
   const today = new Intl.DateTimeFormat(undefined, {
@@ -227,7 +210,10 @@ export function Home() {
     role === "Technician" ||
     role === "Supervisor" ||
     role === "OperationsManager";
-  const dispatchRole = role === "Dispatcher" || role === "Supervisor" || role === "OperationsManager";
+  const dispatchRole =
+    role === "Dispatcher" ||
+    role === "Supervisor" ||
+    role === "OperationsManager";
   const reportRole =
     role === "Supervisor" || role === "OperationsManager" || role === "Analyst";
 
@@ -281,10 +267,13 @@ export function Home() {
           <div className="home-empty">
             <ShieldCheck size={22} aria-hidden="true" />
             <div>
-              <strong>Your identity is valid, but no FieldOps 360 role is assigned.</strong>
+              <strong>
+                Your identity is valid, but no FieldOps 360 role is assigned.
+              </strong>
               <p>
-                Contact your administrator to add the role that matches your work.
-                This page does not infer access from another directory group.
+                Contact your administrator to add the role that matches your
+                work. This page does not infer access from another directory
+                group.
               </p>
             </div>
           </div>
@@ -349,7 +338,9 @@ export function Home() {
         booking.status === "Confirmed" &&
         Date.parse(booking.startUtc) >= now.getTime(),
     )
-    .sort((left, right) => Date.parse(left.startUtc) - Date.parse(right.startUtc));
+    .sort(
+      (left, right) => Date.parse(left.startUtc) - Date.parse(right.startUtc),
+    );
   const report = reportQuery.data;
   const primaryError =
     (ordersQuery.error as Error | null) ??
@@ -362,274 +353,26 @@ export function Home() {
     (reportRole && reportQuery.isPending) ||
     (role !== "Analyst" && notificationsQuery.isPending);
 
-  const figures: Figure[] = (() => {
-    if (role === "Technician") {
-      return [
-        {
-          label: "Current job",
-          value: currentOrder?.number ?? "None",
-          detail: currentOrder?.title ?? "No active assignment",
-        },
-        {
-          label: "Current stage",
-          value: stage?.name ?? "Not started",
-          detail: currentFlow ? `Step ${currentFlow.currentStageIndex + 1} of ${currentFlow.stages.length}` : "Open My work to begin",
-        },
-        {
-          label: "Stage SLA",
-          value: stage?.pausedAtUtc ? "Paused" : (stage?.slaStatus ?? "—"),
-          detail: stage?.deadlineUtc ? `Due ${time(stage.deadlineUtc)}` : "No active deadline",
-          tone:
-            stage?.slaStatus === "Breached"
-              ? "danger"
-              : stage?.slaStatus === "Warning" || stage?.slaStatus === "Critical"
-                ? "warning"
-                : "default",
-        },
-      ];
-    }
-    if (role === "Dispatcher") {
-      return [
-        {
-          label: "Unassigned",
-          value: anyLoading ? "—" : unassigned.length,
-          detail: "Open service requests without a technician",
-          tone: unassigned.length ? "warning" : "default",
-        },
-        {
-          label: "Today’s bookings",
-          value: bookingsQuery.isPending ? "—" : todayBookings.length,
-          detail: "Confirmed appointments in local time",
-        },
-        {
-          label: "Active technicians",
-          value: techniciansQuery.isPending ? "—" : (techniciansQuery.data?.length ?? 0),
-          detail: "Profiles in your authorized team",
-        },
-      ];
-    }
-    if (role === "Supervisor") {
-      const atRisk = risks.filter(
-        (flow) => currentStage(flow)?.slaStatus !== "Breached",
-      );
-      return [
-        {
-          label: "At risk",
-          value: flowsQuery.isPending ? "—" : atRisk.length,
-          detail: "Stages approaching a deadline",
-          tone: atRisk.length ? "warning" : "default",
-        },
-        {
-          label: "Overdue",
-          value: flowsQuery.isPending ? "—" : overdue.length,
-          detail: "Stages with a recorded breach",
-          tone: overdue.length ? "danger" : "default",
-        },
-        {
-          label: "Unread alerts",
-          value: notificationsQuery.isPending ? "—" : unread.length,
-          detail: "Signals not yet acknowledged",
-          tone: unread.length ? "warning" : "default",
-        },
-      ];
-    }
-    if (role === "OperationsManager") {
-      return [
-        {
-          label: "Completion rate",
-          value: reportQuery.isPending ? "—" : percent(report?.completionRate),
-          detail: report
-            ? `${report.completedWorkOrders} of ${report.totalWorkOrders} orders`
-            : "Warehouse summary",
-        },
-        {
-          label: "SLA compliance",
-          value: reportQuery.isPending ? "—" : percent(report?.slaComplianceRate),
-          detail: "Completed stages without a breach",
-        },
-        {
-          label: "Active jobs",
-          value: reportQuery.isPending ? "—" : (report?.activeJobs ?? "—"),
-          detail: `${report?.atRiskStages ?? "—"} at risk · ${report?.overdueStages ?? "—"} overdue`,
-          tone: report?.overdueStages ? "danger" : "default",
-        },
-      ];
-    }
-    if (role === "Analyst") {
-      return [
-        {
-          label: "Work orders",
-          value: reportQuery.isPending ? "—" : (report?.totalWorkOrders ?? 0),
-          detail: "In the current reporting scope",
-        },
-        {
-          label: "SLA compliance",
-          value: reportQuery.isPending ? "—" : percent(report?.slaComplianceRate),
-          detail: "Completed stages without a breach",
-        },
-        {
-          label: "Warehouse freshness",
-          value: report?.refreshedAtUtc
-            ? new Intl.DateTimeFormat(undefined, {
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(new Date(report.refreshedAtUtc))
-            : "—",
-          detail: report?.refreshedAtUtc ? "Latest recorded ingestion" : "Awaiting ingestion",
-        },
-      ];
-    }
-    return [
-      {
-        label: "Access scope",
-        value: "All teams",
-        detail: "Administrator policy",
-      },
-      {
-        label: "Audit evidence",
-        value: "Available",
-        detail: "Operational replay access",
-      },
-      {
-        label: "Identity",
-        value: "Keycloak",
-        detail: "Realm-managed users and roles",
-      },
-    ];
-  })();
-
-  const quickActions: Action[] = (() => {
-    if (role === "Technician") {
-      return [
-        {
-          to: "/my-jobs",
-          label: "My work",
-          description: "Assigned jobs and guided stages",
-          icon: <Wrench size={19} />,
-        },
-        {
-          to: "/schedule",
-          label: "My schedule",
-          description: "Appointments and booking times",
-          icon: <CalendarDays size={19} />,
-        },
-        {
-          to: "/notifications",
-          label: "Alerts",
-          description: "Supervisor and SLA notices",
-          icon: <Bell size={19} />,
-        },
-      ];
-    }
-    if (role === "Dispatcher") {
-      return [
-        {
-          to: "/work-orders",
-          label: "Work orders",
-          description: "Search and review service requests",
-          icon: <ClipboardList size={19} />,
-        },
-        {
-          to: "/schedule",
-          label: "Dispatch board",
-          description: "Match work to qualified technicians",
-          icon: <CalendarDays size={19} />,
-        },
-        {
-          to: "/work-orders/new",
-          label: "Create work order",
-          description: "Record a new service request",
-          icon: <Activity size={19} />,
-        },
-      ];
-    }
-    if (role === "Supervisor") {
-      return [
-        {
-          to: "/supervisor",
-          label: "SLA monitoring",
-          description: "Investigate at-risk and overdue stages",
-          icon: <TriangleAlert size={19} />,
-        },
-        {
-          to: "/work-orders",
-          label: "Work orders",
-          description: "Review service requests for your team",
-          icon: <ClipboardList size={19} />,
-        },
-        {
-          to: "/replay",
-          label: "Operational replay",
-          description: "Inspect recorded incident evidence",
-          icon: <History size={19} />,
-        },
-      ];
-    }
-    if (role === "OperationsManager") {
-      return [
-        {
-          to: "/overview",
-          label: "Operations overview",
-          description: "Live work and SLA position",
-          icon: <LayoutGrid size={19} />,
-        },
-        {
-          to: "/analytics",
-          label: "Analytics",
-          description: "Service performance and capacity",
-          icon: <BarChart3 size={19} />,
-        },
-        {
-          to: "/work-orders",
-          label: "Work orders",
-          description: "Review the authorized service queue",
-          icon: <ClipboardList size={19} />,
-        },
-      ];
-    }
-    if (role === "Analyst") {
-      return [
-        {
-          to: "/analytics",
-          label: "Open analytics",
-          description: "Explore validated service metrics",
-          icon: <BarChart3 size={19} />,
-        },
-        {
-          to: "/analytics#definitions",
-          label: "Metric definitions",
-          description: "Check what each measure means",
-          icon: <ShieldCheck size={19} />,
-        },
-        {
-          to: "/workspaces",
-          label: "All workspaces",
-          description: "See the areas available to you",
-          icon: <LayoutGrid size={19} />,
-        },
-      ];
-    }
-    return [
-      {
-        to: "/administration",
-        label: "Administration",
-        description: "Identity and workflow standards",
-        icon: <Settings2 size={19} />,
-      },
-      {
-        to: "/replay",
-        label: "Operational replay",
-        description: "Inspect the audit evidence",
-        icon: <History size={19} />,
-      },
-      {
-        to: "/analytics",
-        label: "Analytics",
-        description: "Review platform-wide service metrics",
-        icon: <BarChart3 size={19} />,
-      },
-    ];
-  })();
+  const figures = figuresFor({
+    role,
+    anyLoading,
+    flowsPending: flowsQuery.isPending,
+    bookingsPending: bookingsQuery.isPending,
+    techniciansPending: techniciansQuery.isPending,
+    reportsPending: reportQuery.isPending,
+    notificationsPending: notificationsQuery.isPending,
+    unassignedCount: unassigned.length,
+    todayBookingsCount: todayBookings.length,
+    technicianCount: techniciansQuery.data?.length ?? 0,
+    currentOrder,
+    currentFlow,
+    stage,
+    risks,
+    overdueCount: overdue.length,
+    unreadCount: unread.length,
+    report,
+  });
+  const quickActions = quickActionsFor(role);
 
   return (
     <div className="home-page">
@@ -693,7 +436,7 @@ export function Home() {
                       : "Start with the area you need to configure or review."
           }
           action={
-            <Link className="home-panel-link" to={homeDestinationFor(role)}>
+            <Link className="home-panel-link" to={homeDestination(role)}>
               Open workspace <ArrowRight size={15} aria-hidden="true" />
             </Link>
           }
@@ -707,29 +450,39 @@ export function Home() {
                 <AttentionRow
                   key={notification.id}
                   to="/notifications"
-                  title={notification.title ?? humanize(notification.eventType ?? "Service notice")}
+                  title={
+                    notification.title ??
+                    humanize(notification.eventType ?? "Service notice")
+                  }
                   meta={notification.message ?? "Unread operational notice"}
                   status="Unread"
                   tone="warning"
                   action="Review"
                 />
               ))}
-              {stage && ["Warning", "Critical", "Breached"].includes(stage.slaStatus) && currentFlow && (
-                <AttentionRow
-                  to={`/workflow/${currentFlow.id}`}
-                  title={`${currentOrderNumber(currentOrder)} · ${stage.name}`}
-                  meta={
-                    stage.deadlineUtc
-                      ? `Stage deadline ${time(stage.deadlineUtc)}`
-                      : "Stage requires review"
-                  }
-                  status={stage.slaStatus}
-                  tone={stage.slaStatus === "Breached" ? "danger" : "warning"}
-                  action={stage.slaStatus === "Breached" ? "Review" : "Continue"}
-                />
-              )}
+              {stage &&
+                ["Warning", "Critical", "Breached"].includes(stage.slaStatus) &&
+                currentFlow && (
+                  <AttentionRow
+                    to={`/workflow/${currentFlow.id}`}
+                    title={`${currentOrderNumber(currentOrder)} · ${stage.name}`}
+                    meta={
+                      stage.deadlineUtc
+                        ? `Stage deadline ${time(stage.deadlineUtc)}`
+                        : "Stage requires review"
+                    }
+                    status={stage.slaStatus}
+                    tone={stage.slaStatus === "Breached" ? "danger" : "warning"}
+                    action={
+                      stage.slaStatus === "Breached" ? "Review" : "Continue"
+                    }
+                  />
+                )}
               {unread.length === 0 &&
-                !(stage && ["Warning", "Critical", "Breached"].includes(stage.slaStatus)) && (
+                !(
+                  stage &&
+                  ["Warning", "Critical", "Breached"].includes(stage.slaStatus)
+                ) && (
                   <EmptyAttention
                     title="Nothing urgent right now"
                     description={
@@ -748,17 +501,25 @@ export function Home() {
                   description="New unassigned work will appear here with its priority and service category."
                 />
               ) : (
-                unassigned.slice(0, 5).map((order) => (
-                  <AttentionRow
-                    key={order.id}
-                    to={`/schedule?workOrderId=${order.id}`}
-                    title={`${order.number} · ${order.title}`}
-                    meta={`${order.serviceCategory} · ${order.siteAddress}`}
-                    status={order.priority}
-                    tone={order.priority === "Critical" ? "danger" : order.priority === "High" ? "warning" : "info"}
-                    action="Assign"
-                  />
-                ))
+                unassigned
+                  .slice(0, 5)
+                  .map((order) => (
+                    <AttentionRow
+                      key={order.id}
+                      to={`/schedule?workOrderId=${order.id}`}
+                      title={`${order.number} · ${order.title}`}
+                      meta={`${order.serviceCategory} · ${order.siteAddress}`}
+                      status={order.priority}
+                      tone={
+                        order.priority === "Critical"
+                          ? "danger"
+                          : order.priority === "High"
+                            ? "warning"
+                            : "info"
+                      }
+                      action="Assign"
+                    />
+                  ))
               )}
             </div>
           ) : role === "Supervisor" || role === "OperationsManager" ? (
@@ -777,8 +538,16 @@ export function Home() {
                       to={`/workflow/${flow.id}`}
                       title={`${currentOrderNumber(orders.find((order) => order.id === flow.workOrderId))} · ${riskStage?.name ?? "Workflow"}`}
                       meta={`${techniciansQuery.data?.find((technician) => technician.id === flow.technicianId)?.name ?? flow.technicianId} · ${riskStage?.deadlineUtc ? `Deadline ${time(riskStage.deadlineUtc)}` : "Deadline pending"}`}
-                      status={riskStage?.pausedAtUtc ? "Paused" : (riskStage?.slaStatus ?? "Warning")}
-                      tone={riskStage?.slaStatus === "Breached" ? "danger" : "warning"}
+                      status={
+                        riskStage?.pausedAtUtc
+                          ? "Paused"
+                          : (riskStage?.slaStatus ?? "Warning")
+                      }
+                      tone={
+                        riskStage?.slaStatus === "Breached"
+                          ? "danger"
+                          : "warning"
+                      }
                       action="Investigate"
                     />
                   );
@@ -883,7 +652,9 @@ export function Home() {
           ) : (
             <WorkList
               rows={upcoming.slice(0, 4).map((booking) => {
-                const order = orders.find((item) => item.id === booking.workOrderId);
+                const order = orders.find(
+                  (item) => item.id === booking.workOrderId,
+                );
                 const technician = techniciansQuery.data?.find(
                   (item) => item.id === booking.technicianId,
                 );
@@ -916,13 +687,21 @@ export function Home() {
             />
           ) : (
             <WorkList
-              rows={(notificationsQuery.data ?? []).slice(0, 4).map((notification) => ({
-                key: notification.id,
-                to: "/notifications",
-                title: notification.title ?? humanize(notification.eventType ?? "Service notice"),
-                meta: `${notification.message ?? "Operational notice"} · ${dateTime(notification.createdAtUtc)}`,
-                trailing: notification.acknowledgedAtUtc ? <Status value="Acknowledged" /> : <Status value="Unread" />,
-              }))}
+              rows={(notificationsQuery.data ?? [])
+                .slice(0, 4)
+                .map((notification) => ({
+                  key: notification.id,
+                  to: "/notifications",
+                  title:
+                    notification.title ??
+                    humanize(notification.eventType ?? "Service notice"),
+                  meta: `${notification.message ?? "Operational notice"} · ${dateTime(notification.createdAtUtc)}`,
+                  trailing: notification.acknowledgedAtUtc ? (
+                    <Status value="Acknowledged" />
+                  ) : (
+                    <Status value="Unread" />
+                  ),
+                }))}
             />
           )}
         </Panel>
@@ -946,7 +725,10 @@ export function Home() {
           ) : (
             <div className="home-capacity-list">
               {report.technicianUtilization.slice(0, 4).map((technician) => (
-                <div className="home-capacity-row" key={technician.technicianId}>
+                <div
+                  className="home-capacity-row"
+                  key={technician.technicianId}
+                >
                   <span>
                     <strong>
                       {techniciansQuery.data?.find(
@@ -975,7 +757,10 @@ export function Home() {
       )}
 
       {role === "Analyst" && report && (
-        <Panel title="Reporting coverage" description="Categories currently represented in the warehouse scope.">
+        <Panel
+          title="Reporting coverage"
+          description="Categories currently represented in the warehouse scope."
+        >
           {report.categoryBreakdown.length === 0 ? (
             <EmptyAttention
               title="No category observations"
@@ -995,21 +780,4 @@ export function Home() {
       )}
     </div>
   );
-}
-
-function homeDestinationFor(role: ReturnType<typeof primaryRole>): string {
-  switch (role) {
-    case "Technician":
-      return "/my-jobs";
-    case "Dispatcher":
-      return "/work-orders?status=Created";
-    case "Supervisor":
-      return "/supervisor";
-    case "OperationsManager":
-      return "/overview";
-    case "Analyst":
-      return "/analytics";
-    default:
-      return "/administration";
-  }
 }
