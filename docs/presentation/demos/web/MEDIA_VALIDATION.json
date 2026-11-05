@@ -1,0 +1,265 @@
+{
+  "validatedAtUtc": "2026-11-05T05:21:36.603513+00:00",
+  "synthetic": true,
+  "sourceCaptureManifest": "recording-manifest.json",
+  "encoder": "ffmpeg version 9.0.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+  "method": "Direct absolute workspace-local FFmpeg; metadata read plus complete frame decode",
+  "encoding": {
+    "codec": "H.264 / libx264",
+    "crf": 26,
+    "fps": 30,
+    "pixelFormat": "yuv420p",
+    "dimensions": "1920x1080",
+    "aspectRatioPreserved": true,
+    "silent": true,
+    "fastStart": true,
+    "playbackSpeedChanged": false
+  },
+  "clips": [
+    {
+      "role": "dispatcher",
+      "file": "dispatcher-walkthrough.mp4",
+      "source": "dispatcher-walkthrough.webm",
+      "sourceSha256": "05c54601b8eae503713edb01aae552204c00878592c3d8230a213e15b91592c3",
+      "sourceMetadata": {
+        "codec": "vp8",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 27.04,
+        "fps": 25.0,
+        "yuv420p": true,
+        "audioStreams": 0
+      },
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 27.03,
+        "fps": 30.0,
+        "yuv420p": true,
+        "audioStreams": 0,
+        "decodedFrames": 811,
+        "decodedDurationSeconds": 27.033333,
+        "fullDecodePassed": true,
+        "decodeErrors": [],
+        "fastStartAtomOrderVerified": true,
+        "bytes": 836351,
+        "sha256": "6b53cbf4fba03a45cb7ac05e09378a1605413c4c56dea4b91857efebbbe7d009"
+      }
+    },
+    {
+      "role": "technician",
+      "file": "technician-walkthrough.mp4",
+      "source": "technician-walkthrough.webm",
+      "sourceSha256": "1174528e4fef8aa305752bb9698a98a9b148a009c470ca1b132b25a46a062a34",
+      "sourceMetadata": {
+        "codec": "vp8",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 14.48,
+        "fps": 25.0,
+        "yuv420p": true,
+        "audioStreams": 0
+      },
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 14.47,
+        "fps": 30.0,
+        "yuv420p": true,
+        "audioStreams": 0,
+        "decodedFrames": 434,
+        "decodedDurationSeconds": 14.466667,
+        "fullDecodePassed": true,
+        "decodeErrors": [],
+        "fastStartAtomOrderVerified": true,
+        "bytes": 487739,
+        "sha256": "bc10ba501f58e077b7b2b69a995efd33f50e533e95730b0d8e39d07dcd1e4aa2"
+      }
+    },
+    {
+      "role": "supervisor",
+      "file": "supervisor-walkthrough.mp4",
+      "source": "supervisor-walkthrough.webm",
+      "sourceSha256": "000a4fa10e75d0a552a80e2871d7bf3c829971bd8417432f055f63f0e0625382",
+      "sourceMetadata": {
+        "codec": "vp8",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 41.32,
+        "fps": 25.0,
+        "yuv420p": true,
+        "audioStreams": 0
+      },
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 41.33,
+        "fps": 30.0,
+        "yuv420p": true,
+        "audioStreams": 0,
+        "decodedFrames": 1240,
+        "decodedDurationSeconds": 41.333333,
+        "fullDecodePassed": true,
+        "decodeErrors": [],
+        "fastStartAtomOrderVerified": true,
+        "bytes": 1447985,
+        "sha256": "731fbfe26bea1107cdecb5b4a19299f9247d7f111b16cb229087263f50c90179"
+      }
+    },
+    {
+      "role": "manager",
+      "file": "manager-walkthrough.mp4",
+      "source": "manager-walkthrough.webm",
+      "sourceSha256": "9b0a9b990ce2dba1ed51feab628f0c56fca44173c9efda24936685ae397482e7",
+      "sourceMetadata": {
+        "codec": "vp8",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 28.92,
+        "fps": 25.0,
+        "yuv420p": true,
+        "audioStreams": 0
+      },
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 28.93,
+        "fps": 30.0,
+        "yuv420p": true,
+        "audioStreams": 0,
+        "decodedFrames": 868,
+        "decodedDurationSeconds": 28.933333,
+        "fullDecodePassed": true,
+        "decodeErrors": [],
+        "fastStartAtomOrderVerified": true,
+        "bytes": 963737,
+        "sha256": "e07c96adad158cdfe9c4b6e2794942b268fac7a406e1f68cf0dcfcc09a38d275"
+      }
+    },
+    {
+      "role": "analyst",
+      "file": "analyst-walkthrough.mp4",
+      "source": "analyst-walkthrough.webm",
+      "sourceSha256": "558ebb2cacf744429d8579815bec7300a503b42901996180931535fc9fdfd170",
+      "sourceMetadata": {
+        "codec": "vp8",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 16.0,
+        "fps": 25.0,
+        "yuv420p": true,
+        "audioStreams": 0
+      },
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 16.0,
+        "fps": 30.0,
+        "yuv420p": true,
+        "audioStreams": 0,
+        "decodedFrames": 480,
+        "decodedDurationSeconds": 16.0,
+        "fullDecodePassed": true,
+        "decodeErrors": [],
+        "fastStartAtomOrderVerified": true,
+        "bytes": 435817,
+        "sha256": "f54b57c6d2ac9c48265eb4831af93a65dbff0c0094d13ef632b3fad239082464"
+      }
+    },
+    {
+      "role": "administrator",
+      "file": "administrator-walkthrough.mp4",
+      "source": "administrator-walkthrough.webm",
+      "sourceSha256": "d8ce626246ee261cc74066e24f78d9c34736295b729420f1f2dbf71b94d7c32d",
+      "sourceMetadata": {
+        "codec": "vp8",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 36.32,
+        "fps": 25.0,
+        "yuv420p": true,
+        "audioStreams": 0
+      },
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "containerDurationSeconds": 36.33,
+        "fps": 30.0,
+        "yuv420p": true,
+        "audioStreams": 0,
+        "decodedFrames": 1090,
+        "decodedDurationSeconds": 36.333333,
+        "fullDecodePassed": true,
+        "decodeErrors": [],
+        "fastStartAtomOrderVerified": true,
+        "bytes": 944885,
+        "sha256": "e910e13ba3ad71121705a9a72991e97bda5f682f4cc16ecbddb112edd1e2c304"
+      }
+    }
+  ],
+  "combined": {
+    "file": "complete-web-walkthrough.mp4",
+    "video": {
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "containerDurationSeconds": 164.1,
+      "fps": 30.0,
+      "yuv420p": true,
+      "audioStreams": 0,
+      "decodedFrames": 4923,
+      "decodedDurationSeconds": 164.1,
+      "fullDecodePassed": true,
+      "decodeErrors": [],
+      "fastStartAtomOrderVerified": true,
+      "bytes": 5113793,
+      "sha256": "ec1df1a99bc2c55b1b7e9dcfe09f489f8ef0dfc703da3f226756547b9a7cf1a6"
+    },
+    "chapterMetadataVerified": true,
+    "chapters": [
+      {
+        "role": "dispatcher",
+        "startSeconds": 0.0,
+        "endSeconds": 27.033333
+      },
+      {
+        "role": "technician",
+        "startSeconds": 27.033333,
+        "endSeconds": 41.5
+      },
+      {
+        "role": "supervisor",
+        "startSeconds": 41.5,
+        "endSeconds": 82.833333
+      },
+      {
+        "role": "manager",
+        "startSeconds": 82.833333,
+        "endSeconds": 111.766667
+      },
+      {
+        "role": "analyst",
+        "startSeconds": 111.766667,
+        "endSeconds": 127.766667
+      },
+      {
+        "role": "administrator",
+        "startSeconds": 127.766667,
+        "endSeconds": 164.1
+      }
+    ]
+  },
+  "captureErrors": [],
+  "originalWebmFilesPreserved": true,
+  "limits": [
+    "Silent recordings require the presenter script for narration.",
+    "A recorded page visit is not proof of every feature on that page.",
+    "Web recording does not substitute for native Android evidence."
+  ]
+}

@@ -21,7 +21,7 @@ sequenceDiagram
   Note over Client: Web tokens stay in memory.<br/>Native tokens use SecureStore.
   Client->>Gateway: API request with bearer access token
   Gateway->>Gateway: Validate issuer, audience, signature, lifetime
-  Gateway->>API: Forward request; strip spoofed identity headers
-  API->>API: Repeat JWT validation; enforce role and resource scope
+  Gateway->>API: Forward request and strip spoofed identity headers
+  API->>API: Repeat JWT validation and enforce role and resource scope
   API-->>Client: Authorized data or 401 / 403 / hidden-object 404
 

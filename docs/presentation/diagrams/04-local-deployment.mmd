@@ -4,7 +4,7 @@ flowchart TB
     Browser["Browser"]
     Phone["Native Android / iOS-compatible source"]
   end
-  subgraph Host["Loopback-only published development ports"]
+  subgraph Host["Loopback-only ports"]
     Web["Nginx web :8088"]
     Gateway["YARP :5100"]
     Keycloak["Keycloak :8080"]

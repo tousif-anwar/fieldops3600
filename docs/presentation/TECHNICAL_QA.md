@@ -168,7 +168,7 @@ A separate worker consumes redacted event envelopes into dimensional facts witho
 
 ### 39. What are the fact grains and dimension strategy?
 
-The five fact grains are work order, stage instance, booking, distinct breach event and distinct supervisor-intervention event. Seven dimensions use surrogate/natural keys, and corrections currently use type 1 rather than SCD2 historical staff/hour versions. The customer reference remains explicitly unresolved and synthetic instead of inventing a pseudonymous operational identifier. [Star schema](../../analytics/migrations/001_star_schema.sql), [history limits](../../analytics/README.md)
+The six current fact grains are work order, stage instance, booking, distinct breach event, distinct supervisor-intervention event and observed time-off exception identity. Seven dimensions use surrogate/natural keys; migration 004 and worker helpers implement SCD2 technician epochs, while other dimensions such as supervisor retain type-1 corrections. Migration 005 adds exclusion protection against overlapping technician epochs, but complete earlier history still depends on the source events retained for reconstruction. The customer reference remains explicitly unresolved and synthetic instead of inventing a pseudonymous operational identifier. [Initial star schema](../../analytics/migrations/001_star_schema.sql), [technician history/time off](../../analytics/migrations/004_technician_scd2_and_time_off.sql), [database guards](../../analytics/migrations/005_database_invariants.sql)
 
 ### 40. How does warehouse ingestion handle duplicates and late events?
 
@@ -180,7 +180,7 @@ Completion rate uses completed orders divided by orders with known creation meta
 
 ### 42. How is technician utilization calculated?
 
-It clips confirmed appointment minutes to an explicit UTC interval and divides by overlapping published local working-shift capacity using timezone/DST rules. This appointment-overlap population can include orders created before the report interval, so it differs intentionally from creation-cohort order metrics. Missing hours/timezone/range yields unknown capacity; time off, weekends and historical SCD2 changes are not modeled. [Interval capacity SQL](../../analytics/migrations/002_ordering_and_interval_capacity.sql)
+It clips confirmed appointment minutes to an explicit UTC interval and divides by overlapping local-shift capacity across the retained SCD2 technician epochs, using timezone/DST rules. Migration 004 excludes weekends by default and subtracts recorded time off; missing authoritative hours, timezone or range still yields unknown capacity. This appointment-overlap population can include orders created before the report interval, so it differs intentionally from creation-cohort order metrics. Separate overlapping time-off records currently sum clipped absence minutes and cap them at shift length rather than computing an interval union, which can overstate absence. A deployed migration establishes code availability, while retained-history completeness and a fresh regression run remain separate evidence. [Current capacity SQL](../../analytics/migrations/004_technician_scd2_and_time_off.sql), [data interpretation](DATA_ARCHITECTURE.md)
 
 ### 43. What do the additional analytical patterns represent?
 
@@ -256,5 +256,5 @@ The repository has deterministic domain/model/solver scenarios and local resilie
 
 ### 60. Which improvements would you prioritize, and why?
 
-This is a retrospective prioritization: complete native submission/offline/conflict demonstrations, finish target-specific TLS/identity/secrets/restore controls, and run a full accessibility assessment before real users depend on the system. Then validate load and operational routing data before making scalability or travel-saving claims, and add SCD2 only when historical questions justify its complexity. The current evidence supports a substantial local engineering system while keeping those release gates visible. [Known limits and resume state](../IMPLEMENTATION_STATUS.md)
+This is a retrospective prioritization: complete native submission/offline/conflict demonstrations, finish target-specific TLS/identity/secrets/restore controls, and run a full accessibility assessment before real users depend on the system. Then validate load and operational routing data before making scalability or travel-saving claims, and verify retained technician/time-off history and overlapping-absence handling against the intended working calendars. SCD2 technician history already exists in current source; further work concerns historical completeness, validation and calendar semantics rather than adding the pattern for the first time. The current evidence supports a substantial local engineering system while keeping those release gates visible. [Current data model and caveats](DATA_ARCHITECTURE.md), [known limits and resume state](../IMPLEMENTATION_STATUS.md)
 

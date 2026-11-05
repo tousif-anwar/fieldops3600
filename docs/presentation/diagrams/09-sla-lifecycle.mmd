@@ -1,21 +1,23 @@
-%% Production-default policy in minutes; demo override uses seconds only in Development.
-flowchart LR
-  Start["Stage activation<br/>Persist server UTC start and deadline"] --> OnTime["0–19 min<br/>On Time"]
-  OnTime -->|"20 min effective elapsed"| Warning["Warning<br/>Technician notification"]
-  Warning -->|"25 min effective elapsed"| Critical["Critical warning<br/>Technician notification"]
-  Critical -->|"30 min effective elapsed"| Breach["Breached<br/>Supervisor escalation"]
-  Sweep["Quartz sweep or late submission<br/>Evaluate persisted stage state"] --> Warning
-  Sweep --> Critical
-  Sweep --> Breach
-  Pause["Authorized supervisor pause<br/>Reason and audit event"] --> Resume["Resume extends deadline<br/>by approved paused seconds"]
-  Resume --> Sweep
-  Breach --> History["Breach remains in history<br/>after pause, resume or completion"]
-  Persist["Threshold level, aggregate version<br/>and outbox commit together"] --> Sweep
-  Restart["Service restart"] -->|"No browser clock needed"| Sweep
+%% Default policy in minutes. Development demo substitutes seconds explicitly.
+flowchart TB
+  Clock["Server UTC stage start and deadline<br/>Quartz sweep or late-submission catch-up"] --> Timeline
+  subgraph Timeline["Elapsed stage time"]
+    direction LR
+    OnTime["0–19 min<br/>On Time"] --> Warning["20 min<br/>Warning<br/>Technician"]
+    Warning --> Critical["25 min<br/>Critical warning<br/>Technician"]
+    Critical --> Breach["30 min<br/>Breached<br/>Supervisor escalation"]
+  end
+  Timeline --> Commit["Threshold level + aggregate version + outbox<br/>One transaction, idempotent milestone generation"]
+  subgraph Controls["Pause and recovery"]
+    direction LR
+    Restart["Restart recovers<br/>persisted state"]
+    Pause["Approved pause excludes time<br/>Resume extends the deadline"]
+    History["Earlier breaches<br/>remain evidence"]
+  end
+  Controls --> Clock
   classDef normal fill:#EAF2FF,stroke:#2862B4,color:#172B4D
   classDef warning fill:#FFF7E6,stroke:#B27A17,color:#172B4D
   classDef breach fill:#FFF1ED,stroke:#B85A38,color:#172B4D
-  class Start,OnTime,Pause,Resume,Persist,Restart,Sweep,History normal
+  class OnTime,Clock,Commit,Restart,Pause,History normal
   class Warning,Critical warning
   class Breach breach
-

@@ -1,0 +1,112 @@
+{
+  "capturedAtUtc": "2026-11-05T05:13:27.171Z",
+  "synthetic": true,
+  "source": "Actual served web, real Keycloak PKCE and live backend",
+  "silent": true,
+  "roles": [
+    {
+      "role": "dispatcher",
+      "steps": [
+        "home-dispatcher",
+        "work-order-created",
+        "dispatch-recommendations",
+        "booking-confirmed",
+        "dispatcher-work-orders",
+        "dispatcher-schedule",
+        "dispatcher-overview",
+        "dispatcher-workspaces"
+      ],
+      "errors": [],
+      "ok": true
+    },
+    {
+      "role": "technician",
+      "steps": [
+        "home-technician",
+        "technician-work-orders",
+        "technician-schedule",
+        "technician-my-jobs",
+        "technician-workspaces"
+      ],
+      "errors": [],
+      "ok": true
+    },
+    {
+      "role": "supervisor",
+      "steps": [
+        "home-supervisor",
+        "supervisor-work-orders",
+        "supervisor-schedule",
+        "supervisor-my-jobs",
+        "supervisor-supervisor",
+        "supervisor-replay",
+        "replay-incident",
+        "replay-playback",
+        "Incident PDF downloaded",
+        "supervisor-analytics",
+        "supervisor-analytics-sla-trend",
+        "supervisor-analytics-stage-duration",
+        "supervisor-analytics-supervisor-actions",
+        "CSV export downloaded",
+        "supervisor-overview",
+        "supervisor-workspaces"
+      ],
+      "errors": [],
+      "ok": true
+    },
+    {
+      "role": "manager",
+      "steps": [
+        "home-manager",
+        "manager-work-orders",
+        "manager-schedule",
+        "manager-my-jobs",
+        "manager-supervisor",
+        "manager-analytics",
+        "manager-analytics-sla-trend",
+        "manager-analytics-stage-duration",
+        "manager-analytics-supervisor-actions",
+        "CSV export downloaded",
+        "manager-overview",
+        "manager-workspaces"
+      ],
+      "errors": [],
+      "ok": true
+    },
+    {
+      "role": "analyst",
+      "steps": [
+        "home-analyst",
+        "analyst-analytics",
+        "analyst-analytics-sla-trend",
+        "analyst-analytics-stage-duration",
+        "analyst-analytics-supervisor-actions",
+        "CSV export downloaded",
+        "analyst-workspaces"
+      ],
+      "errors": [],
+      "ok": true
+    },
+    {
+      "role": "administrator",
+      "steps": [
+        "home-administrator",
+        "administrator-work-orders",
+        "administrator-replay",
+        "replay-incident",
+        "replay-playback",
+        "Incident PDF downloaded",
+        "administrator-analytics",
+        "administrator-analytics-sla-trend",
+        "administrator-analytics-stage-duration",
+        "administrator-analytics-supervisor-actions",
+        "CSV export downloaded",
+        "administrator-overview",
+        "administrator-administration",
+        "administrator-workspaces"
+      ],
+      "errors": [],
+      "ok": true
+    }
+  ]
+}

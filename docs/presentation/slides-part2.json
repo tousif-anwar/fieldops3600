@@ -1,0 +1,769 @@
+[
+  {
+    "number": 26,
+    "title": "Technician eligibility and dispatch",
+    "section": "Core product",
+    "kind": "screenshot",
+    "body": [
+      "Skills and certification gate eligibility",
+      "Local hours, time off and existing bookings constrain appointments",
+      "Recommendations reserve no capacity"
+    ],
+    "image": "docs/ui-ux/evidence/after-schedule.png",
+    "seconds": 35,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/SchedulingRecommendations.cs",
+      "building-blocks/FieldOps.Core/Models.cs",
+      "services/scheduling/migrations/002_booking_constraints.sql"
+    ],
+    "notes": "Dispatch starts with eligibility before it considers a score. The Scheduling service retrieves the authorized order, technician profiles and time-off records, then combines them with its own confirmed bookings. Skill, certification, availability and local working hours decide whether a candidate can perform this appointment. The baseline ranks feasible technicians by existing workload. An explanation lets the dispatcher review those contributing facts. Confirming the booking repeats the checks and lets PostgreSQL reject a concurrent overlap. The screenshot shows the real dispatch screen. Next, follow the technician's ordered service procedure. Source: SchedulingRecommendations.cs and booking constraint migration 002."
+  },
+  {
+    "number": 27,
+    "title": "Eight-stage guided service",
+    "section": "Core product",
+    "kind": "diagram",
+    "body": [
+      "Eight ordered stages use immutable template v1",
+      "Visible dropdown choices receive server validation",
+      "Completed stages remain read-only history",
+      "Assistance handles exceptions honestly"
+    ],
+    "diagram": "08-guided-workflow-state.mmd",
+    "seconds": 45,
+    "evidence": [
+      "building-blocks/FieldOps.Core/WorkflowTemplates/hvac-v1.json",
+      "building-blocks/FieldOps.Core/Templates.cs",
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "tests/backend/TemplateTests.cs"
+    ],
+    "notes": "The procedure moves from acceptance through arrival, inspection, diagnosis, repair, quality verification and customer confirmation to completion. Each workflow pins a template version rather than silently adopting a changed form. The backend validates the current stage and its visible allowed answers. A conditional delay reason appears only when travel is delayed, and hidden answers cannot bypass validation. Completed stages preserve their recorded answers as history. When none of the choices fits, the technician can request assistance instead of inventing a response. TemplateTests covers version and option rules. The next slide explains the server clock behind the countdown."
+  },
+  {
+    "number": 28,
+    "title": "Durable stage SLA",
+    "section": "Core product",
+    "kind": "diagram",
+    "body": [
+      "20 minutes: technician warning",
+      "25 minutes: critical technician warning",
+      "30 minutes: supervisor escalation",
+      "Persisted UTC deadlines recover after restart"
+    ],
+    "diagram": "09-sla-lifecycle.mmd",
+    "seconds": 55,
+    "evidence": [
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "building-blocks/FieldOps.ServiceHost/SlaAudit.cs",
+      "building-blocks/FieldOps.ServiceHost/Messaging.cs",
+      "scripts/demo-resilience.py"
+    ],
+    "notes": "The service persists a stage's UTC start and deadline when that stage activates. Quartz evaluates durable state, so a process restart does not reset the clock. A sweep can catch up missing warning, critical and breach milestones after downtime. The twenty-five-minute critical warning still targets the technician. The thirty-minute breach adds the supervisor escalation. Approved pauses extend effective duration while preserving any earlier breach. A late submission evaluates outstanding thresholds before completing its stage. The local resilience script verified restart and breach behavior using explicitly labeled seconds. Next, compare the two dispatch strategies and their measured tradeoffs."
+  },
+  {
+    "number": 29,
+    "title": "Intelligent scheduling tradeoffs",
+    "section": "Core product",
+    "kind": "diagram",
+    "body": [
+      "Operational advice uses actual scoped availability",
+      "CP-SAT enforces hard appointment constraints",
+      "Synthetic benchmark: 22 jobs assigned by both strategies",
+      "647 versus 619 proxy travel minutes; FEASIBLE"
+    ],
+    "diagram": "12-scheduling-optimization.mmd",
+    "seconds": 65,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/SchedulingRecommendations.cs",
+      "intelligence/fieldops_intelligence/scheduling.py",
+      "intelligence/evaluation/REPORT.md",
+      "tests/backend/verify_optimizer_http.py"
+    ],
+    "notes": "The operational adapter evaluates one fixed appointment with real authorized staff, working hours, time off and bookings. It calls OR-Tools and independently checks the returned assignment. Operational travel remains null because the system has no recorded geocoded routes. A separate six-technician, twenty-two-job synthetic comparison measures the batch solver. Both strategies assigned every job. The depot travel proxy was six hundred forty-seven minutes for baseline and six hundred nineteen for optimized, while workload spread increased slightly and runtime increased. The solver returned FEASIBLE, not proven optimal. These are measured tradeoffs on one dataset. Next, observe how operational signals reach people."
+  },
+  {
+    "number": 30,
+    "title": "Alerts and supervisor intervention",
+    "section": "Core product",
+    "kind": "screenshot",
+    "body": [
+      "Events create deduplicated persisted notifications",
+      "Signed identities select team or technician groups",
+      "SignalR supplements authoritative history",
+      "Acknowledgments and interventions retain evidence"
+    ],
+    "image": "docs/ui-ux/evidence/after-sla-monitoring.png",
+    "seconds": 40,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/Messaging.cs",
+      "building-blocks/FieldOps.ServiceHost/ReportingApi.cs",
+      "apps/web/scripts/check-live-notifications.mjs"
+    ],
+    "notes": "Notifications turn workflow events into task-focused alerts. A unique source event identity prevents duplicate messages from becoming duplicate business notifications. The consumer commits history before sending its best-effort SignalR update. The hub places a signed technician or team identity into its authorized group. A disconnected client can recover from persisted history, which remains the source of truth. The live WebSocket check matched a received supervisor notice to its stored notification ID and denied analyst and anonymous hub access. Acknowledgments and reasoned supervisor actions produce further evidence. Next, inspect the incident rather than relying on a screenshot of its latest state."
+  },
+  {
+    "number": 31,
+    "title": "Operational Replay and investigation",
+    "section": "Advanced capabilities",
+    "kind": "screenshot",
+    "body": [
+      "Original business events remain immutable",
+      "Delivery attempts and terminal faults stay separate",
+      "Playback reconstructs historical state",
+      "Facts, uncertainty and trace retention stay explicit"
+    ],
+    "image": "docs/ui-ux/evidence/after-replay.png",
+    "seconds": 65,
+    "evidence": [
+      "building-blocks/FieldOps.Core/ReplayEngine.cs",
+      "building-blocks/FieldOps.Core/IncidentSummary.cs",
+      "building-blocks/FieldOps.ServiceHost/FaultMonitor.cs",
+      "apps/web/src/pages/Replay.tsx"
+    ],
+    "notes": "Replay assembles one work order's retained evidence without querying every operational database. It preserves the original envelope and hash, then stores delivery observations separately. Causation and source-local sequences help order events, while missing parents and independent ordering remain visible as uncertainty. Playback moves a historical cursor and reconstructs read state. It never resubmits a form or booking command. The controlled incident includes a failed warning delivery, retry, breach, supervisor intervention and completion. Its factual summary does not infer a root cause. Trace links require a scoped retention check. Next, consider advice that may help before a future deadline is missed."
+  },
+  {
+    "number": 32,
+    "title": "Predictive SLA advice",
+    "section": "Advanced capabilities",
+    "kind": "metrics",
+    "body": [
+      "Synthetic chronological split: 60% train, 20% calibrate, 20% test",
+      "Logistic F1 0.754; rule F1 0.442",
+      "False-alert rate 0.242 versus 0.170",
+      "Supervisors retain decision authority"
+    ],
+    "seconds": 70,
+    "evidence": [
+      "intelligence/fieldops_intelligence/prediction.py",
+      "intelligence/evaluation/REPORT.md",
+      "apps/web/src/components/RiskAssessment.tsx",
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs"
+    ],
+    "notes": "The model predicts whether an active stage will exceed its SLA from information available at the snapshot. One observation per stage and chronological training, calibration and test partitions reduce leakage. The measured synthetic logistic model achieved F1 of zero point seven five four versus zero point four four two for the rule baseline. Its false-alert rate was higher, so detection improved at a cost. The interface exposes assumptions, factors, model version and prediction time. Supervisors record accepted or dismissed advice with a reason. No real-world accuracy or employee ranking claim follows from this synthetic evaluation. Next, separate implemented experiments from the simulator roadmap."
+  },
+  {
+    "number": 33,
+    "title": "Digital Operations Simulator roadmap",
+    "section": "Advanced capabilities",
+    "kind": "comparison",
+    "body": [
+      "Implemented: deterministic tests and bounded resilience scenarios",
+      "Implemented: synthetic model and dispatch evaluation",
+      "Planned: interactive absence, surge and what-if simulation"
+    ],
+    "seconds": 25,
+    "evidence": [
+      "scripts/demo-resilience.py",
+      "scripts/demo-terminal-fault.py",
+      "intelligence/fieldops_intelligence/evaluate.py",
+      "docs/presentation/FEATURE_DEMO_MATRIX.md"
+    ],
+    "notes": "A broad Digital Operations Simulator is planned rather than implemented. The repository already contains useful narrower experiments: deterministic clock-driven tests, synthetic model and solver evaluation, accelerated SLA transitions, broker outage and controlled consumer failures. They provide reproducible evidence for selected mechanisms. They do not form an interactive business simulation of arbitrary absences or demand surges. A future simulator would need explicit assumptions, repeatable scenario inputs and independently validated outcomes. Keeping that boundary visible prevents a roadmap label from becoming a false completion claim. The next slide returns to a capability already implemented in the native client's queue."
+  },
+  {
+    "number": 34,
+    "title": "Native offline synchronization",
+    "section": "Advanced capabilities",
+    "kind": "diagram",
+    "body": [
+      "Owner-scoped cache, drafts and durable operation queue",
+      "Original key, version and client time survive retries",
+      "Backoff and manual synchronization preserve conflicts",
+      "Server access and SLA remain authoritative"
+    ],
+    "diagram": "14-mobile-offline-synchronization.mmd",
+    "seconds": 45,
+    "evidence": [
+      "apps/technician-mobile/src/offline/queue.ts",
+      "apps/technician-mobile/src/runtime.tsx",
+      "apps/technician-mobile/src/session-lifecycle.ts",
+      "tests/mobile/offline-queue.test.ts"
+    ],
+    "notes": "Disconnection preserves useful local work without creating a second workflow authority. The device persists each logical action with its owner, original idempotency key, expected version, answers and client-reported time. Automatic retries back off. Manual synchronization may retry timing-eligible work immediately, but it cannot force a blocked conflict through. Server version and access checks still decide acceptance, and offline time does not pause an SLA. Tokens use SecureStore, while drafts and caches use account-scoped AsyncStorage without application encryption. Source tests cover these rules. The native demonstration must separately establish which device transitions actually occurred. Next, move into the running web application."
+  },
+  {
+    "number": 35,
+    "title": "Web demonstration",
+    "section": "Product demonstration",
+    "kind": "demo",
+    "body": [
+      "Dispatcher: create and assign real synthetic work",
+      "Supervisor: inspect SLA, alert and intervention",
+      "Analyst: read warehouse metrics and export",
+      "Replay: inspect evidence and historical playback"
+    ],
+    "image": "docs/ui-ux/evidence/after-work-order-detail.png",
+    "seconds": 180,
+    "evidence": [
+      "docs/presentation/FEATURE_DEMO_MATRIX.md",
+      "apps/web/src/pages/WorkOrders.tsx",
+      "apps/web/src/pages/Schedule.tsx",
+      "apps/web/src/pages/Replay.tsx"
+    ],
+    "notes": "This demonstration follows the retained synthetic service record rather than inventing fresh results on a slide. In the dispatcher context, show the request, recommendation explanation and confirmed booking. Move to the prepared supervisor context to inspect the overdue stage, persisted alert and recorded intervention. In analytics, identify the warehouse freshness and a metric denominator before opening an actual export. Finish in Replay, move the historical cursor and inspect the warning's separate delivery observations. Use the validated backup clip if the live environment is unavailable. The longer recordings account for features outside this timed segment. Next, compare the six role-specific entry points."
+  },
+  {
+    "number": 36,
+    "title": "Six role-specific workspaces",
+    "section": "Product demonstration",
+    "kind": "comparison",
+    "body": [
+      "Technician and Dispatcher focus on execution and allocation",
+      "Supervisor and Manager focus on exceptions and performance",
+      "Analyst sees masked measures; Administrator sees configuration boundaries",
+      "Backend policies enforce access independently"
+    ],
+    "images": [
+      "docs/ui-ux/evidence/after-home-technician.png",
+      "docs/ui-ux/evidence/after-home-dispatcher.png",
+      "docs/ui-ux/evidence/after-home-supervisor.png",
+      "docs/ui-ux/evidence/after-home-manager.png",
+      "docs/ui-ux/evidence/after-home-analyst.png",
+      "docs/ui-ux/evidence/after-home-administrator.png"
+    ],
+    "seconds": 50,
+    "evidence": [
+      "apps/web/src/pages/Home.tsx",
+      "apps/web/src/home.ts",
+      "apps/web/e2e/roles.spec.ts",
+      "building-blocks/FieldOps.ServiceHost/Bootstrap.cs"
+    ],
+    "notes": "These are real role Home captures using separate authenticated accounts. A technician's next service task differs from a dispatcher's allocation queue. Supervisors prioritize risk and overdue work, managers inspect performance, and analysts start from appropriately masked warehouse measures. Administration describes the identity-provider boundary rather than embedding a password manager in the operations portal. Navigation supports each job, while signed backend policies independently decide access. For example, Replay requires Supervisor or Administrator even if a broader UI tile appears. The supplementary role recording covers every account without consuming the whole live segment. Next, examine how the native app shares the same backend."
+  },
+  {
+    "number": 37,
+    "title": "Native Android architecture",
+    "section": "Native demonstration",
+    "kind": "diagram",
+    "body": [
+      "React Native and Expo Router render native screens",
+      "Browser PKCE returns through the app callback scheme",
+      "SecureStore protects credentials",
+      "TanStack Query and AsyncStorage support local continuity"
+    ],
+    "diagram": "14-mobile-offline-synchronization.mmd",
+    "seconds": 40,
+    "evidence": [
+      "apps/technician-mobile/app/_layout.tsx",
+      "apps/technician-mobile/src/auth.tsx",
+      "apps/technician-mobile/src/api.ts",
+      "apps/technician-mobile/src/runtime.tsx"
+    ],
+    "notes": "The Android application is a React Native development build, not a browser skin. Expo Router owns the native navigation, and AuthSession opens the system browser for Keycloak code flow with PKCE. The app callback returns the authorization result, while SecureStore retains native credentials. API calls use the same gateway and resource policies as the web. TanStack Query caches successful queries, and AsyncStorage retains drafts and queued work under the signed-in owner. A generation guard prevents an old refresh from reviving a logged-out session. The diagram explains the offline boundary. Next, show the actual emulator and label every observed step."
+  },
+  {
+    "number": 38,
+    "title": "Native Android demonstration",
+    "section": "Native demonstration",
+    "kind": "demo",
+    "body": [
+      "Launch the installed Android development build",
+      "Complete real Keycloak sign-in and open assigned work",
+      "Show only observed stage and recovery outcomes",
+      "Separate verified native steps from source-tested behavior"
+    ],
+    "seconds": 180,
+    "evidence": [
+      "apps/technician-mobile/app/(tabs)/index.tsx",
+      "apps/technician-mobile/app/job/[id].tsx",
+      "apps/technician-mobile/app/job/[id]/stage/[stage].tsx",
+      "docs/presentation/FEATURE_DEMO_MATRIX.md"
+    ],
+    "notes": "Launch the installed native application and identify the emulator context. Complete the real browser authorization round trip with credentials excluded from recording, then open authenticated assigned work and its service detail. Demonstrate a stage submission, assistance and offline recovery only when their actual receipts and updated state are visible. For any failed or skipped step, state that boundary plainly and point to the source-level test evidence separately. Do not replace a missing native result with the web UI. Use the validated native backup recording if the live session fails. Next, trace these screens back to the repository and its implementation boundaries."
+  },
+  {
+    "number": 39,
+    "title": "Repository map",
+    "section": "Implementation and delivery",
+    "kind": "table",
+    "body": [
+      "apps: operations web and native technician app",
+      "services and building-blocks: hosts, rules and shared infrastructure",
+      "analytics, intelligence and replay: projections and advisory code",
+      "infrastructure, tests and docs: reproducibility and evidence"
+    ],
+    "seconds": 30,
+    "evidence": [
+      "README.md",
+      "services/FieldOps.Backend.slnx",
+      "building-blocks/FieldOps.Core/FieldOps.Core.csproj",
+      "docs/INDEX.md"
+    ],
+    "notes": "The repository groups code by deployed ownership and application responsibility. Apps contains the operations web and technician client. Six service folders hold independently executable hosts and their migrations. Building blocks separates core rules and event contracts from shared ASP.NET and persistence infrastructure. Analytics owns its worker and warehouse SQL, while intelligence contains reproducible Python training and optimization. Replay's documentation points to the actual reporting implementation rather than pretending every folder is a service. Tests and infrastructure sit beside the code they verify and deploy. The documentation index provides deeper paths. Next, look at the dependency direction behind this layout."
+  },
+  {
+    "number": 40,
+    "title": "Dependency direction and shared code",
+    "section": "Implementation and delivery",
+    "kind": "code",
+    "body": [
+      "RequireVersion(workflow, expectedVersion);",
+      "Templates.Validate(stage.Index, answers, workflow.TemplateVersion);",
+      "stage.CompletedAtUtc = now;",
+      "workflow.Version++;"
+    ],
+    "seconds": 40,
+    "evidence": [
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.ServiceHost/Persistence.cs",
+      "services/workflows/Program.cs"
+    ],
+    "notes": "The thin host selects a service role, while shared infrastructure wires only the relevant endpoints and owned model. Core workflow rules accept explicit timestamps and values, making deterministic tests practical. Endpoints coordinate authentication, resource checks, remote prerequisite reads and the database unit of work. This is pragmatic domain and infrastructure separation. It is not evidence of strict Domain-Driven Design or an interface around every class. Sharing host infrastructure keeps six deployments consistent, but it couples their framework and persistence upgrades. The chosen tradeoff is visible in the source. Next, follow that source through the actual local build and deployment pipeline."
+  },
+  {
+    "number": 41,
+    "title": "Source to running system",
+    "section": "Implementation and delivery",
+    "kind": "diagram",
+    "body": [
+      "Pinned runtime and dependency builds",
+      "Unit, PostgreSQL, browser and security command paths",
+      "Container images and migration jobs",
+      "Local Compose verified; remote deployment remains open"
+    ],
+    "diagram": "15-ci-validation.mmd",
+    "seconds": 35,
+    "evidence": [
+      ".github/workflows/validate.yml",
+      "infrastructure/docker/Dockerfile.service",
+      "infrastructure/docker/Dockerfile.web",
+      "docker-compose.yml",
+      "scripts/verify-fresh-compose.py"
+    ],
+    "notes": "GitHub Actions defines separate backend, web, mobile, intelligence, integrated and security jobs using pinned action references. Dockerfiles build the deployable images, and Compose starts owner-only migrations before restricted runtime services. A disposable empty-volume project verified first startup without resetting the normal environment. These are actual local build and execution results. The workflow definition does not establish a successful remote Actions run, and no Oracle, Azure or other external deployment was performed. That distinction matters when evaluating portability versus production operation. Next, inspect the different test layers and the latest executed evidence rather than counting directory names."
+  },
+  {
+    "number": 42,
+    "title": "Testing evidence by layer",
+    "section": "Quality and operations",
+    "kind": "table",
+    "body": [
+      "Current local run: 57 backend, 41 web, 23 mobile tests passed",
+      "PostgreSQL constraints and clocks receive direct assertions",
+      "Live HTTP, browser, WebSocket and resilience checks add boundaries",
+      "Historical counts remain labeled by their execution date"
+    ],
+    "seconds": 50,
+    "evidence": [
+      "tests/backend/FieldOps.Tests.csproj",
+      "tests/backend/PostgresIntegrationTests.cs",
+      "tests/warehouse/test_projection.py",
+      "apps/web/src/test/analytics.test.tsx",
+      "tests/mobile/offline-queue.test.ts",
+      "docs/presentation/EVIDENCE_MATRIX.md"
+    ],
+    "notes": "The latest presentation preparation run passed fifty-seven backend tests, forty-one web tests and twenty-three mobile tests. These suites overlap in scenarios, so their sum is not an independent coverage percentage. PostgreSQL Testcontainers exercises real exclusion, migration and immutable-store guarantees. Pure rules drive SLA transitions with explicit clocks rather than waiting thirty minutes. Signed-identity HTTP, browser, WebSocket and controlled failure checks establish further operational boundaries. Warehouse and intelligence results must retain their own dated execution labels when not rerun at the same revision. The evidence matrix links each claim to its source and observation. Next, connect those checks to operational diagnosis."
+  },
+  {
+    "number": 43,
+    "title": "Business evidence and technical observability",
+    "section": "Quality and operations",
+    "kind": "comparison",
+    "body": [
+      "Replay preserves business and delivery evidence",
+      "OpenTelemetry follows technical execution",
+      "Prometheus and Grafana expose service health",
+      "Trace retention can expire independently"
+    ],
+    "seconds": 45,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/Telemetry.cs",
+      "building-blocks/FieldOps.ServiceHost/TraceProbe.cs",
+      "scripts/verify-observability.py",
+      "infrastructure/monitoring/jaeger.yml",
+      "infrastructure/monitoring/prometheus.yml"
+    ],
+    "notes": "Replay and observability answer related but different questions. A business event records an accepted transition and its actor, while traces expose technical execution across requests and messaging. Prometheus scrapes service metrics, Grafana displays them, and structured logs retain correlation context. The latest retained observability artifact records six healthy targets and a business trace with twenty-seven spans. Those counts describe that observation, not an availability guarantee. Jaeger uses bounded in-memory retention, so a trace may disappear while immutable business evidence survives. The application checks availability before offering its link. Next, assess the security controls and the operational gaps that remain."
+  },
+  {
+    "number": 44,
+    "title": "Security controls and release gaps",
+    "section": "Quality and operations",
+    "kind": "table",
+    "body": [
+      "Signed identity plus role and resource policies",
+      "Owner migrations and restricted runtime grants",
+      "Redacted analytics and no committed credentials",
+      "TLS, restore drills and full audits remain deployment work"
+    ],
+    "seconds": 40,
+    "evidence": [
+      "docs/security/threat-model.md",
+      "scripts/verify-database-permissions.py",
+      "services/reporting/migrations/002_append_only_evidence.sql",
+      "docs/testing/VERIFICATION.md",
+      "docs/ui-ux/ACCESSIBILITY_REPORT.md"
+    ],
+    "notes": "Security starts with signed identity and continues at each object boundary. Backend role policies and team or technician checks remain necessary even when navigation hides a page. Migration credentials are separate from runtime identities, and replay evidence permits ordinary insertion without mutation. Warehouse staging removes customer contact details and answers. Local secret, static and dependency scans provide scoped evidence, while the passive pre-login ZAP result is not an authenticated ASVS assessment. Production TLS, identity policy, secret rotation and tested backup restoration still require a hosting target. Accessibility checks also have a stated scope. Next, examine the implementation challenges that made these boundaries necessary."
+  },
+  {
+    "number": 45,
+    "title": "Engineering challenges",
+    "section": "Lessons and roadmap",
+    "kind": "comparison",
+    "body": [
+      "Reliable deadlines across restart and late submission",
+      "Meaningful ordering across independent services",
+      "Native OAuth, account isolation and offline conflicts",
+      "Windows toolchain and migration/runtime separation"
+    ],
+    "seconds": 45,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/SlaAudit.cs",
+      "building-blocks/FieldOps.Core/ReplayEngine.cs",
+      "apps/technician-mobile/src/session-lifecycle.ts",
+      "scripts/reconcile-database-runtime.py",
+      "apps/technician-mobile/README.md"
+    ],
+    "notes": "The difficult work centered on state and evidence rather than adding screens. Durable deadlines needed restart catch-up without emitting duplicate milestones. Replay needed causal and source-local order without pretending device timestamps created a reliable global sequence. Native authentication had to coordinate browser return, credential persistence and refreshes that outlived logout. Offline actions needed explicit conflict handling instead of silently changing the expected version. Operationally, Windows path handling required an updated local Ninja tool, and database grants required a separate owner migration path. These are observed engineering problems with concrete fixes and remaining limits. Next, consider the broader architectural tradeoffs behind them."
+  },
+  {
+    "number": 46,
+    "title": "Architecture tradeoffs",
+    "section": "Lessons and roadmap",
+    "kind": "comparison",
+    "body": [
+      "Service isolation adds deployment and consistency cost",
+      "Synchronous checks and asynchronous projections serve different needs",
+      "Offline continuity creates explicit conflict work",
+      "Bounded optimization trades runtime for feasible advice"
+    ],
+    "seconds": 50,
+    "evidence": [
+      "docs/architecture/patterns.md",
+      "docs/adr/001-service-ownership.md",
+      "docs/adr/002-browser-auth.md",
+      "docs/adr/003-evidence-and-runtime-grants.md",
+      "intelligence/evaluation/REPORT.md"
+    ],
+    "notes": "Microservices provide clear ownership and independent deployment units, but they require more configuration and leave cross-service races to be managed explicitly. A modular monolith would be a reasonable alternative for a smaller team. Synchronous checks help validate a booking now, while asynchronous events let reporting and alerts recover independently at the cost of lag. Offline continuity preserves work but exposes version conflicts that a connected-only client might avoid. Bounded CP-SAT can return feasible advice without proving optimality, and the measured runtime is higher than greedy ranking. These choices are contextual rather than universally superior. Next, prioritize improvements using the remaining evidence gaps."
+  },
+  {
+    "number": 47,
+    "title": "Prioritized roadmap",
+    "section": "Lessons and roadmap",
+    "kind": "table",
+    "body": [
+      "Complete native recovery and physical-device acceptance",
+      "Validate target-specific security, retention and restore",
+      "Resolve cross-service race and capacity edge cases",
+      "Measure realistic load and operational routing before scale claims"
+    ],
+    "seconds": 35,
+    "evidence": [
+      "docs/IMPLEMENTATION_STATUS.md",
+      "docs/presentation/FEATURE_DEMO_MATRIX.md",
+      "docs/presentation/DATA_ARCHITECTURE.md",
+      "docs/security/threat-model.md"
+    ],
+    "notes": "The roadmap follows operational impact. First, close any native submission, reconnect and conflict steps not established by the final recording, then test physical devices and release packaging. A real deployment needs TLS, managed secrets, identity policy and a restore drill before handling customer data. Cross-service cancellation and profile races deserve explicit coordination, and capacity calculations need further interval-edge validation. Only then should realistic load tests and geocoded routing support scalability or travel claims. The SCD2 source already exists, but retained history limits still matter. Template authoring and a general simulator remain later product work. Next, summarize the engineering outcomes supported today."
+  },
+  {
+    "number": 48,
+    "title": "Verified engineering outcomes",
+    "section": "Results",
+    "kind": "metrics",
+    "body": [
+      "Six services and shared authenticated web/native APIs",
+      "Conflict-protected booking and ordered service execution",
+      "Immutable investigation, warehouse reporting and advisory intelligence",
+      "Local tests and controlled recovery provide inspectable evidence"
+    ],
+    "seconds": 35,
+    "evidence": [
+      "docs/presentation/EVIDENCE_MATRIX.md",
+      "docs/testing/VERIFICATION.md",
+      "docs/case-study/DELIVERY_REPORT.md",
+      "scripts/demo-resilience.py"
+    ],
+    "notes": "The result is an inspectable local engineering system with six service owners and shared authenticated client capabilities. PostgreSQL protects confirmed appointment overlap, while the workflow service governs ordered forms and durable deadlines. Immutable replay connects business transitions with delivery observations, warehouse projections and technical traces. Advisory prediction and optimization expose assumptions and measured synthetic results. Local tests and controlled failures make these mechanisms reviewable. They do not establish production adoption, uptime, savings or certified mobile release quality. The delivered evidence inventory keeps those boundaries attached to the claims. Next, relate the technical result to the coordination problem that motivated the project."
+  },
+  {
+    "number": 49,
+    "title": "Business and engineering value",
+    "section": "Results",
+    "kind": "bullets",
+    "body": [
+      "Operational coordination has a shared record",
+      "Technicians follow an explicit service procedure",
+      "Supervisors can inspect evidence behind an exception",
+      "Engineering decisions remain measurable and reviewable"
+    ],
+    "seconds": 30,
+    "evidence": [
+      "docs/architecture/REQUIREMENTS.md",
+      "docs/presentation/EVIDENCE_MATRIX.md",
+      "docs/presentation/TECHNICAL_QA.md"
+    ],
+    "notes": "The business value proposition is clearer coordination and traceability, rather than an unmeasured productivity claim. Dispatch and field execution share an explicit service record. Supervisors can inspect why an alert appeared, what intervention occurred and what completion was observed. Analysts can examine defined populations instead of treating a chart as unexplained truth. For an engineering reviewer, the project demonstrates API design, persistence constraints, asynchronous recovery, native authentication and evidence-aware debugging. The portfolio's strength is that these choices and limitations can be inspected in code and reproduced locally. The closing slide points to the delivered materials for deeper questions."
+  },
+  {
+    "number": 50,
+    "title": "Questions and technical discussion",
+    "section": "Closing",
+    "kind": "diagram",
+    "body": [
+      "Source, evidence and recordings accompany the deck",
+      "Detailed catalogs and Q&A support follow-up review",
+      "The architecture remains open to measured improvement"
+    ],
+    "diagram": "02-container-architecture.mmd",
+    "seconds": 30,
+    "evidence": [
+      "docs/presentation/EVIDENCE_MATRIX.md",
+      "docs/presentation/TECHNICAL_QA.md",
+      "docs/presentation/API_REFERENCE.md",
+      "docs/presentation/DATA_ARCHITECTURE.md"
+    ],
+    "notes": "FieldOps 360 demonstrates how a field-service workflow can remain understandable across authenticated clients, independently owned services and asynchronous read models. The strongest evidence is the same incident viewed through authoritative state, retry observations, a warehouse fact, an export and a trace. The appendix and supporting catalogs provide exact source paths, API shapes and test boundaries for technical discussion. Questions about alternatives, failure recovery, security or model validity are welcome. If a question reaches beyond the implemented or measured scope, keep that distinction explicit. This concludes the timed narrative. The remaining slides are reference material for the discussion rather than additional presentation time."
+  },
+  {
+    "number": 51,
+    "title": "Appendix: service communication and API catalog",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "Synchronous prerequisite reads remain owner-scoped",
+      "Events populate notifications, replay and warehouse independently",
+      "API_REFERENCE lists actual methods, DTOs and errors",
+      "Cross-service identifiers are not database foreign keys"
+    ],
+    "diagram": "02-container-architecture.mmd",
+    "seconds": 0,
+    "evidence": [
+      "docs/presentation/API_REFERENCE.md",
+      "gateway/Program.cs",
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs"
+    ],
+    "notes": "Use the API catalog for exact route, method, policy, request and error details. The diagram distinguishes owner databases from synchronous prerequisites and asynchronous consumers. Direct intelligence optimization accepts submitted problem data. Operational scheduling advice first builds authorized inputs and still requires a final booking transaction. This appendix is reference material."
+  },
+  {
+    "number": 52,
+    "title": "Appendix: event envelope and RabbitMQ topology",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "Stable EventId and schema/type version",
+      "Actor, order, causation, correlation and trace metadata",
+      "Source occurrence differs from receipt and processing",
+      "Independent queues retain retries and terminal faults"
+    ],
+    "diagram": "07-event-driven-communication.mmd",
+    "seconds": 0,
+    "evidence": [
+      "building-blocks/FieldOps.Core/Models.cs",
+      "building-blocks/FieldOps.ServiceHost/Bootstrap.cs",
+      "building-blocks/FieldOps.ServiceHost/FaultMonitor.cs",
+      "analytics/ingestion-worker/worker.py"
+    ],
+    "notes": "AuditEvent is the logical contract inside MassTransit's JSON message envelope. Operational services publish source events, while Reporting owns terminal diagnostic observations. Each consumer has independent delivery behavior. A successful reporting receipt does not establish notification recovery. Source sequence is local to its owner, and terminal retry totals can remain unknown."
+  },
+  {
+    "number": 53,
+    "title": "Appendix: operational schemas and indexes",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "work_orders, technicians/time_off, bookings, workflows and notifications",
+      "Workflow stages persist in StagesJson",
+      "GiST exclusion protects confirmed appointment intervals",
+      "Outbox and evidence indexes match current access paths"
+    ],
+    "diagram": "10-database-architecture.mmd",
+    "seconds": 0,
+    "evidence": [
+      "docs/presentation/DATA_ARCHITECTURE.md",
+      "services/scheduling/migrations/002_booking_constraints.sql",
+      "services/workflows/migrations/001_initial.sql",
+      "services/technicians/migrations/003_relationship_integrity.sql"
+    ],
+    "notes": "The schema catalog names physical tables and distinguishes logical associations from real foreign keys. Technician time off has a same-owner foreign key. Booking references to orders and staff cross ownership boundaries and use HTTP validation. Stages are an atomic JSONB aggregate, not a fabricated normalized stage-transition table. Indexes have explicit purposes."
+  },
+  {
+    "number": 54,
+    "title": "Appendix: warehouse grain and history",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "Seven dimensions and six facts in current SQL",
+      "Technician SCD2 uses half-open effective epochs",
+      "Migration 004 adds observed time off and capacity rules",
+      "Retained events limit reconstructed historical truth"
+    ],
+    "diagram": "11-warehouse-star-schema.mmd",
+    "seconds": 0,
+    "evidence": [
+      "analytics/migrations/004_technician_scd2_and_time_off.sql",
+      "analytics/migrations/005_database_invariants.sql",
+      "analytics/ingestion-worker/worker.py",
+      "docs/presentation/DATA_ARCHITECTURE.md"
+    ],
+    "notes": "Current source supersedes older type-one-only warehouse prose. Migration 004 adds technician history and a sixth time-off fact, while migration 005 excludes overlapping epochs. Other dimensions do not automatically become SCD2. Capacity requires authoritative metadata, and separate overlapping absences currently use sum-and-cap subtraction rather than a general interval-union algorithm."
+  },
+  {
+    "number": 55,
+    "title": "Appendix: workflow and SLA transitions",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "Pinned template controls visible allowed answers",
+      "Expected versions protect aggregate transitions",
+      "Sweep and late submit catch up durable milestones",
+      "Pause extends effective duration and preserves breach evidence"
+    ],
+    "diagram": "03-workflow-components.mmd",
+    "seconds": 0,
+    "evidence": [
+      "building-blocks/FieldOps.Core/Templates.cs",
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "building-blocks/FieldOps.ServiceHost/SlaAudit.cs",
+      "tests/backend/SlaAuditTests.cs"
+    ],
+    "notes": "The current stage alone accepts a submission. The endpoint catches up missing SLA milestones before completing a late form. Supervisor pause, resume and one-stage override retain reasons and versions. The final form remains necessary for completion. Explicit clocks make threshold tests deterministic, while persisted state provides recovery after process restart."
+  },
+  {
+    "number": 56,
+    "title": "Appendix: outbox, inbox and failure windows",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "State and outbox commit in one owner transaction",
+      "Publish acknowledgment can precede publication-state commit",
+      "Stable IDs let consumers deduplicate redelivery",
+      "Projection rebuild never re-executes a business command"
+    ],
+    "diagram": "06-api-request-and-outbox.mmd",
+    "seconds": 0,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/Messaging.cs",
+      "building-blocks/FieldOps.ServiceHost/Persistence.cs",
+      "scripts/demo-resilience.py",
+      "scripts/demo-terminal-fault.py"
+    ],
+    "notes": "A crash after broker acknowledgment can cause another publication of the same event, so transport remains at least once. Inbox and warehouse ledger identities prevent another logical action. Delivery observations preserve useful retries independently. Rebuilding a derived replay projection uses retained originals and does not resend a booking or workflow mutation."
+  },
+  {
+    "number": 57,
+    "title": "Appendix: security boundaries and role matrix",
+    "section": "Technical appendix",
+    "kind": "table",
+    "body": [
+      "Technician: assigned work; Supervisor: authorized team",
+      "Analyst: masked warehouse; Replay: Supervisor or Administrator",
+      "Migration owners differ from long-running app roles",
+      "Native tokens use SecureStore; drafts use AsyncStorage"
+    ],
+    "seconds": 0,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/Bootstrap.cs",
+      "building-blocks/FieldOps.ServiceHost/Security.cs",
+      "docs/security/threat-model.md",
+      "scripts/verify-database-permissions.py",
+      "apps/technician-mobile/src/auth.tsx"
+    ],
+    "notes": "Backend policies are authoritative even when UI links are broader. PKCE protects the authorization-code exchange, while issuer, audience, expiry and signature validation protect APIs. Runtime grants limit ordinary database operations without protecting against an owner or host administrator. Production still needs TLS, identity policy, managed secrets and tested retention and restoration."
+  },
+  {
+    "number": 58,
+    "title": "Appendix: CP-SAT objective and hard constraints",
+    "section": "Technical appendix",
+    "kind": "code",
+    "body": [
+      "penalties.append(selected * (travel_minutes(technician, job) * 3))",
+      "penalties.append(delay)",
+      "penalties.append(unassigned * PRIORITY[job.priority] * 1_000_000)",
+      "penalties.append((max_load - min_load) * 2)"
+    ],
+    "seconds": 0,
+    "evidence": [
+      "intelligence/fieldops_intelligence/scheduling.py",
+      "tests/intelligence/test_scheduling.py",
+      "intelligence/evaluation/REPORT.md"
+    ],
+    "notes": "These are selected actual objective lines. Eligibility, allowed start domains, duration and no-overlap are hard constraints. Priority-weighted unassigned penalties dominate the soft travel proxy, start delay and workload spread terms. A bounded single-worker solve can return FEASIBLE without proving optimality. Actual operational travel is unavailable, and advice does not reserve capacity."
+  },
+  {
+    "number": 59,
+    "title": "Appendix: predictive evaluation details",
+    "section": "Technical appendix",
+    "kind": "table",
+    "body": [
+      "Precision 0.7739; recall 0.7350; F1 0.7540",
+      "ROC-AUC 0.8248; PR-AUC 0.8373; Brier 0.1708",
+      "False-alert rate 0.2424 versus rule 0.1703",
+      "Median/p95 inference 19.819/35.241 ms, excluding network"
+    ],
+    "seconds": 0,
+    "evidence": [
+      "intelligence/evaluation/REPORT.md",
+      "intelligence/evaluation/results.json",
+      "intelligence/fieldops_intelligence/prediction.py"
+    ],
+    "notes": "These are fixed measured synthetic results from the dated evaluation, not production claims. Chronological partitions separate training, calibration and final testing, with one snapshot per stage. Identifiers and outcome-derived features are excluded. Timing includes preprocessing and inference but excludes network transit. Higher detection accompanies more false alerts and requires human judgment."
+  },
+  {
+    "number": 60,
+    "title": "Appendix: offline operation and session races",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "Owner, original key, expected version and client time persist",
+      "Automatic backoff differs from manual synchronization",
+      "409 remains a durable conflict for review",
+      "Session generations reject stale credential writes"
+    ],
+    "diagram": "14-mobile-offline-synchronization.mmd",
+    "seconds": 0,
+    "evidence": [
+      "apps/technician-mobile/src/offline/queue.ts",
+      "apps/technician-mobile/src/runtime.tsx",
+      "apps/technician-mobile/src/session-lifecycle.ts",
+      "tests/mobile/session-lifecycle.test.ts"
+    ],
+    "notes": "Offline continuity preserves intent rather than granting local authority. Retry uses the same operation identity, and conflict review never silently rebases the version. A manual retry can bypass timing but cannot force failed or conflicting actions. Session generations and serialized persistence prevent stale refreshes from reviving logout. Device demonstrations remain separate evidence."
+  },
+  {
+    "number": 61,
+    "title": "Appendix: validation and deployment evidence",
+    "section": "Technical appendix",
+    "kind": "diagram",
+    "body": [
+      "Local suites and controlled recovery have dated results",
+      "Disposable first boot validates migrations and restricted runtimes",
+      "Pinned Actions define remote command paths",
+      "Remote CI, production restore and store release remain unclaimed"
+    ],
+    "diagram": "15-ci-validation.mmd",
+    "seconds": 0,
+    "evidence": [
+      ".github/workflows/validate.yml",
+      "scripts/verify-fresh-compose.py",
+      "docs/testing/VERIFICATION.md",
+      "docs/presentation/EVIDENCE_MATRIX.md",
+      "docker-compose.yml"
+    ],
+    "notes": "The evidence matrix separates current runs, historical records and unexecuted targets. Unit, PostgreSQL, browser, native, security and resilience checks establish different boundaries. Fresh empty-volume startup is useful reproducibility evidence but cannot replace an off-host backup restore drill. Configured GitHub Actions and portable containers do not establish a completed cloud deployment."
+  },
+  {
+    "number": 62,
+    "title": "Appendix: limitations and review questions",
+    "section": "Technical appendix",
+    "kind": "table",
+    "body": [
+      "Cross-service races and capacity edge cases remain explicit",
+      "Native recovery and physical devices need step-level acceptance",
+      "General simulator, route data and template authoring remain future work",
+      "Full security/accessibility, load and restore assessment remain release gates"
+    ],
+    "seconds": 0,
+    "evidence": [
+      "docs/presentation/TECHNICAL_QA.md",
+      "docs/presentation/FEATURE_DEMO_MATRIX.md",
+      "docs/presentation/DATA_ARCHITECTURE.md",
+      "docs/IMPLEMENTATION_STATUS.md"
+    ],
+    "notes": "Use the sixty-question preparation guide for deeper discussion of alternatives and evidence limits. The roadmap prioritizes operational safety and missing acceptance before broader product features. Distinguish code existence, a passing test, a screenshot and a successful demonstration. No production adoption, uptime, savings or real-world model effectiveness is established by this project."
+  }
+]

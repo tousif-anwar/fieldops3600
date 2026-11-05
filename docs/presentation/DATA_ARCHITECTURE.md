@@ -1,6 +1,6 @@
 # Data architecture and schema evidence
 
-Presentation audit date: 2026-11-05. This document describes the **current source**, including warehouse migrations 004/005 that older README/status paragraphs do not yet describe. Migration existence is implementation evidence, not proof that every running database has applied it. Confirm the running migration ledger before a demonstration. [Evidence status](EVIDENCE_MATRIX.md) distinguishes current source from historical execution.
+Presentation audit date: 2026-11-05. This document describes the **current source**, including warehouse migrations 004/005 that older README/status paragraphs do not yet describe. Root confirmed both migration rows in the live warehouse ledger during presentation preparation; expanded tests still require a dated execution result. [Evidence status](EVIDENCE_MATRIX.md) distinguishes current source from historical execution.
 
 ## Database ownership and access
 

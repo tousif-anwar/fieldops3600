@@ -1,0 +1,506 @@
+[
+  {
+    "number": 1,
+    "title": "FieldOps 360",
+    "section": "Business context",
+    "kind": "title",
+    "body": [
+      "Engineering a field-service operations platform",
+      "Distributed workflows, qualified dispatch and operational evidence",
+      "Presenter: [Your name]",
+      "November 2026"
+    ],
+    "notes": "FieldOps 360 is a locally running engineering project for a fictional regional HVAC operation. The presentation follows a service request through dispatch, technician execution, escalation, reporting and investigation. Its technical contribution is the connection between authoritative operational state and the evidence needed to explain a delayed or failed process. The examples use synthetic customers and generated local identities. They demonstrate implemented behavior without claiming production adoption or commercial impact. The repository, executable tests and recorded demonstrations supply the evidence. Begin with the operational problem that makes these architectural choices useful.",
+    "seconds": 25,
+    "evidence": [
+      "README.md",
+      "docs/architecture/overview.md",
+      "docs/screenshots/operations-overview.png"
+    ]
+  },
+  {
+    "number": 2,
+    "title": "A connected service lifecycle",
+    "section": "Business context",
+    "kind": "bullets",
+    "body": [
+      "Dispatchers create and schedule service work.",
+      "Technicians follow eight validated stages.",
+      "Supervisors respond to warnings and review advice.",
+      "Analysts and investigators use recorded operational evidence."
+    ],
+    "notes": "A work order is only the beginning of the process. Dispatch must choose a qualified technician and reserve a feasible appointment. The assigned technician then follows an ordered service pipeline while the server monitors durable deadlines. Supervisors can intervene with a recorded reason. Events from these decisions feed independent analytical facts and a historical investigation console. These experiences share identity and resource boundaries but use different read models. That separation lets the system answer both what should happen next and what happened earlier. The next view explains the HVAC setting without assuming external market statistics.",
+    "seconds": 30,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.ServiceHost/ReportingApi.cs",
+      "apps/web/src/main.tsx"
+    ]
+  },
+  {
+    "number": 3,
+    "title": "The HVAC operating context",
+    "section": "Business context",
+    "kind": "bullets",
+    "body": [
+      "Service demand becomes a timed appointment.",
+      "Qualification and availability constrain dispatch.",
+      "Field work needs consistent procedures.",
+      "Completion needs customer confirmation and recorded outcomes."
+    ],
+    "notes": "The target scenario is a fictional regional HVAC team. Its requested planning scale describes the business context, not a benchmark that this repository has proven. A service visit combines practical constraints: someone needs the right skill and safety certification, the appointment must fit working hours, and another booking must not occupy the same interval. On site, technicians need accurate procedural choices and an assistance path when routine options do not fit. A completed service also needs a defensible outcome. These coordination requirements create the problem described next.",
+    "seconds": 40,
+    "evidence": [
+      "docs/architecture/REQUIREMENTS.md",
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "building-blocks/FieldOps.Core/WorkflowTemplates/hvac-v1.json"
+    ]
+  },
+  {
+    "number": 4,
+    "title": "Coordination failures cross boundaries",
+    "section": "Business context",
+    "kind": "comparison",
+    "body": [
+      "Manual assignment risks conflicting commitments.",
+      "Disconnected forms obscure progress and deadlines.",
+      "Delayed messages complicate incident analysis.",
+      "Offline actions require explicit reconciliation."
+    ],
+    "notes": "The project models coordination problems rather than asserting that a named business experienced them. A booking can conflict even when two dispatchers each saw an available technician. A browser countdown can become misleading after a restart or disconnection. A repeated message can look like a second business action unless event identity survives delivery. An offline submission may arrive after the server advanced the workflow version. Each example needs more than a screen-level fix. FieldOps places the relevant guarantee in the owning database or server rule, and exposes uncertainty when a distributed guarantee is unavailable.",
+    "seconds": 45,
+    "evidence": [
+      "services/scheduling/migrations/002_booking_constraints.sql",
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "building-blocks/FieldOps.Core/DeliveryObservations.cs",
+      "apps/technician-mobile/src/offline/queue.ts"
+    ]
+  },
+  {
+    "number": 5,
+    "title": "One operational story, distinct responsibilities",
+    "section": "Business context",
+    "kind": "bullets",
+    "body": [
+      "Six business services own their state.",
+      "Web and native clients share authorized APIs.",
+      "Events connect alerts, analytics and Replay.",
+      "Human decisions remain visible and auditable."
+    ],
+    "notes": "The solution connects these responsibilities through a common operational story, while keeping ownership explicit. Work Orders owns the request lifecycle, Scheduling owns reservations, and Workflows owns stage progress and SLA timing. Notifications and Reporting consume events into their own views. The technician app uses the same backend boundaries as the web portal. Intelligence recommends a feasible assignment or an advisory risk estimate, but a person makes the operational decision. These responsibilities define the platform's practical purpose without assuming a measured business benefit. The role matrix makes the different user permissions concrete.",
+    "seconds": 35,
+    "evidence": [
+      "docs/architecture/overview.md",
+      "building-blocks/FieldOps.ServiceHost/Bootstrap.cs"
+    ]
+  },
+  {
+    "number": 6,
+    "title": "Six roles, explicit access boundaries",
+    "section": "Requirements",
+    "kind": "table",
+    "body": [
+      "Technician: assigned execution. Dispatcher: team dispatch.",
+      "Supervisor: team intervention and Replay.",
+      "Operations manager: coordination and reports.",
+      "Analyst: masked analytics. Administrator: identity and configuration."
+    ],
+    "notes": "Roles describe responsibilities, but resource checks decide which records a person may access. A Technician is restricted to assigned work and self-scoped staff details. A Dispatcher operates within a signed team claim. Supervisors can intervene in their team and investigate Replay, while an OperationsManager does not automatically receive Replay access. Analysts receive authorized analytical data rather than operational customer details. Administrator access is broader, with identity administration delegated to Keycloak. The gateway checks signed identity, and each service repeats policy and resource checks. Next, separate the functional scope from the quality properties that support it.",
+    "seconds": 45,
+    "evidence": [
+      "docs/security/threat-model.md",
+      "building-blocks/FieldOps.ServiceHost/Bootstrap.cs",
+      "building-blocks/FieldOps.ServiceHost/Security.cs",
+      "tests/backend/verify_resource_authorization_http.py"
+    ]
+  },
+  {
+    "number": 7,
+    "title": "Functional scope",
+    "section": "Requirements",
+    "kind": "bullets",
+    "body": [
+      "Orders, technician profiles and constrained scheduling",
+      "Eight-stage forms, SLA monitoring and intervention",
+      "Notifications, warehouse reports and incident Replay",
+      "Advisory optimization, prediction and mobile synchronization"
+    ],
+    "notes": "The functional scope spans the service lifecycle rather than a collection of isolated CRUD endpoints. The operational path creates work, assigns a technician and executes validated stage forms. Supervision adds persisted alerts, reasoned pauses, overrides and advice decisions. Historical paths project the resulting events into warehouse measures and immutable investigation evidence. The mobile client contributes drafts and a durable synchronization queue. A capability inventory distinguishes implemented code, executed verification and demonstrations that remain partial. This prevents a broad feature list from implying that every proposed screen or production control has already been completed.",
+    "seconds": 40,
+    "evidence": [
+      "docs/architecture/REQUIREMENTS.md",
+      "docs/IMPLEMENTATION_STATUS.md",
+      "docs/presentation/FEATURE_DEMO_MATRIX.md"
+    ]
+  },
+  {
+    "number": 8,
+    "title": "Quality requirements with evidence boundaries",
+    "section": "Requirements",
+    "kind": "comparison",
+    "body": [
+      "Correctness: version checks and PostgreSQL constraints",
+      "Reliability: outbox, deduplication and restart recovery",
+      "Security: signed identity and resource authorization",
+      "Production scale and full certification remain targets"
+    ],
+    "notes": "Several quality requirements have direct executable evidence. PostgreSQL constraints protect confirmed reservation intervals. Workflow tests use explicit clocks and versions to check legal progress and deadline behavior. Live identity tests exercise the gateway and resource boundaries. Reliability demonstrations introduce a controlled consumer failure and broker outage, then inspect retained evidence and recovery. Other properties remain targets that need a deployment context. There is no invented uptime figure, production throughput claim, complete accessibility certification or authenticated security assessment. The architecture drivers explain why the project accepts this particular balance of local guarantees and distributed complexity.",
+    "seconds": 45,
+    "evidence": [
+      "tests/backend/PostgresIntegrationTests.cs",
+      "tests/backend/WorkflowTests.cs",
+      "scripts/demo-resilience.py",
+      "scripts/demo-terminal-fault.py",
+      "docs/testing/VERIFICATION.md"
+    ]
+  },
+  {
+    "number": 9,
+    "title": "Architecture drivers and constraints",
+    "section": "Requirements",
+    "kind": "comparison",
+    "body": [
+      "Ownership separates critical service transactions.",
+      "Events decouple downstream views from commands.",
+      "Offline use introduces stale versions and retries.",
+      "Local reproducibility limits infrastructure cost and scope."
+    ],
+    "notes": "The requested six-service boundary creates a deliberate distributed-system exercise. Critical transactions stay inside one owner, while downstream information becomes eventually consistent. That choice adds operational work: messages can retry, views can lag, and cross-service prerequisite checks do not become distributed serializable transactions. Native offline operation introduces another version of that problem, because a locally valid form may be stale when connectivity returns. Docker Compose keeps the complete system inspectable without a paid hosting service. A modular monolith would reduce many of these costs. The next architecture view shows what was actually deployed locally.",
+    "seconds": 45,
+    "evidence": [
+      "docs/adr/001-service-ownership.md",
+      "docs/architecture/patterns.md",
+      "docker-compose.yml",
+      "apps/technician-mobile/src/offline/queue.ts"
+    ]
+  },
+  {
+    "number": 10,
+    "title": "The running platform architecture",
+    "section": "System architecture",
+    "kind": "diagram",
+    "body": [
+      "React and Expo enter through YARP.",
+      "Keycloak supplies signed identity.",
+      "Six services own separate databases.",
+      "RabbitMQ feeds notifications, Replay and the warehouse."
+    ],
+    "notes": "Solid paths represent synchronous requests or database access. Dashed paths represent asynchronous delivery and live updates. Web traffic reaches the gateway through Nginx, while the native client calls the same authorized gateway APIs. Keycloak owns authentication. The six business services own separate logical PostgreSQL databases. Scheduling can call the private intelligence API with actual scoped constraints. RabbitMQ fans events out to lifecycle, notification, reporting and independent analytical consumers. Reporting reads the warehouse through a separate read-only identity. These boundaries explain the architectural style rather than proving that every component scales independently without further work.",
+    "seconds": 60,
+    "evidence": [
+      "docker-compose.yml",
+      "gateway/Program.cs",
+      "building-blocks/FieldOps.ServiceHost/Bootstrap.cs",
+      "analytics/ingestion-worker/worker.py"
+    ],
+    "diagram": "02-container-architecture.svg"
+  },
+  {
+    "number": 11,
+    "title": "Architecture styles and their costs",
+    "section": "System architecture",
+    "kind": "comparison",
+    "body": [
+      "Microservices provide explicit business ownership.",
+      "Event-driven projections support independent reads.",
+      "Outbox and inbox preserve delivery identity.",
+      "Shared host infrastructure reduces duplication and couples upgrades."
+    ],
+    "notes": "The implementation combines database-per-service ownership with event-driven read models. It uses CQRS-like separation for reporting and investigation, while operational aggregates remain the command authority. Shared domain and host libraries reduce repeated infrastructure code across six executable deployments. That is a pragmatic layering decision, not a claim of strict Domain-Driven Design or a separate interface for every class. The tradeoff is coupling when the common host changes. Outbox and inbox patterns address a specific reliability problem, and their retention and operational costs remain real. The next two views distinguish system context from runtime containers.",
+    "seconds": 45,
+    "evidence": [
+      "docs/architecture/patterns.md",
+      "building-blocks/FieldOps.Core/FieldOps.Core.csproj",
+      "building-blocks/FieldOps.ServiceHost/FieldOps.ServiceHost.csproj",
+      "services/FieldOps.Backend.slnx"
+    ]
+  },
+  {
+    "number": 12,
+    "title": "C4 system context",
+    "section": "System architecture",
+    "kind": "diagram",
+    "body": [
+      "Dispatch, execution and supervision share one platform.",
+      "Analysts use an authorized historical view.",
+      "Keycloak owns user authentication.",
+      "Jaeger is an optional engineering investigation surface."
+    ],
+    "notes": "At the context level, the platform is one system supporting different people. The diagram deliberately omits internal queues and tables so that the human and trust relationships remain clear. Keycloak is the identity provider, and its administrator console remains a distinct administration surface. Jaeger is an optional local trace tool with its own retention behavior. The application first checks that a requested trace belongs to the authorized work order before exposing an available trace link. That check does not turn direct Jaeger access into an application permission boundary. The container view then expands the runtime implementation.",
+    "seconds": 35,
+    "evidence": [
+      "docs/architecture/overview.md",
+      "docs/security/threat-model.md",
+      "building-blocks/FieldOps.ServiceHost/TraceProbe.cs"
+    ],
+    "diagram": "01-system-context.svg"
+  },
+  {
+    "number": 13,
+    "title": "C4 containers and deployment boundaries",
+    "section": "System architecture",
+    "kind": "diagram",
+    "body": [
+      "Applications and services run as separate containers.",
+      "One PostgreSQL process hosts separately owned databases.",
+      "Seven migration jobs use owner credentials and exit.",
+      "Runtime identities retain restricted data permissions."
+    ],
+    "notes": "A container boundary is different from a database ownership boundary. Locally, one PostgreSQL process hosts six business-service databases, an independent warehouse and Keycloak's database. Seven application and warehouse migration jobs use schema-owner identities, apply SQL and grants, and exit before dependent runtimes proceed. Long-running service identities cannot perform ordinary schema creation, and Reporting has a distinct warehouse reader. The monitoring components run through an optional Compose profile. This is a loopback-exposed HTTP development environment, not a verified cloud topology. Next, connect the six business names to their concrete responsibilities.",
+    "seconds": 50,
+    "evidence": [
+      "docker-compose.yml",
+      "building-blocks/FieldOps.ServiceHost/SchemaMigrator.cs",
+      "infrastructure/postgres/grants-warehouse-runtime.sql",
+      "scripts/verify-database-permissions.py"
+    ],
+    "diagram": "04-local-deployment.svg"
+  },
+  {
+    "number": 14,
+    "title": "The six service responsibilities",
+    "section": "System architecture",
+    "kind": "table",
+    "body": [
+      "Work Orders: lifecycle. Technicians: qualifications and availability.",
+      "Scheduling: feasible reservations and conflict prevention.",
+      "Workflows: ordered forms, deadlines and interventions.",
+      "Notifications: delivery history. Reporting: analytics and Replay."
+    ],
+    "notes": "The boundaries follow the business decision each service must protect. Work Orders retains customer references and lifecycle state. Technicians retains qualifications, working hours, team relationships and time off. Scheduling owns confirmed bookings and their exclusion constraint. Workflows owns the versioned stage aggregate, submissions and SLA behavior. Notifications owns deduplicated alerts and acknowledgment history. Reporting owns original investigation evidence and derived replay state, while querying the independent warehouse for analytics. Cross-service reads validate prerequisites through HTTP, and events update local views. The communication view shows why these interactions have different timing guarantees.",
+    "seconds": 55,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.ServiceHost/ReportingApi.cs",
+      "building-blocks/FieldOps.ServiceHost/Persistence.cs",
+      "docs/architecture/contracts.md"
+    ]
+  },
+  {
+    "number": 15,
+    "title": "Synchronous checks and asynchronous consequences",
+    "section": "System architecture",
+    "kind": "diagram",
+    "body": [
+      "HTTP validates prerequisites before commands commit.",
+      "A local transaction stores business state and its event.",
+      "RabbitMQ delivers the stable event identity.",
+      "Consumers update their own authorized read state."
+    ],
+    "notes": "A booking request synchronously checks the order and technician constraints because the dispatcher needs an immediate acceptance decision. A notification or warehouse update can arrive later without holding that user request open. The producer stores its business change and event in one owned transaction, then a background dispatcher publishes the event. Consumers have their own failure and deduplication behavior. Correlation groups an operation, causation relates events, and trace metadata connects technical processing where spans remain retained. None of these identifiers alone establishes a total order across devices. Reliability depends on how publication and retries preserve them.",
+    "seconds": 45,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.ServiceHost/Messaging.cs",
+      "building-blocks/FieldOps.Core/Models.cs"
+    ],
+    "diagram": "06-api-request-and-outbox.svg"
+  },
+  {
+    "number": 16,
+    "title": "Delivery guarantees and failure recovery",
+    "section": "System architecture",
+    "kind": "diagram",
+    "body": [
+      "Outbox publication is at least once.",
+      "Inbox and ledger identities deduplicate business effects.",
+      "Retries and terminal faults remain separate observations.",
+      "Read models can lag committed commands."
+    ],
+    "notes": "The outbox closes the gap between a successful database change and unreliable broker publication. Row locks coordinate pending publication, and a crash after broker confirmation can still cause a repeated delivery. Stable event IDs let consumers recognize that repeated logical action. Reporting separates delivery observations from original business events, so a failed attempt does not become a second warning or assignment. An independent fault monitor records sanitized terminal diagnostics after bounded retries. The retained error queue remains separate evidence. Recovery demonstrations verify selected local paths, while automatic poison-message repair and production recovery objectives remain additional operational work.",
+    "seconds": 60,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/Messaging.cs",
+      "building-blocks/FieldOps.ServiceHost/FaultMonitor.cs",
+      "analytics/ingestion-worker/worker.py",
+      "scripts/demo-terminal-fault.py"
+    ],
+    "diagram": "07-event-driven-communication.svg"
+  },
+  {
+    "number": 17,
+    "title": "Identity and resource authorization",
+    "section": "System architecture",
+    "kind": "diagram",
+    "body": [
+      "Authorization Code Flow uses S256 PKCE.",
+      "Keycloak issues signed audience, role and team claims.",
+      "Gateway and services validate access tokens.",
+      "Resource checks constrain team and assigned work."
+    ],
+    "notes": "The application redirects to Keycloak rather than collecting a password. PKCE binds the authorization code exchange to a verifier held by the client, while state protects the response transaction. Web tokens stay in memory and native tokens use SecureStore. The gateway validates issuer, audience, signature and lifetime, strips spoofed identity headers, then forwards the bearer token. Each service validates it again and applies its role and object scope. Browser navigation follows these roles, but it is not the enforcement boundary. Live tests check foreign-team and other-technician access. The API view shows how these controls apply to actual routes.",
+    "seconds": 60,
+    "evidence": [
+      "apps/web/src/auth.tsx",
+      "apps/technician-mobile/src/auth.tsx",
+      "gateway/Program.cs",
+      "building-blocks/FieldOps.ServiceHost/Security.cs",
+      "tests/backend/verify_resource_authorization_http.py"
+    ],
+    "diagram": "05-authentication-sequence.svg"
+  },
+  {
+    "number": 18,
+    "title": "The public API surface",
+    "section": "Backend and APIs",
+    "kind": "table",
+    "body": [
+      "/api/work-orders and /api/technicians",
+      "/api/bookings and /api/scheduling/recommendations",
+      "/api/workflows and /api/notifications",
+      "/api/reports, /api/replay and /api/intelligence"
+    ],
+    "notes": "YARP maps the public prefixes to the owning services. Business routes require a signed access token, and intelligence has an explicit authorized gateway policy. Requests use JSON and UTC instants, with expected versions where concurrent updates matter. Known invalid input and state conflicts return Problem Details, while authentication, permission and hidden-resource failures remain distinct. The native and web clients share these contracts. This inventory comes from endpoint definitions rather than invented OpenAPI examples. The next request sequence uses real routes to connect a dispatcher command with technician execution and eventually available evidence.",
+    "seconds": 30,
+    "evidence": [
+      "gateway/Program.cs",
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.ServiceHost/ReportingApi.cs",
+      "docs/presentation/API_REFERENCE.md"
+    ]
+  },
+  {
+    "number": 19,
+    "title": "A representative API lifecycle",
+    "section": "Backend and APIs",
+    "kind": "code",
+    "body": [
+      "POST /api/work-orders creates authorized demand.",
+      "POST /api/bookings reserves the chosen appointment.",
+      "POST /api/workflows starts assigned execution.",
+      "POST /api/workflows/{id}/submit records the current form."
+    ],
+    "notes": "The walkthrough uses synthetic values and actual request DTOs. Creating an order records its service category, priority and team. A confirmed booking supplies the technician and UTC appointment interval, after qualification and conflict checks. Assignment reaches the order view through an event projection, so a client waits for the authoritative prerequisite before starting execution. Workflow start validates assignment, and stage submission includes expectedVersion, idempotencyKey and allowed answers. The receipt protects an identical retry, while a conflicting update requires review. This sequence illustrates both immediate command responses and eventual cross-service visibility. Next, inspect the submission implementation itself.",
+    "seconds": 40,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "tests/integration/test_live_api.py",
+      "docs/architecture/contracts.md"
+    ]
+  },
+  {
+    "number": 20,
+    "title": "A stage submission through the code",
+    "section": "Backend and APIs",
+    "kind": "code",
+    "body": [
+      "Authorize the assigned workflow and check the receipt.",
+      "Evaluate missing server SLA milestones.",
+      "Validate version, current stage and visible answer options.",
+      "Commit aggregate, receipt and causally related outbox events."
+    ],
+    "notes": "The submission path centralizes the rules that a browser or offline client cannot safely enforce alone. The endpoint first checks access and an existing identical operation receipt. It evaluates outstanding SLA milestones using server time, then calls the domain engine with the pinned template version and expected aggregate version. The engine rejects hidden or invalid answers, paused or completed state, and reassignment that would incorrectly accept the job. Persistence stores the result and event evidence together. Short excerpts should show these decision points rather than an unreadable endpoint listing. The data view explains how the aggregate supports this atomic behavior.",
+    "seconds": 45,
+    "evidence": [
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "building-blocks/FieldOps.Core/Templates.cs",
+      "building-blocks/FieldOps.ServiceHost/SlaAudit.cs",
+      "tests/backend/TemplateTests.cs"
+    ]
+  },
+  {
+    "number": 21,
+    "title": "PostgreSQL ownership and runtime access",
+    "section": "Data architecture",
+    "kind": "diagram",
+    "body": [
+      "Each service owns a separate logical database.",
+      "Cross-service identifiers are not database foreign keys.",
+      "Migration owners and runtime identities differ.",
+      "Reporting reads the warehouse through a restricted identity."
+    ],
+    "notes": "Separate database ownership makes a service's transactional boundary explicit. It does not require a separate PostgreSQL server for every local component. A booking retains WorkOrderId and TechnicianId, but validates those references through the owning APIs. Inside a database, real relationships and constraints still matter. Runtime roles receive required data permissions without schema ownership, and the reporting warehouse connection is read only. Append-only evidence tables have narrower write rights. These choices reduce accidental mutation while preserving ordinary service operation. The entity view then distinguishes actual relational rows from embedded workflow stage state.",
+    "seconds": 30,
+    "evidence": [
+      "docker-compose.yml",
+      "scripts/local_databases.py",
+      "scripts/verify-database-permissions.py",
+      "infrastructure/postgres/grants-warehouse-runtime.sql"
+    ],
+    "diagram": "10-database-architecture.svg"
+  },
+  {
+    "number": 22,
+    "title": "Operational entities and their boundaries",
+    "section": "Data architecture",
+    "kind": "table",
+    "body": [
+      "Work order, technician and booking retain stable identities.",
+      "Technician time off has a real owning-database foreign key.",
+      "Workflow stages are snapshots inside StagesJson.",
+      "Replay events and delivery attempts are separate records."
+    ],
+    "notes": "The schema reflects the chosen aggregate boundaries. The Technicians database contains profiles and time-off rows with an enforced technician reference. Scheduling owns booking rows and their confirmed-interval constraints. Workflows stores eight stage snapshots in a versioned JSONB aggregate rather than a normalized operational stage table. That makes the current stage, pause totals, answers and deadlines part of one concurrency-controlled update. Reporting stores original event text and separate delivery observations, then derives replay state. Logical associations across service databases should never be drawn as physical foreign keys. The next view focuses on the guarantees the database actually enforces.",
+    "seconds": 30,
+    "evidence": [
+      "services/technicians/migrations/003_relationship_integrity.sql",
+      "services/scheduling/migrations/002_booking_constraints.sql",
+      "services/workflows/migrations/001_initial.sql",
+      "services/workflows/migrations/002_data_integrity.sql",
+      "services/reporting/migrations/001_initial.sql"
+    ]
+  },
+  {
+    "number": 23,
+    "title": "Consistency where a decision commits",
+    "section": "Data architecture",
+    "kind": "code",
+    "body": [
+      "GiST exclusion prevents confirmed technician overlap.",
+      "A partial unique index prevents duplicate confirmed bookings.",
+      "Expected versions reject lost workflow updates.",
+      "Atomic outbox writes connect state changes to delivery."
+    ],
+    "notes": "The booking exclusion constraint is the final authority when concurrent dispatchers race. It compares technician identity and half-open timestamp ranges only for confirmed bookings. A separate partial unique index protects one confirmed booking per order. Workflow versions detect a stale transition, and unique idempotency receipts preserve the original response for an identical operation. These local guarantees are stronger than a client-side availability check. They do not serialize a technician profile edit in another service with a booking transaction. That limitation remains explicit. Analytical reporting then uses a different model because its questions span historical operational events.",
+    "seconds": 35,
+    "evidence": [
+      "services/scheduling/migrations/002_booking_constraints.sql",
+      "building-blocks/FieldOps.ServiceHost/Persistence.cs",
+      "building-blocks/FieldOps.Core/WorkflowEngine.cs",
+      "tests/backend/PostgresIntegrationTests.cs"
+    ]
+  },
+  {
+    "number": 24,
+    "title": "An independent analytical warehouse",
+    "section": "Data architecture",
+    "kind": "diagram",
+    "body": [
+      "A separate worker stages redacted events.",
+      "Seven dimensions support six current fact grains.",
+      "Technician SCD2 and time-off support exist in newer migrations.",
+      "Ledger hashes, source ordering and quality checks protect meaning."
+    ],
+    "notes": "The warehouse never updates operational databases. It consumes retained event envelopes, stages a safe payload, and projects independent facts. The five requested business grains cover orders, stages, bookings, breaches and interventions. A newer migration adds observed technician time off, alongside versioned technician history. Other dimensions do not automatically acquire that history behavior. Stable event IDs and canonical hashes detect duplicates and collisions, while source-local ordering protects terminal outcomes from late messages. Capacity remains unknown when authoritative inputs are missing. The presentation must distinguish checked-in migration support from its executed runtime evidence. The product walkthrough now returns to work order management.",
+    "seconds": 40,
+    "evidence": [
+      "analytics/ingestion-worker/worker.py",
+      "analytics/migrations/001_star_schema.sql",
+      "analytics/migrations/004_technician_scd2_and_time_off.sql",
+      "analytics/migrations/005_database_invariants.sql",
+      "analytics/quality-tests/checks.sql"
+    ],
+    "diagram": "11-warehouse-star-schema.svg"
+  },
+  {
+    "number": 25,
+    "title": "Work order management",
+    "section": "Core product features",
+    "kind": "screenshot",
+    "body": [
+      "Create a synthetic service request with a clear priority.",
+      "Track assigned and in-progress work within team scope.",
+      "Protect lifecycle transitions and concurrent changes.",
+      "Follow the same order into scheduling, workflow and Replay."
+    ],
+    "notes": "The work order screen is the dispatcher's entry point into the service lifecycle. It captures the request details, category and priority, then provides the next scheduling action. Status represents committed local state plus relevant event projections, so assignment visibility can lag booking confirmation. Edits carry expected versions, and scheduled cancellation requires releasing the booking first. Customer information stays on authorized operational paths rather than entering unrestricted analytical output. The real demonstration shows this screen against local services with synthetic records. The next section follows the selected order into qualified technician dispatch and the eight-stage field workflow.",
+    "seconds": 30,
+    "evidence": [
+      "apps/web/src/pages/WorkOrders.tsx",
+      "building-blocks/FieldOps.ServiceHost/OperationsApi.cs",
+      "building-blocks/FieldOps.Core/WorkOrderRules.cs",
+      "tests/backend/verify_resource_authorization_http.py"
+    ]
+  }
+]

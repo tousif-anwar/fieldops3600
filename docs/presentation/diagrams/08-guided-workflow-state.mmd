@@ -9,7 +9,7 @@ stateDiagram-v2
   state "5 Quality Verification" as Quality
   state "6 Customer Confirmation" as Customer
   state "7 Job Completion" as Completion
-  Accepted --> Accepted: Request Reassignment rejected; assistance path
+  Accepted --> Accepted: Reassignment uses the assistance path
   Accepted --> Travel: Valid current-stage submission
   Travel --> Inspection: Valid submission
   Inspection --> Diagnosis: Valid submission

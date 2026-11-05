@@ -1,29 +1,31 @@
-%% Solid owner links; dashed links are logical keys, never cross-database foreign keys.
+%% Each named database has one owning runtime. No cross-database foreign keys.
 flowchart TB
-  subgraph PG["One local PostgreSQL process; separate database ownership"]
-    O[("fieldops_work_orders<br/>work_orders, outbox_messages, inbox_messages")]
-    T[("fieldops_technicians<br/>technicians, time_off")]
-    S[("fieldops_scheduling<br/>bookings + GiST exclusion")]
-    W[("fieldops_workflows<br/>workflows with StagesJson<br/>idempotency_receipts")]
-    N[("fieldops_notifications<br/>notifications + unique EventId")]
-    R[("fieldops_reporting<br/>audit_events, delivery_attempts<br/>replay_projection, fallback facts")]
-    A[("fieldops_warehouse<br/>warehouse schema + analytics views")]
-    K[("keycloak<br/>Identity-provider-owned tables")]
+  Roles["Restricted runtime identities<br/>Separate one-shot migration owners"] --> PG
+  subgraph PG["Database ownership"]
+    direction TB
+    subgraph RowOne["Operations"]
+      direction LR
+      O[("Work Orders<br/>fieldops_work_orders<br/>work_orders + outbox")]
+      T[("Technicians<br/>fieldops_technicians<br/>technicians + time_off")]
+      S[("Scheduling<br/>fieldops_scheduling<br/>bookings + exclusion constraint")]
+      O ~~~ T ~~~ S
+    end
+    subgraph RowTwo["Execution / evidence"]
+      direction LR
+      W[("Workflows<br/>fieldops_workflows<br/>StagesJson + receipts + outbox")]
+      N[("Notifications<br/>fieldops_notifications<br/>alerts + acknowledgment")]
+      R[("Reporting<br/>fieldops_reporting<br/>original events + attempts<br/>replay projection")]
+      W ~~~ N ~~~ R
+    end
+    subgraph RowThree["Analytics / identity"]
+      direction LR
+      A[("Warehouse<br/>fieldops_warehouse<br/>Worker writes, Reporting reads")]
+      K[("Identity provider<br/>keycloak<br/>Keycloak-owned state")]
+      A ~~~ K
+    end
+    RowOne ~~~ RowTwo
+    RowTwo ~~~ RowThree
   end
-  Orders["Work Orders runtime"] --> O
-  Staff["Technicians runtime"] --> T
-  Booking["Scheduling runtime"] --> S
-  Workflow["Workflows runtime"] --> W
-  Notices["Notifications runtime"] --> N
-  Reporting["Reporting runtime"] --> R
-  Reporting -->|"SELECT only"| A
-  Worker["Analytics writer"] --> A
-  Identity["Keycloak runtime"] --> K
-  S -.->|"WorkOrderId / TechnicianId<br/>validated through HTTP"| O
-  S -.-> T
-  W -.->|"WorkOrderId / TechnicianId<br/>validated through HTTP"| O
-  W -.-> T
-  Owners["One-shot migration owners<br/>Separate from app identities"] --> PG
+  PG --> Boundary["Cross-service identifiers resolve through HTTP checks<br/>There are no distributed foreign keys"]
   classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
   class O,T,S,W,N,R,A,K data
-

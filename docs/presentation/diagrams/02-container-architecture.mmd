@@ -4,7 +4,7 @@ flowchart TB
   Mobile["Expo native app"] --> Gateway
   Web --> Identity["Keycloak<br/>:8080"]
   Mobile --> Identity
-  subgraph Business["Six ASP.NET Core service containers"]
+  subgraph Business["Six .NET services"]
     Orders["Work orders"]
     Staff["Technicians"]
     Schedule["Scheduling"]

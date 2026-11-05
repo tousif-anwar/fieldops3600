@@ -1,20 +1,16 @@
-%% Operational advice is one fixed appointment; synthetic batch evaluation is separate.
-flowchart LR
-  Request["Dispatcher<br/>Order, start, duration, strategy"] --> Scope["Scheduling Service<br/>Role / team / order state"]
-  Scope --> Inputs["HTTP staff + time-off checks<br/>Owned confirmed bookings"]
-  Inputs --> Hard["Hard constraints<br/>Skill, certification, availability<br/>Local hours, duration, overlap"]
-  Hard --> Choice{"Explicit strategy"}
-  Choice -->|"baseline"| Rank["Rank feasible technicians<br/>Lower booked workload first"]
-  Choice -->|"optimized"| Solver["Private Python OR-Tools CP-SAT<br/>Fixed integer-minute window"]
-  Solver --> Verify["Independent response validation<br/>Known technician / job / interval<br/>Feasible solver status"]
-  Rank --> Advice["Recommendation and explanation<br/>Operational travel = unavailable"]
-  Verify --> Advice
-  Advice --> Human["Dispatcher accepts or overrides<br/>Reason required where applicable"]
-  Human --> Recheck["Recheck current constraints"]
-  Recheck --> Commit[("PostgreSQL booking transaction<br/>No-overlap and one-order constraints")]
-  Dataset["Separate reproducible synthetic dataset<br/>Six technicians, 22 jobs"] -.-> Evaluation["Baseline / solver comparison<br/>Depot proxy, runtime, workload<br/>No real routing claim"]
+%% One actual fixed appointment. Synthetic batch benchmarking remains separate.
+flowchart TB
+  Request["Dispatcher request<br/>Scoped order, appointment and duration"] --> Inputs["Actual staff + time off + confirmed bookings<br/>Skills, certification, local hours, availability and overlap"]
+  Inputs --> Strategy{"Explicit strategy"}
+  Strategy -->|"baseline"| Baseline["Rank qualified candidates<br/>Lower existing workload first"]
+  Strategy -->|"optimized"| Solver["Private OR-Tools CP-SAT<br/>Fixed integer-minute window"]
+  Solver --> Verify["Independent response check<br/>Known job, technician, exact interval and feasible status"]
+  Baseline --> Advice
+  Verify --> Advice["Explain advice and unavailable travel<br/>Dispatcher confirms or records override reason"]
+  Advice --> Commit[("Revalidate current constraints and commit booking<br/>PostgreSQL no-overlap + one-confirmed-order constraints")]
+  Benchmark["Separate synthetic benchmark<br/>Six technicians / 22 jobs<br/>Depot-distance proxy, no real routing claim"]
+  Benchmark -.-> Solver
   classDef app fill:#EAF2FF,stroke:#2862B4,color:#172B4D
   classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
-  class Request,Scope,Inputs,Hard,Rank,Solver,Verify,Advice,Human,Recheck app
+  class Request,Inputs,Baseline,Solver,Verify,Advice app
   class Commit data
-
