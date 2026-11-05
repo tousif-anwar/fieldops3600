@@ -426,7 +426,7 @@ export function Analytics() {
                 )}
               </Panel>
             </div>
-            <WarehousePatterns report={r}/>
+            <WarehousePatterns report={r} />
             <div className="metric-definitions">
               <Info size={18} />
               <div>
