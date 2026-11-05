@@ -318,7 +318,10 @@ export function Shell() {
           onClick={() => setOpen(false)}
         />
       )}
-      <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
+      <nav
+        aria-label="Main navigation"
+        className={`sidebar ${open ? "sidebar-open" : ""}`}
+      >
         <div className="sidebar-brand-row">
           <Link to="/" className="brand" aria-label="FieldOps 360 home">
             <span className="brand-symbol">
@@ -346,7 +349,7 @@ export function Shell() {
             <small>Service operations</small>
           </span>
         </div>
-        <nav aria-label="Main navigation" className="primary-navigation">
+        <div className="primary-navigation">
           {visibleGroups.map((group) => (
             <div className="nav-group" key={group.label}>
               <div className="nav-group-label">{group.label}</div>
@@ -379,7 +382,7 @@ export function Shell() {
               <span>All workspaces</span>
             </NavLink>
           </div>
-        </nav>
+        </div>
         <div className="sidebar-bottom">
           <button
             className="sidebar-toggle"
@@ -395,7 +398,7 @@ export function Shell() {
             <span>Server-authorized access</span>
           </span>
         </div>
-      </aside>
+      </nav>
       <div className="workspace-main">
         <header className="topbar">
           <div className="topbar-left">

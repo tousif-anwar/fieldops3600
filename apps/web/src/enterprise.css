@@ -2270,6 +2270,23 @@ summary:focus-visible {
 .login-bottom > span {
   color: #5f6f82;
 }
+/* Contrast corrections for navigation and replay evidence labels. */
+.back-link {
+  color: #44566c;
+  font-size: 14px;
+}
+.read-only-tag {
+  color: #44566c;
+  font-size: 13px;
+}
+.replay-intro-line {
+  color: #44566c;
+  font-size: 13px;
+}
+.replay-intro-line > span {
+  color: #33475e;
+}
+
 /* List readability corrections verified with axe. */
 .job-card-stage > span {
   color: #44566c;

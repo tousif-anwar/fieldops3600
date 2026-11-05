@@ -1,1 +1,30 @@
-[]
+{
+  "tool": "axe-core",
+  "version": "4.10.3",
+  "browser": "Chromium via Playwright 1.57.0",
+  "runDate": "2026-11-05",
+  "baseUrl": "http://localhost:5173",
+  "ruleTags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+    "best-practice"
+  ],
+  "scope": {
+    "signedOutViews": 1,
+    "authenticatedViews": 29,
+    "totalViews": 30,
+    "roles": [
+      "Technician",
+      "Dispatcher",
+      "Supervisor",
+      "OperationsManager",
+      "Analyst",
+      "Administrator"
+    ]
+  },
+  "violations": [],
+  "notes": "Views were reached through real in-app navigation after a live Keycloak sign-in. Automated results do not establish full WCAG 2.2 AA conformance; see ACCESSIBILITY_REPORT.md."
+}
