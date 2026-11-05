@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRuntime } from '../../src/runtime';
 import { colors, typography } from '../../src/ui';
 
@@ -14,6 +15,7 @@ function icon(name: IconName) {
 
 export default function TabsLayout() {
   const { submissions } = useRuntime();
+  const insets = useSafeAreaInsets();
   const pending = submissions.filter(item => item.status !== 'synced').length;
   return (
     <Tabs
@@ -24,7 +26,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          height: 64 + insets.bottom,
           paddingTop: 6,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
         tabBarItemStyle: { minHeight: 56 },
         tabBarLabelStyle: { ...typography.label, fontSize: 11, lineHeight: 15 },
