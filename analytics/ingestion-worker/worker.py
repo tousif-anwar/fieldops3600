@@ -292,49 +292,18 @@ def project(connection, event: dict) -> bool:
         "INSERT INTO warehouse.staging_event VALUES(%s,%s,%s)", (event_id, order_id, Jsonb(safe))
     )
     team = payload.get("teamId")
-    # Availability events have no work order; update a conformed dimension independently.
     technician = payload.get("technicianId")
+    occurred_at = _utc(occurred)
     tech_key = None
     if technician and team:
-        hours = payload.get("workingEndHour", 17) - payload.get("workingStartHour", 8)
-        technician_event = (
-            event["sourceService"] == "technicians" and kind == "TechnicianAvailabilityChanged.v1"
-        )
-        known = (
-            technician_event
-            and 0 < hours <= 24
-            and all(key in payload for key in ("workingStartHour", "workingEndHour", "timeZone"))
-        )
-        if known:
-            known = connection.execute(
-                "SELECT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=%s)",
-                (payload["timeZone"],),
-            ).fetchone()[0]
-        tech_key = connection.execute(
-            """INSERT INTO warehouse.dim_technician(technician_id,team_id,working_minutes_per_day,capacity_authoritative,source_sequence,working_start_hour,working_end_hour,time_zone) VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT(technician_id) DO UPDATE SET
-            team_id=CASE WHEN %s AND excluded.source_sequence>=warehouse.dim_technician.source_sequence THEN excluded.team_id ELSE warehouse.dim_technician.team_id END,
-            working_minutes_per_day=CASE WHEN excluded.capacity_authoritative AND excluded.source_sequence>=warehouse.dim_technician.source_sequence THEN excluded.working_minutes_per_day ELSE warehouse.dim_technician.working_minutes_per_day END,
-            capacity_authoritative=CASE WHEN %s AND excluded.source_sequence>=warehouse.dim_technician.source_sequence THEN excluded.capacity_authoritative ELSE warehouse.dim_technician.capacity_authoritative END,
-            working_start_hour=CASE WHEN excluded.capacity_authoritative AND excluded.source_sequence>=warehouse.dim_technician.source_sequence THEN excluded.working_start_hour ELSE warehouse.dim_technician.working_start_hour END,
-            working_end_hour=CASE WHEN excluded.capacity_authoritative AND excluded.source_sequence>=warehouse.dim_technician.source_sequence THEN excluded.working_end_hour ELSE warehouse.dim_technician.working_end_hour END,
-            time_zone=CASE WHEN excluded.capacity_authoritative AND excluded.source_sequence>=warehouse.dim_technician.source_sequence THEN excluded.time_zone ELSE warehouse.dim_technician.time_zone END,
-            source_sequence=CASE WHEN %s THEN GREATEST(warehouse.dim_technician.source_sequence,excluded.source_sequence) ELSE warehouse.dim_technician.source_sequence END
-            RETURNING technician_key""",
-            (
-                technician,
-                team,
-                max(1, hours * 60),
-                known,
-                sequence if technician_event else 0,
-                payload.get("workingStartHour"),
-                payload.get("workingEndHour"),
-                payload.get("timeZone"),
-                technician_event,
-                technician_event,
-                technician_event,
-            ),
-        ).fetchone()[0]
+        if event["sourceService"] == "technicians" and kind == TECHNICIAN_EVENT:
+            _apply_technician_version(connection, payload, occurred_at, sequence)
+        else:
+            _ensure_technician(connection, payload, occurred_at)
+        tech_key = _technician_key_at(connection, str(technician), occurred_at)
+    if kind == TIME_OFF_EVENT:
+        _project_time_off(connection, event_id, payload, occurred_at, sequence)
+        return True
     if UUID(order_id).int == 0 or not team:
         return True
     connection.execute(
@@ -477,6 +446,9 @@ def project(connection, event: dict) -> bool:
         status = (
             "Cancelled" if kind == "BookingCancelled.v1" else payload.get("status", "Confirmed")
         )
+        booking_key = tech_key
+        if technician and payload.get("startUtc"):
+            booking_key = _technician_key_at(connection, str(technician), _utc(payload["startUtc"]))
         connection.execute(
             """INSERT INTO warehouse.fact_booking(booking_id,work_order_id,technician_key,start_utc,end_utc,status,source_version) VALUES(%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT(booking_id) DO UPDATE SET
@@ -488,7 +460,7 @@ def project(connection, event: dict) -> bool:
             (
                 payload["id"],
                 order_id,
-                tech_key,
+                booking_key,
                 payload.get("startUtc"),
                 payload.get("endUtc"),
                 status,

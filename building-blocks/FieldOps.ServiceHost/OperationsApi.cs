@@ -114,14 +114,18 @@ public static class OperationsApi
             if (!caller.IsAdministrator && (tech.TeamId != caller.TeamId || caller.IsTechnician && tech.Id != caller.Id)) throw new DomainException(404, "Technician not found.");
             return Results.Ok(await db.TimeOff.AsNoTracking().Where(x => x.TechnicianId == id).ToListAsync(ct));
         });
-        group.MapPost("/{id}/time-off", async (string id, TimeOffRequest request, ServiceDb db, HttpContext http, CancellationToken ct) =>
+        group.MapPost("/{id}/time-off", async (string id, TimeOffRequest request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
             var tech = await db.Technicians.FindAsync([id], ct) ?? throw new DomainException(404, "Technician not found.");
             Caller.From(http.User).Demand(tech.TeamId);
             if (request.EndUtc <= request.StartUtc) throw new DomainException(400, "Time off end must follow start.");
             ValidateText(request.Reason, 3, 240, "reason");
             var record = new TimeOff { TechnicianId = id, StartUtc = request.StartUtc.ToUniversalTime(), EndUtc = request.EndUtc.ToUniversalTime(), Reason = request.Reason };
-            db.TimeOff.Add(record); await db.SaveChangesAsync(ct); return Results.Ok(record);
+            db.TimeOff.Add(record);
+            // The reason stays operational; analytics receives only the interval and scope.
+            db.Enqueue(EventFactory.Create(http, "technicians", "TechnicianTimeOffChanged.v1", Guid.Empty,
+                new { timeOffId = record.Id, technicianId = id, tech.TeamId, record.StartUtc, record.EndUtc }, tech.Version, clock.GetUtcNow()));
+            await db.SaveChangesAsync(ct); return Results.Ok(record);
         }).RequireAuthorization("supervise");
         group.MapPut("/{id}", async (string id, Technician request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
@@ -132,7 +136,7 @@ public static class OperationsApi
             ValidateText(request.Name, 2, 100, "name");
             try { TimeZoneInfo.FindSystemTimeZoneById(request.TimeZone); } catch (TimeZoneNotFoundException) { throw new DomainException(400, "Unknown time zone."); }
             tech.Name = request.Name; tech.Skills = request.Skills; tech.Certifications = request.Certifications; tech.WorkingStartHour = request.WorkingStartHour; tech.WorkingEndHour = request.WorkingEndHour; tech.TimeZone = request.TimeZone; tech.Available = request.Available; tech.Version++;
-            db.Enqueue(EventFactory.Create(http, "technicians", "TechnicianAvailabilityChanged.v1", Guid.Empty, new { technicianId = tech.Id, tech.TeamId, tech.Available, tech.Skills, tech.WorkingStartHour, tech.WorkingEndHour, tech.TimeZone }, tech.Version, clock.GetUtcNow()));
+            db.Enqueue(EventFactory.Create(http, "technicians", "TechnicianAvailabilityChanged.v1", Guid.Empty, new { technicianId = tech.Id, tech.TeamId, tech.SupervisorId, tech.Available, tech.Skills, tech.Certifications, tech.WorkingStartHour, tech.WorkingEndHour, tech.TimeZone }, tech.Version, clock.GetUtcNow()));
             await db.SaveChangesAsync(ct); return Results.Ok(TechnicianView(tech));
         }).RequireAuthorization("supervise");
     }

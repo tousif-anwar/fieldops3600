@@ -116,7 +116,7 @@ LANGUAGE sql STABLE AS $$
    sum(GREATEST(0,extract(epoch FROM(LEAST(b.end_utc,coalesce(p_to,b.end_utc))-GREATEST(b.start_utc,coalesce(p_from,b.start_utc)))))/60.0)::double precision minutes
   FROM scoped_bookings b GROUP BY b.technician_id
  ), versions AS (
-  SELECT t.*,v.technician_id
+  SELECT t.*
   FROM warehouse.dim_technician t JOIN visible_technicians v USING(technician_id)
   WHERE p_from IS NOT NULL AND p_to IS NOT NULL AND p_from<p_to
     AND t.capacity_authoritative AND t.working_start_hour>=0 AND t.working_end_hour<=24

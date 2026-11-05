@@ -122,7 +122,7 @@ public static class DatabaseBootstrap
                 new Technician { Id = "tech-02", Name = "Morgan Reed", Skills = ["HVAC", "Controls"], Certifications = ["HVAC Safety"] },
                 new Technician { Id = "tech-03", Name = "Avery Brooks", Skills = ["HVAC", "Mechanical"], Certifications = ["HVAC Safety", "EPA 608"] });
             foreach (var tech in db.ChangeTracker.Entries<Technician>().Where(x => x.State == EntityState.Added).Select(x => x.Entity).ToArray())
-                db.Enqueue(EventFactory.Create(null, "technicians", "TechnicianAvailabilityChanged.v1", Guid.Empty, new { technicianId = tech.Id, tech.TeamId, tech.Available, tech.Skills, tech.WorkingStartHour, tech.WorkingEndHour, tech.TimeZone }, tech.Version, DateTimeOffset.UtcNow));
+                db.Enqueue(EventFactory.Create(null, "technicians", "TechnicianAvailabilityChanged.v1", Guid.Empty, new { technicianId = tech.Id, tech.TeamId, tech.SupervisorId, tech.Available, tech.Skills, tech.Certifications, tech.WorkingStartHour, tech.WorkingEndHour, tech.TimeZone }, tech.Version, DateTimeOffset.UtcNow));
             await db.SaveChangesAsync();
         }
     }
