@@ -30,7 +30,7 @@ The six hosts share infrastructure code while owning separate databases and rest
 ## 5. Web and mobile capabilities
 
 The web app implements role-aware navigation, order management, dispatch, eight-stage forms, supervisor controls, analytics, notifications, and replay playback/filtering/exports. [Web guide](../../apps/web/README.md) · [actual UI walkthrough](../UI_WALKTHROUGH.md).
-The Expo SDK 58 technician app implements PKCE/SecureStore integration, jobs/schedule/details, conditional forms, countdowns, assistance, account-isolated drafts and a durable synchronization queue with backoff, stable idempotency and explicit conflicts. Typecheck, 12 tests, compatibility checks, and Android Hermes export passed. Native APK/emulator OAuth, secure-storage and offline acceptance remain pending; iOS execution requires macOS. [Mobile guide](../../apps/technician-mobile/README.md).
+The Expo SDK 58 technician app implements PKCE/SecureStore integration, jobs/schedule/details, conditional forms, countdowns, assistance, account-isolated drafts and a durable synchronization queue with backoff, stable idempotency and explicit conflicts. Typecheck, 17 tests, compatibility checks, and Android Hermes export passed. A native debug APK is built and installed on the local emulator; the app renders its sign-in screen and its OAuth flow reaches the real Keycloak login page. The callback/token exchange, secure-storage and offline behavior were not observed on-device, so native OAuth acceptance remains open; iOS execution requires macOS. [Mobile guide](../../apps/technician-mobile/README.md).
 
 ## 6. Workflow and SLA design
 
@@ -74,11 +74,12 @@ Shared host infrastructure reduces duplication but couples infrastructure upgrad
 
 | Executed check              | Result                                                                                                                                              |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend / gateway           | 53/53 backend tests; six hosts build with zero warnings/errors; 7/7 gateway process checks.                                                         |
+| Backend / gateway           | 54/54 backend tests; six hosts build with zero warnings/errors; 7/7 gateway process checks (re-run 2026-11-05).                                     |
 | Live HTTP                   | 3/3 lifecycle tests, 3/3 resource-authorization cases, 1/1 real optimizer-adapter contract.                                                         |
-| Web                         | Production build, 23/23 unit/component tests, 10/10 desktop/mobile browser checks with no skips.                                                    |
+| Web                         | Production build, 33/33 unit/component tests and passing `format:check` (2026-11-05); 10/10 desktop/mobile browser checks from the prior evidence date. |
 | Replay layout               | Five Chromium viewport checks at 1512/1280/1024/760/390; long option text no longer expands the document.                                           |
-| Mobile / intelligence       | 12/12 mobile tests plus typecheck/compatibility/Hermes export; 18/18 intelligence tests.                                                            |
+| Mobile / intelligence       | 17/17 mobile tests plus typecheck (2026-11-05); compatibility/Hermes export and 18/18 intelligence tests from the prior evidence date.               |
+| Native Android smoke        | APK installed; sign-in screen and real Keycloak page rendered; OAuth callback/token exchange not verified.                                           |
 | Warehouse / bootstrap       | 26/26 PostgreSQL cases; zero current quality defects; 5/5 bootstrap checks; live runtime grants verified.                                           |
 | Reliability / observability | Restart/retry/breach/broker recovery passed; terminal-fault/error-queue evidence passed; six healthy metrics targets and an 11-span trace verified. |
 
@@ -95,7 +96,7 @@ Use the [documentation index](../INDEX.md) for C4 context/container/component vi
 
 ## 16. Incremental Git history
 
-Reviewed on `main` at checkpoint `4d75b9a` before this final documentation addition. Verified earlier milestones include `56d2e56` foundation, `6e584cb` gateway, `8fb96c1` domain/SLA/replay, `6257006` persistent services, `6350c77` intelligence and `071b003` mobile, followed by preserved integration/security/template checkpoints. This is real incremental history, not fabricated commits. Final working-tree reconciliation remains a separate delivery check; use `git log --oneline` and `git status` for later checkpoints. No commit or push is performed by this report.
+Reviewed on `main` through checkpoint `15b455d` on 2026-11-05. Verified earlier milestones include `56d2e56` foundation, `6e584cb` gateway, `8fb96c1` domain/SLA/replay, `6257006` persistent services, `6350c77` intelligence and `071b003` mobile, followed by preserved integration, security and template checkpoints. The resume audit added `cb0051c` (restored regression test), `5502841` (formatting required by CI) and `15b455d` (analytics label fix and new view coverage). This is real incremental history, not fabricated commits; use `git log --oneline` and `git status` for later checkpoints. No commit or push is performed by this report.
 
 ## 17. Reproducible demonstration
 
@@ -111,7 +112,7 @@ The scripts create labeled synthetic records, preserve immutable evidence, and r
 
 ## 18. Known limitations and acceptance still open
 
-- Native Android APK/emulator acceptance is pending; no signed mobile release, iOS execution, or native OAuth/offline acceptance is claimed from a Metro export.
+- Native Android is built, installed and renders the sign-in screen, and its OAuth flow reaches Keycloak; the callback/token exchange and offline recovery are still unobserved. No signed mobile release, iOS execution or native OAuth/offline acceptance is claimed.
 - Cross-service profile/time-off edits and cancellation racing an unprojected booking are not distributed serializable transactions; cancel a confirmed booking before its order. SignalR is best effort; persisted history is authoritative.
 - Only immutable HVAC template v1 is shipped; runtime template authoring is absent. Not every proposed analytic chart/filter or administrative screen is implemented. Mobile AsyncStorage drafts are not application-encrypted.
 - Operational routing/travel, multi-day route optimization, SCD2 staff/hour history and time-off/weekend capacity exclusions are absent. Advisory snapshots are submitted evidence, not cryptographically verified model-result receipts.

@@ -1,18 +1,22 @@
 # Executed verification
 
-Local evidence date: 2026-11-04. Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
+Local evidence date: 2026-11-05 (re-verified subset) and 2026-11-04 (inherited suites). Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
+
+This host's system SDK is .NET 11 preview, which fails static-web-asset validation for this solution. All .NET results below were produced with the git-ignored repository SDK `.tools/dotnet` **10.0.403**; CI pins `10.0.x`.
 
 | Check | Executed result | Evidence boundary |
 |---|---|---|
-| Backend .NET 10 | 53/53 tests; six hosts build with zero warnings/errors | Domain clocks, PostgreSQL/Testcontainers constraints/migrations, immutability, faults, template versions and replay |
-| Gateway | 7/7 real-process tests | Anonymous/signed boundary checks, spoofed headers, query tokens, security headers, readiness |
+| Backend .NET 10 | 54/54 tests; six hosts build with zero warnings/errors (re-run 2026-11-05) | Domain clocks, PostgreSQL/Testcontainers constraints/migrations, immutability, faults, template versions and replay |
+| Gateway | 7/7 real-process tests (re-run 2026-11-05) | Anonymous/signed boundary checks, spoofed headers, query tokens, security headers, readiness |
 | Live API | 3/3 | Real Keycloak code/PKCE, eight stages, duplicate receipts, parallel booking prevention, pause authorization, offline evidence, replay/export/warehouse |
 | Live resource authorization | 3/3 | Foreign team objects/replay, analyst exclusion, other technician assignments/profiles/time off, booking-first cancellation |
 | Live OR-Tools adapter | 1/1 | Actual scoped Scheduling → intelligence HTTP; valid selection/status/runtime, null travel, invalid inputs |
-| Web unit/component | 23/23 | Forms/history, authentication utilities, replay, delivery grouping and trace availability |
+| Web unit/component | 33/33 (re-run 2026-11-05) | Forms/history, authentication utilities, replay, delivery grouping, trace availability, nullable warehouse metrics and the three pattern views |
+| Web build and formatting | Passed (2026-11-05) | Production `tsc -b && vite build`; repository `format:check` now passes after formatting previously unformatted committed sources |
 | Web end-to-end | 10/10, no skips | Authenticated dispatcher/supervisor flows, readonly history/playback, responsive layouts |
 | Replay responsive regression | Five Chromium viewport checks | No document overflow at 1512/1280/1024/760/390 pixels with long valid option text |
-| Expo mobile | 12/12 plus TS6 typecheck | Queue persistence/restart/backoff/conflicts/isolation and conditional forms |
+| Expo mobile | 17/17 plus TS6 typecheck (re-run 2026-11-05) | Queue persistence/restart/backoff/conflicts/isolation, conditional forms and session lifecycle |
+| Native Android smoke | Partial | Debug APK built and installed; Metro bundled 1,386 modules; app rendered the sign-in screen; OAuth opened the real Keycloak login page. Credential submission returned to the app sign-in screen, so callback/token/SecureStore acceptance is **not** claimed |
 | Expo compatibility / bundle | Passed | SDK 58 compatibility; clean Android Hermes export, 1,266 modules; not a native-device release test |
 | Warehouse | 26/26 PostgreSQL cases | Late/source ordering, cohorts/DST/intervals, deduplication/collision, archive recovery |
 | Warehouse quality | Zero defects | Checked-in invariants against the current local warehouse |
@@ -24,7 +28,7 @@ Local evidence date: 2026-11-04. Counts are separate suites with overlapping sce
 | Terminal consumer failure | Passed | Notifications retry exhaustion; original message independently found in its RabbitMQ error queue and requeued; separate sanitized immutable Replay diagnostics |
 | Live SignalR | Passed | Actual WebSocket through served web → gateway; supervisor notice matches persisted history; analyst/anonymous hub requests denied |
 
-Native Android APK/emulator acceptance is being finalized; see implementation status for latest outcomes. Do not infer native OAuth success from Metro export or code tests.
+Native Android is now installed and renders the real sign-in screen, and its OAuth flow reaches Keycloak. The callback/token exchange and offline behavior were not observed on-device, so no native OAuth pass is claimed. Do not infer native success from Metro export or code tests.
 
 ## Repeat source and service checks
 
