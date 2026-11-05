@@ -154,7 +154,11 @@ function QuickActions({ actions }: { actions: Action[] }) {
     <Panel title="Quick access" className="home-quick">
       <div className="home-actions">
         {actions.map((action) => (
-          <Link to={action.to} className="home-action" key={`${action.to}-${action.label}`}>
+          <Link
+            to={action.to}
+            className="home-action"
+            key={`${action.to}-${action.label}`}
+          >
             <span className="home-action-icon">{action.icon}</span>
             <span>
               <strong>{action.label}</strong>
@@ -209,7 +213,9 @@ export function Home() {
   const teamId = String(
     auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
   );
-  const name = profileName((auth.user?.profile ?? {}) as Record<string, unknown>);
+  const name = profileName(
+    (auth.user?.profile ?? {}) as Record<string, unknown>,
+  );
   const otherRoles = role ? additionalRoles(auth.roles, role) : [];
   const now = new Date();
   const today = new Intl.DateTimeFormat(undefined, {
@@ -227,7 +233,10 @@ export function Home() {
     role === "Technician" ||
     role === "Supervisor" ||
     role === "OperationsManager";
-  const dispatchRole = role === "Dispatcher" || role === "Supervisor" || role === "OperationsManager";
+  const dispatchRole =
+    role === "Dispatcher" ||
+    role === "Supervisor" ||
+    role === "OperationsManager";
   const reportRole =
     role === "Supervisor" || role === "OperationsManager" || role === "Analyst";
 
@@ -281,10 +290,13 @@ export function Home() {
           <div className="home-empty">
             <ShieldCheck size={22} aria-hidden="true" />
             <div>
-              <strong>Your identity is valid, but no FieldOps 360 role is assigned.</strong>
+              <strong>
+                Your identity is valid, but no FieldOps 360 role is assigned.
+              </strong>
               <p>
-                Contact your administrator to add the role that matches your work.
-                This page does not infer access from another directory group.
+                Contact your administrator to add the role that matches your
+                work. This page does not infer access from another directory
+                group.
               </p>
             </div>
           </div>
@@ -349,7 +361,9 @@ export function Home() {
         booking.status === "Confirmed" &&
         Date.parse(booking.startUtc) >= now.getTime(),
     )
-    .sort((left, right) => Date.parse(left.startUtc) - Date.parse(right.startUtc));
+    .sort(
+      (left, right) => Date.parse(left.startUtc) - Date.parse(right.startUtc),
+    );
   const report = reportQuery.data;
   const primaryError =
     (ordersQuery.error as Error | null) ??
@@ -373,16 +387,21 @@ export function Home() {
         {
           label: "Current stage",
           value: stage?.name ?? "Not started",
-          detail: currentFlow ? `Step ${currentFlow.currentStageIndex + 1} of ${currentFlow.stages.length}` : "Open My work to begin",
+          detail: currentFlow
+            ? `Step ${currentFlow.currentStageIndex + 1} of ${currentFlow.stages.length}`
+            : "Open My work to begin",
         },
         {
           label: "Stage SLA",
           value: stage?.pausedAtUtc ? "Paused" : (stage?.slaStatus ?? "—"),
-          detail: stage?.deadlineUtc ? `Due ${time(stage.deadlineUtc)}` : "No active deadline",
+          detail: stage?.deadlineUtc
+            ? `Due ${time(stage.deadlineUtc)}`
+            : "No active deadline",
           tone:
             stage?.slaStatus === "Breached"
               ? "danger"
-              : stage?.slaStatus === "Warning" || stage?.slaStatus === "Critical"
+              : stage?.slaStatus === "Warning" ||
+                  stage?.slaStatus === "Critical"
                 ? "warning"
                 : "default",
         },
@@ -403,7 +422,9 @@ export function Home() {
         },
         {
           label: "Active technicians",
-          value: techniciansQuery.isPending ? "—" : (techniciansQuery.data?.length ?? 0),
+          value: techniciansQuery.isPending
+            ? "—"
+            : (techniciansQuery.data?.length ?? 0),
           detail: "Profiles in your authorized team",
         },
       ];
@@ -444,7 +465,9 @@ export function Home() {
         },
         {
           label: "SLA compliance",
-          value: reportQuery.isPending ? "—" : percent(report?.slaComplianceRate),
+          value: reportQuery.isPending
+            ? "—"
+            : percent(report?.slaComplianceRate),
           detail: "Completed stages without a breach",
         },
         {
@@ -464,7 +487,9 @@ export function Home() {
         },
         {
           label: "SLA compliance",
-          value: reportQuery.isPending ? "—" : percent(report?.slaComplianceRate),
+          value: reportQuery.isPending
+            ? "—"
+            : percent(report?.slaComplianceRate),
           detail: "Completed stages without a breach",
         },
         {
@@ -475,7 +500,9 @@ export function Home() {
                 minute: "2-digit",
               }).format(new Date(report.refreshedAtUtc))
             : "—",
-          detail: report?.refreshedAtUtc ? "Latest recorded ingestion" : "Awaiting ingestion",
+          detail: report?.refreshedAtUtc
+            ? "Latest recorded ingestion"
+            : "Awaiting ingestion",
         },
       ];
     }
@@ -707,29 +734,39 @@ export function Home() {
                 <AttentionRow
                   key={notification.id}
                   to="/notifications"
-                  title={notification.title ?? humanize(notification.eventType ?? "Service notice")}
+                  title={
+                    notification.title ??
+                    humanize(notification.eventType ?? "Service notice")
+                  }
                   meta={notification.message ?? "Unread operational notice"}
                   status="Unread"
                   tone="warning"
                   action="Review"
                 />
               ))}
-              {stage && ["Warning", "Critical", "Breached"].includes(stage.slaStatus) && currentFlow && (
-                <AttentionRow
-                  to={`/workflow/${currentFlow.id}`}
-                  title={`${currentOrderNumber(currentOrder)} · ${stage.name}`}
-                  meta={
-                    stage.deadlineUtc
-                      ? `Stage deadline ${time(stage.deadlineUtc)}`
-                      : "Stage requires review"
-                  }
-                  status={stage.slaStatus}
-                  tone={stage.slaStatus === "Breached" ? "danger" : "warning"}
-                  action={stage.slaStatus === "Breached" ? "Review" : "Continue"}
-                />
-              )}
+              {stage &&
+                ["Warning", "Critical", "Breached"].includes(stage.slaStatus) &&
+                currentFlow && (
+                  <AttentionRow
+                    to={`/workflow/${currentFlow.id}`}
+                    title={`${currentOrderNumber(currentOrder)} · ${stage.name}`}
+                    meta={
+                      stage.deadlineUtc
+                        ? `Stage deadline ${time(stage.deadlineUtc)}`
+                        : "Stage requires review"
+                    }
+                    status={stage.slaStatus}
+                    tone={stage.slaStatus === "Breached" ? "danger" : "warning"}
+                    action={
+                      stage.slaStatus === "Breached" ? "Review" : "Continue"
+                    }
+                  />
+                )}
               {unread.length === 0 &&
-                !(stage && ["Warning", "Critical", "Breached"].includes(stage.slaStatus)) && (
+                !(
+                  stage &&
+                  ["Warning", "Critical", "Breached"].includes(stage.slaStatus)
+                ) && (
                   <EmptyAttention
                     title="Nothing urgent right now"
                     description={
@@ -748,17 +785,25 @@ export function Home() {
                   description="New unassigned work will appear here with its priority and service category."
                 />
               ) : (
-                unassigned.slice(0, 5).map((order) => (
-                  <AttentionRow
-                    key={order.id}
-                    to={`/schedule?workOrderId=${order.id}`}
-                    title={`${order.number} · ${order.title}`}
-                    meta={`${order.serviceCategory} · ${order.siteAddress}`}
-                    status={order.priority}
-                    tone={order.priority === "Critical" ? "danger" : order.priority === "High" ? "warning" : "info"}
-                    action="Assign"
-                  />
-                ))
+                unassigned
+                  .slice(0, 5)
+                  .map((order) => (
+                    <AttentionRow
+                      key={order.id}
+                      to={`/schedule?workOrderId=${order.id}`}
+                      title={`${order.number} · ${order.title}`}
+                      meta={`${order.serviceCategory} · ${order.siteAddress}`}
+                      status={order.priority}
+                      tone={
+                        order.priority === "Critical"
+                          ? "danger"
+                          : order.priority === "High"
+                            ? "warning"
+                            : "info"
+                      }
+                      action="Assign"
+                    />
+                  ))
               )}
             </div>
           ) : role === "Supervisor" || role === "OperationsManager" ? (
@@ -777,8 +822,16 @@ export function Home() {
                       to={`/workflow/${flow.id}`}
                       title={`${currentOrderNumber(orders.find((order) => order.id === flow.workOrderId))} · ${riskStage?.name ?? "Workflow"}`}
                       meta={`${techniciansQuery.data?.find((technician) => technician.id === flow.technicianId)?.name ?? flow.technicianId} · ${riskStage?.deadlineUtc ? `Deadline ${time(riskStage.deadlineUtc)}` : "Deadline pending"}`}
-                      status={riskStage?.pausedAtUtc ? "Paused" : (riskStage?.slaStatus ?? "Warning")}
-                      tone={riskStage?.slaStatus === "Breached" ? "danger" : "warning"}
+                      status={
+                        riskStage?.pausedAtUtc
+                          ? "Paused"
+                          : (riskStage?.slaStatus ?? "Warning")
+                      }
+                      tone={
+                        riskStage?.slaStatus === "Breached"
+                          ? "danger"
+                          : "warning"
+                      }
                       action="Investigate"
                     />
                   );
@@ -883,7 +936,9 @@ export function Home() {
           ) : (
             <WorkList
               rows={upcoming.slice(0, 4).map((booking) => {
-                const order = orders.find((item) => item.id === booking.workOrderId);
+                const order = orders.find(
+                  (item) => item.id === booking.workOrderId,
+                );
                 const technician = techniciansQuery.data?.find(
                   (item) => item.id === booking.technicianId,
                 );
@@ -916,13 +971,21 @@ export function Home() {
             />
           ) : (
             <WorkList
-              rows={(notificationsQuery.data ?? []).slice(0, 4).map((notification) => ({
-                key: notification.id,
-                to: "/notifications",
-                title: notification.title ?? humanize(notification.eventType ?? "Service notice"),
-                meta: `${notification.message ?? "Operational notice"} · ${dateTime(notification.createdAtUtc)}`,
-                trailing: notification.acknowledgedAtUtc ? <Status value="Acknowledged" /> : <Status value="Unread" />,
-              }))}
+              rows={(notificationsQuery.data ?? [])
+                .slice(0, 4)
+                .map((notification) => ({
+                  key: notification.id,
+                  to: "/notifications",
+                  title:
+                    notification.title ??
+                    humanize(notification.eventType ?? "Service notice"),
+                  meta: `${notification.message ?? "Operational notice"} · ${dateTime(notification.createdAtUtc)}`,
+                  trailing: notification.acknowledgedAtUtc ? (
+                    <Status value="Acknowledged" />
+                  ) : (
+                    <Status value="Unread" />
+                  ),
+                }))}
             />
           )}
         </Panel>
@@ -946,7 +1009,10 @@ export function Home() {
           ) : (
             <div className="home-capacity-list">
               {report.technicianUtilization.slice(0, 4).map((technician) => (
-                <div className="home-capacity-row" key={technician.technicianId}>
+                <div
+                  className="home-capacity-row"
+                  key={technician.technicianId}
+                >
                   <span>
                     <strong>
                       {techniciansQuery.data?.find(
@@ -975,7 +1041,10 @@ export function Home() {
       )}
 
       {role === "Analyst" && report && (
-        <Panel title="Reporting coverage" description="Categories currently represented in the warehouse scope.">
+        <Panel
+          title="Reporting coverage"
+          description="Categories currently represented in the warehouse scope."
+        >
           {report.categoryBreakdown.length === 0 ? (
             <EmptyAttention
               title="No category observations"

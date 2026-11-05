@@ -50,7 +50,11 @@ export function WarehousePatterns({ report }: { report: Reports }) {
   const [view, setView] = useState("sla");
   const views = [
     { value: "sla", label: "SLA trend", tabId: "analytics-tab-sla" },
-    { value: "duration", label: "Stage durations", tabId: "analytics-tab-duration" },
+    {
+      value: "duration",
+      label: "Stage durations",
+      tabId: "analytics-tab-duration",
+    },
     {
       value: "interventions",
       label: "Supervisor actions",

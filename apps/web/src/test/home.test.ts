@@ -67,7 +67,9 @@ describe("role-aware Home model", () => {
 
   it("takes only the display first name", () => {
     expect(profileName({ name: "Jordan Alvarez" })).toBe("Jordan");
-    expect(profileName({ preferred_username: "dispatcher" })).toBe("Dispatcher");
+    expect(profileName({ preferred_username: "dispatcher" })).toBe(
+      "Dispatcher",
+    );
     expect(profileName({})).toBe("there");
   });
 

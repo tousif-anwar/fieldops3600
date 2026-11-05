@@ -112,7 +112,10 @@ for (const role of roles) {
     const problems: string[] = [];
     page.on("console", (message) => {
       if (message.type() === "error") problems.push(message.text());
-      if (message.type() === "error" && /403|same key|Uncaught/i.test(message.text())) {
+      if (
+        message.type() === "error" &&
+        /403|same key|Uncaught/i.test(message.text())
+      ) {
         // Preserve the exact message for the assertion below.
         problems.push(message.text());
       }
@@ -130,7 +133,9 @@ for (const role of roles) {
       name: "Main navigation",
     });
     for (const item of role.navigation) {
-      await expect(navigation.getByRole("link", { name: item, exact: true })).toBeVisible();
+      await expect(
+        navigation.getByRole("link", { name: item, exact: true }),
+      ).toBeVisible();
     }
     for (const item of role.hidden) {
       await expect(
@@ -177,7 +182,10 @@ test("a protected deep link survives reauthentication and retains its query", as
 test("an unauthorized deep link is denied without exposing administration", async ({
   page,
 }, testInfo) => {
-  test.skip(testInfo.project.name !== "chromium", "Desktop authorization coverage");
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Desktop authorization coverage",
+  );
   test.setTimeout(75000);
   await page.goto("/administration");
   await page
@@ -188,10 +196,14 @@ test("an unauthorized deep link is denied without exposing administration", asyn
     "does not have permission",
     { timeout: 45000 },
   );
-  await expect(page.getByRole("heading", { name: "Administration" })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Administration" }),
+  ).toHaveCount(0);
 });
 
-test("sign-out returns to the secure entry screen", async ({ page }, testInfo) => {
+test("sign-out returns to the secure entry screen", async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Desktop sign-out coverage");
   test.setTimeout(75000);
   await signIn(page, "technician");
@@ -206,7 +218,10 @@ test("sign-out returns to the secure entry screen", async ({ page }, testInfo) =
 test("Home reflows across supported widths and restores mobile navigation", async ({
   page,
 }, testInfo) => {
-  test.skip(testInfo.project.name !== "chromium", "Desktop responsive coverage");
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Desktop responsive coverage",
+  );
   test.setTimeout(90000);
   await signIn(page, "technician");
   for (const width of [320, 375, 768, 1024, 1440, 1920]) {
@@ -220,7 +235,9 @@ test("Home reflows across supported widths and restores mobile navigation", asyn
     ).toBe(true);
   }
   await page.setViewportSize({ width: 375, height: 812 });
-  await expect(page.getByRole("button", { name: "Open navigation" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Open navigation" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
@@ -235,7 +252,9 @@ test("keyboard order reaches the skip link and account menu", async ({
   test.skip(testInfo.project.name !== "chromium", "Desktop keyboard coverage");
   test.setTimeout(75000);
   await signIn(page, "dispatcher");
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur(),
+  );
   await page.keyboard.press("Tab");
   await expect(page.locator(".skip-link")).toBeFocused();
   await page.getByLabel(/Account menu for/i).focus();

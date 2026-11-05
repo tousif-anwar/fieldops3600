@@ -28,7 +28,8 @@ const workspaces: Workspace[] = [
   {
     to: "/work-orders",
     title: "Work orders",
-    description: "Search, review, and move service requests through their lifecycle.",
+    description:
+      "Search, review, and move service requests through their lifecycle.",
     group: "Operations",
     roles: [
       "Technician",
@@ -58,7 +59,8 @@ const workspaces: Workspace[] = [
   {
     to: "/my-jobs",
     title: "Workflow review",
-    description: "Review assigned service workflows and completed stage history.",
+    description:
+      "Review assigned service workflows and completed stage history.",
     group: "Monitoring",
     roles: ["Supervisor", "OperationsManager"],
     icon: <History size={22} />,
@@ -66,7 +68,8 @@ const workspaces: Workspace[] = [
   {
     to: "/supervisor",
     title: "SLA monitoring",
-    description: "Review at-risk work, overdue stages, and recorded interventions.",
+    description:
+      "Review at-risk work, overdue stages, and recorded interventions.",
     group: "Monitoring",
     roles: ["Supervisor", "OperationsManager"],
     icon: <TriangleAlert size={22} />,
@@ -74,7 +77,8 @@ const workspaces: Workspace[] = [
   {
     to: "/replay",
     title: "Operational replay",
-    description: "Investigate the recorded event history without changing operations.",
+    description:
+      "Investigate the recorded event history without changing operations.",
     group: "Monitoring",
     roles: ["Supervisor", "OperationsManager", "Administrator"],
     icon: <History size={22} />,
@@ -82,7 +86,8 @@ const workspaces: Workspace[] = [
   {
     to: "/analytics",
     title: "Analytics",
-    description: "Explore validated service performance, capacity, and exports.",
+    description:
+      "Explore validated service performance, capacity, and exports.",
     group: "Insights",
     roles: ["Analyst", "Supervisor", "OperationsManager", "Administrator"],
     icon: <BarChart3 size={22} />,
@@ -90,7 +95,8 @@ const workspaces: Workspace[] = [
   {
     to: "/administration",
     title: "Administration",
-    description: "Review identity access, workflow standards, and audit boundaries.",
+    description:
+      "Review identity access, workflow standards, and audit boundaries.",
     group: "Administration",
     roles: ["Administrator"],
     icon: <Settings2 size={22} />,
@@ -111,7 +117,12 @@ export function Workspaces() {
           <h1>Workspaces</h1>
           <p>
             The areas available to {roleLabel(role).toLowerCase()} in{" "}
-            {teamLabel(String(auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? ""))}.
+            {teamLabel(
+              String(
+                auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
+              ),
+            )}
+            .
           </p>
         </div>
         <span className="workspace-scope">
@@ -120,13 +131,21 @@ export function Workspaces() {
         </span>
       </header>
       {groups.map((group) => (
-        <section className="workspace-group" key={group} aria-labelledby={`group-${group}`}>
+        <section
+          className="workspace-group"
+          key={group}
+          aria-labelledby={`group-${group}`}
+        >
           <h2 id={`group-${group}`}>{group}</h2>
           <div className="workspaces-grid">
             {visible
               .filter((workspace) => workspace.group === group)
               .map((workspace) => (
-                <Link to={workspace.to} className="workspace-card" key={workspace.to}>
+                <Link
+                  to={workspace.to}
+                  className="workspace-card"
+                  key={workspace.to}
+                >
                   <span className="workspace-card-icon">{workspace.icon}</span>
                   <span className="workspace-card-copy">
                     <strong>{workspace.title}</strong>
@@ -143,7 +162,9 @@ export function Workspaces() {
           <LayoutGrid size={22} aria-hidden="true" />
           <div>
             <strong>No workspace is assigned to this account.</strong>
-            <p>Contact your administrator to add the role that matches your work.</p>
+            <p>
+              Contact your administrator to add the role that matches your work.
+            </p>
           </div>
         </div>
       )}

@@ -231,7 +231,8 @@ export function WorkOrders() {
               <div className="table-pagination">
                 <span>
                   Showing {(page - 1) * pageSize + 1}–
-                  {Math.min(page * pageSize, filtered.length)} of {filtered.length}
+                  {Math.min(page * pageSize, filtered.length)} of{" "}
+                  {filtered.length}
                 </span>
                 <div>
                   <Button

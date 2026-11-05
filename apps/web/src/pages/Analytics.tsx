@@ -203,94 +203,94 @@ export function Analytics() {
               >
                 {r.volumeTrend.length ? (
                   <>
-                  <div
-                    className="chart"
-                    role="img"
-                    aria-label="Work order volume trend chart"
-                  >
-                    <ResponsiveContainer width="100%" height={260}>
-                      <AreaChart
-                        data={r.volumeTrend}
-                        margin={{ top: 10, right: 15, left: -20, bottom: 0 }}
-                      >
-                        <defs>
-                          <linearGradient
-                            id="volumeFill"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="0%"
-                              stopColor="#4078cf"
-                              stopOpacity={0.2}
-                            />
-                            <stop
-                              offset="100%"
-                              stopColor="#4078cf"
-                              stopOpacity={0}
-                            />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          strokeDasharray="3 4"
-                          vertical={false}
-                          stroke="#e9edf3"
-                        />
-                        <XAxis
-                          dataKey="date"
-                          axisLine={false}
-                          tickLine={false}
-                          fontSize={11}
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          fontSize={11}
-                          allowDecimals={false}
-                        />
-                        <Tooltip />
-                        <Area
-                          type="monotone"
-                          dataKey="total"
-                          name="Created"
-                          stroke="#4078cf"
-                          strokeWidth={2}
-                          fill="url(#volumeFill)"
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="completed"
-                          name="Completed"
-                          stroke="#399c83"
-                          strokeWidth={2}
-                          fill="transparent"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="chart-data-table">
-                    <table>
-                      <caption>Work order volume by reporting date</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Date</th>
-                          <th scope="col">Created</th>
-                          <th scope="col">Completed</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {r.volumeTrend.map((point) => (
-                          <tr key={point.date}>
-                            <th scope="row">{point.date}</th>
-                            <td>{point.total}</td>
-                            <td>{point.completed}</td>
+                    <div
+                      className="chart"
+                      role="img"
+                      aria-label="Work order volume trend chart"
+                    >
+                      <ResponsiveContainer width="100%" height={260}>
+                        <AreaChart
+                          data={r.volumeTrend}
+                          margin={{ top: 10, right: 15, left: -20, bottom: 0 }}
+                        >
+                          <defs>
+                            <linearGradient
+                              id="volumeFill"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="0%"
+                                stopColor="#4078cf"
+                                stopOpacity={0.2}
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor="#4078cf"
+                                stopOpacity={0}
+                              />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid
+                            strokeDasharray="3 4"
+                            vertical={false}
+                            stroke="#e9edf3"
+                          />
+                          <XAxis
+                            dataKey="date"
+                            axisLine={false}
+                            tickLine={false}
+                            fontSize={11}
+                          />
+                          <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            fontSize={11}
+                            allowDecimals={false}
+                          />
+                          <Tooltip />
+                          <Area
+                            type="monotone"
+                            dataKey="total"
+                            name="Created"
+                            stroke="#4078cf"
+                            strokeWidth={2}
+                            fill="url(#volumeFill)"
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="completed"
+                            name="Completed"
+                            stroke="#399c83"
+                            strokeWidth={2}
+                            fill="transparent"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="chart-data-table">
+                      <table>
+                        <caption>Work order volume by reporting date</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Completed</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {r.volumeTrend.map((point) => (
+                            <tr key={point.date}>
+                              <th scope="row">{point.date}</th>
+                              <td>{point.total}</td>
+                              <td>{point.completed}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </>
                 ) : (
                   <Empty

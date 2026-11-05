@@ -130,7 +130,9 @@ function App() {
           <Route
             path="overview"
             element={
-              <RequireRole roles={["Dispatcher", "Supervisor", "OperationsManager"]}>
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
                 <Overview />
               </RequireRole>
             }
@@ -230,7 +232,12 @@ function App() {
             path="analytics"
             element={
               <RequireRole
-                roles={["Analyst", "Supervisor", "OperationsManager", "Administrator"]}
+                roles={[
+                  "Analyst",
+                  "Supervisor",
+                  "OperationsManager",
+                  "Administrator",
+                ]}
               >
                 <Analytics />
               </RequireRole>

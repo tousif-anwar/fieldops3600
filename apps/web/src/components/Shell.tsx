@@ -49,9 +49,7 @@ interface NavigationItem {
 const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   {
     label: "Start",
-    items: [
-      { to: "/", label: "Home", icon: Home, roles: null, end: true },
-    ],
+    items: [{ to: "/", label: "Home", icon: Home, roles: null, end: true }],
   },
   {
     label: "Operations",
@@ -118,7 +116,12 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
         to: "/overview",
         label: "Operations overview",
         icon: Activity,
-        roles: ["Dispatcher", "Supervisor", "OperationsManager", "Administrator"],
+        roles: [
+          "Dispatcher",
+          "Supervisor",
+          "OperationsManager",
+          "Administrator",
+        ],
       },
     ],
   },
@@ -171,8 +174,9 @@ export function Shell() {
     refetchInterval: 30000,
   });
   const unread =
-    notifications.data?.filter((notification) => !notification.acknowledgedAtUtc)
-      .length ?? 0;
+    notifications.data?.filter(
+      (notification) => !notification.acknowledgedAtUtc,
+    ).length ?? 0;
   const role = primaryRole(auth.roles);
   const teamId = String(
     auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
@@ -182,7 +186,9 @@ export function Shell() {
       auth.user?.profile.preferred_username ??
       "Team member",
   );
-  const firstName = profileName((auth.user?.profile ?? {}) as Record<string, unknown>);
+  const firstName = profileName(
+    (auth.user?.profile ?? {}) as Record<string, unknown>,
+  );
   const initials = name
     .split(/\s+/)
     .slice(0, 2)
@@ -298,7 +304,10 @@ export function Shell() {
     ...(detail ? [{ label: "Details", to: undefined }] : []),
   ];
   useEffect(() => {
-    const current = section?.label ?? extra?.label ?? (location.pathname === "/" ? "Home" : "Workspace");
+    const current =
+      section?.label ??
+      extra?.label ??
+      (location.pathname === "/" ? "Home" : "Workspace");
     document.title = `${current} · FieldOps 360`;
   }, [section?.label, extra?.label, location.pathname]);
 
@@ -340,7 +349,10 @@ export function Shell() {
             <X size={20} />
           </button>
         </div>
-        <div className="workspace-switch" title={`${teamLabel(teamId)} workspace`}>
+        <div
+          className="workspace-switch"
+          title={`${teamLabel(teamId)} workspace`}
+        >
           <span className="workspace-avatar">
             <Building2 size={18} aria-hidden="true" />
           </span>
@@ -451,7 +463,9 @@ export function Shell() {
                 <kbd>Enter</kbd>
               </form>
             )}
-            {import.meta.env.DEV && <span className="environment-badge">Local</span>}
+            {import.meta.env.DEV && (
+              <span className="environment-badge">Local</span>
+            )}
             <span
               className={`connection ${!online ? "offline" : ""}`}
               aria-label={
@@ -463,9 +477,7 @@ export function Shell() {
               }
             >
               {online ? <Wifi size={14} /> : <WifiOff size={14} />}
-              <span>
-                {online ? (live ? "Live" : "Polling") : "Offline"}
-              </span>
+              <span>{online ? (live ? "Live" : "Polling") : "Offline"}</span>
             </span>
             {notificationsAllowed && (
               <NavLink
@@ -482,7 +494,9 @@ export function Shell() {
                 className="user-summary"
                 aria-label={`Account menu for ${name}`}
               >
-                <span className="avatar">{initials || firstName.slice(0, 2).toUpperCase()}</span>
+                <span className="avatar">
+                  {initials || firstName.slice(0, 2).toUpperCase()}
+                </span>
                 <span className="user-summary-copy">
                   <strong>{name}</strong>
                   <small>{roleLabel(role)}</small>
@@ -531,7 +545,8 @@ export function Shell() {
         <footer className="workspace-footer">
           <span>FieldOps 360 · Service operations</span>
           <span>
-            Server-authorized workflows <ShieldCheck size={13} aria-hidden="true" />
+            Server-authorized workflows{" "}
+            <ShieldCheck size={13} aria-hidden="true" />
           </span>
         </footer>
       </div>

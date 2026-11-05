@@ -5,7 +5,11 @@
  */
 :root {
   font-family:
-    "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    "Segoe UI Variable Text",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 16px;
   color: #243447;
   background: #f4f6f8;
@@ -35,7 +39,11 @@ h2,
 h3,
 h4 {
   font-family:
-    "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+    "Segoe UI Variable Display",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: #1e2d3f;
 }
 h1 {
@@ -80,7 +88,9 @@ summary:focus-visible {
   flex-basis: 248px;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
-  transition: width 0.16s ease, flex-basis 0.16s ease;
+  transition:
+    width 0.16s ease,
+    flex-basis 0.16s ease;
 }
 .sidebar-brand-row {
   display: flex;
@@ -91,8 +101,7 @@ summary:focus-visible {
 .brand {
   padding: 20px 18px 16px;
   gap: 10px;
-  font-family:
-    "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -645,8 +654,7 @@ summary:focus-visible {
   color: #56677a;
 }
 .metric-value {
-  font-family:
-    "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   font-size: 32px;
   font-weight: 650;
   letter-spacing: -0.03em;

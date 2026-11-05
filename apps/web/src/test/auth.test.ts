@@ -14,7 +14,9 @@ describe("authenticated role extraction", () => {
     expect(
       rolesFromToken(
         tokenWith({
-          realm_access: { roles: ["Technician", "offline_access", "Dispatcher"] },
+          realm_access: {
+            roles: ["Technician", "offline_access", "Dispatcher"],
+          },
         }),
       ),
     ).toEqual(["Technician", "Dispatcher"]);
