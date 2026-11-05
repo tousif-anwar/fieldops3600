@@ -2,6 +2,14 @@
 .env
 .tools
 .local
+.tmp
+.github
+.vscode
+docs
+tests
+apps/web/e2e
+apps/web/test-results
+apps/web/playwright-report
 **/node_modules
 **/bin
 **/obj

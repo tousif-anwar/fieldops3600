@@ -15,6 +15,7 @@
 !**/.env.example
 .tools/
 .local/
+.tmp/
 artifacts/
 test-results/
 playwright-report/
