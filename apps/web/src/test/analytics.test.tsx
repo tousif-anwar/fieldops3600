@@ -202,3 +202,90 @@ describe("warehouse metric availability", () => {
     },
   );
 });
+
+describe("warehouse pattern views", () => {
+  beforeEach(() => {
+    vi.mocked(api).mockReset();
+  });
+
+  const patternReport = (): Reports => ({
+    ...emptyReport(),
+    totalWorkOrders: 3,
+    slaComplianceTrend: [
+      {
+        date: "2026-11-03",
+        completedStages: 4,
+        compliantStages: 3,
+        breachedStages: 1,
+        complianceRate: 0.75,
+      },
+      {
+        date: "2026-11-04",
+        completedStages: 2,
+        compliantStages: 1,
+        breachedStages: 1,
+        complianceRate: null,
+      },
+    ],
+    stageDurationDistribution: [
+      { bucket: "0–<10", lowerMinutes: 0, upperMinutes: 10, count: 0 },
+      { bucket: "10–<20", lowerMinutes: 10, upperMinutes: 20, count: 0 },
+    ],
+    supervisorInterventionTrend: [],
+  });
+
+  it("shows an unknown compliance rate as unavailable instead of a fabricated zero", async () => {
+    mount(patternReport());
+    await screen.findByRole("tab", { name: "SLA trend" });
+    expect(screen.getByText("View source figures")).toBeInTheDocument();
+    const observed = screen.getByRole("row", { name: /2026-11-03/ });
+    expect(observed).toHaveTextContent("75.0%");
+    expect(observed).toHaveTextContent("3");
+    const unknown = screen.getByRole("row", { name: /2026-11-04/ });
+    expect(unknown).toHaveTextContent("Not available");
+    expect(unknown).not.toHaveTextContent("0.0%");
+  });
+
+  it("does not present an all-zero histogram as a measured duration distribution", async () => {
+    mount(patternReport());
+    const tab = await screen.findByRole("tab", { name: "Stage durations" });
+    await userEvent.click(tab);
+    expect(
+      await screen.findByText("No known stage-duration samples"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("img", { name: /stage-duration histogram/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reports an empty supervisor action population without inventing actions", async () => {
+    mount(patternReport());
+    const tab = await screen.findByRole("tab", { name: "Supervisor actions" });
+    await userEvent.click(tab);
+    expect(
+      await screen.findByText("No recorded supervisor actions"),
+    ).toBeVisible();
+  });
+
+  it("renders recorded supervisor action volume with distinct affected-order counts", async () => {
+    const report = patternReport();
+    report.supervisorInterventionTrend = [
+      {
+        date: "2026-11-04",
+        interventions: 5,
+        affectedWorkOrders: 2,
+        supervisors: 1,
+      },
+    ];
+    mount(report);
+    const tab = await screen.findByRole("tab", { name: "Supervisor actions" });
+    await userEvent.click(tab);
+    const row = await screen.findByRole("row", { name: /2026-11-04/ });
+    expect(row).toHaveTextContent("5");
+    expect(row).toHaveTextContent("2");
+    expect(row).toHaveTextContent("1");
+    expect(
+      screen.getByText(/recorded action volume, not employee performance/),
+    ).toBeVisible();
+  });
+});
