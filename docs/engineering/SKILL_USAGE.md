@@ -114,3 +114,46 @@ This is an execution record, not a checklist claim. A skill is listed as applied
 | API/web smoke latency | Gateway 5.9–15.6 ms; web 2.8–5.9 ms (three samples each) |
 
 Remaining verification gap: no complete WCAG audit, no native stage-submission/offline recovery, no remote CI run, and no physical Android/iOS device test.
+
+## Repository transformation pass (2026-11-05)
+
+This pass used the installed skill set for repository maintenance, architecture, performance, and UI quality. It did not install a new community skill. `find-skills` was read to check the discovery process; no additional package was justified when the existing skills and repository tests covered the work.
+
+### improve-codebase-architecture
+
+- **Applied:** deletion-test review of Home, `main.tsx` route guards, service hosts, and mobile UI primitives.
+- **Change:** extracted six-role figures and quick actions from the 1,015-line Home page into `apps/web/src/pages/home/content.tsx`; removed a duplicate destination helper; added `home-content.test.tsx` covering every role.
+- **Not changed:** backend hosts remain thin; the 335-line `OperationsApi` and 540-line mobile primitives did not justify a risky split. Route role arrays remain duplicated and are recorded as the next access-policy refactor.
+- **Verification:** web typecheck, **49/49** tests, production build, and **16/16** live browser checks.
+
+### performance-optimization
+
+- **Measured baseline:** entry **553.74 kB / 163.31 kB gzip**; Analytics **386.80 kB**; Vite >500 kB warning.
+- **Change:** split the shared React/router/query/OIDC runtime and charting engine into cacheable chunks. Removed an over-broad Fluent grouping after it pulled route-only components into the initial load.
+- **Result:** entry **399.92 kB / 118.49 kB gzip**, shared runtime **156.03 kB / 45.62 kB gzip**, charts **369.04 kB**, route **17.85 kB**; initial gzip **164.11 kB vs 163.31 kB**, effectively flat. No load-time speed claim is made; the warning is gone and caching improved.
+
+### web-design-guidelines
+
+- **Applied:** fetched the current Vercel Web Interface Guidelines and reviewed the shell and Home changes against keyboard, semantic-control, focus, and media/layout rules.
+- **Finding fixed:** the mobile backdrop exposed a second `Close navigation` button beneath the open drawer, duplicating the accessible action and intercepting the test click. It is now presentation-only; the real close button and Escape handler remain. The live responsive test was strengthened to require a unique control.
+- **Not changed:** the existing Fluent visual system, responsive layout, focus treatment, and accessible tables already met the reviewed rules; no decorative churn was introduced.
+
+### agent-browser and design-mobile-apps
+
+- **agent-browser:** not available as a CLI on this host; the repository's Playwright suite was used for real Keycloak login, all six role Homes, responsive navigation, and keyboard checks.
+- **design-mobile-apps:** requires `SLEEK_API_KEY`, which is unavailable. The skill was not executed. The Expo app was checked with TypeScript and 23 tests; the pre-existing invalid `initialRouteName` prop was removed while retaining the user's callback redirect.
+- **Not applicable:** `nodejs-backend-patterns` (ASP.NET Core backend) and `tailwind-design-system` (Fluent UI, no Tailwind).
+
+### Verification summary
+
+| Check | Result |
+|---|---|
+| Backend | 57/57 passed |
+| Web | Typecheck passed; 49/49 tests; production build passed without the >500 kB warning |
+| Mobile | Typecheck passed; 23/23 tests |
+| Intelligence | 18/18 tests; Ruff clean |
+| Live browser | 16/16 passed after the drawer fix |
+| Documentation links | 129 relative links across 47 maintained files passed |
+| Secret guard | Passed across 430 repository files |
+
+Limitations: no remote CI run, native guided-stage/offline recovery, physical-device test, screen-reader pass, or 200% zoom pass was completed. The initial bundle gzip is flat; no speedup is claimed.

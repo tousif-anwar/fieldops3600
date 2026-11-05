@@ -1,0 +1,336 @@
+path,area,lifecycle,purpose
+.dockerignore,root,metadata,Repository metadata or top-level configuration
+.editorconfig,root,metadata,Repository metadata or top-level configuration
+.env.example,root,metadata,Repository metadata or top-level configuration
+.gitattributes,root,metadata,Repository metadata or top-level configuration
+.github/workflows/validate.yml,.github,operations,Continuous integration workflow
+.gitignore,root,metadata,Repository metadata or top-level configuration
+.semgrep.yml,root,metadata,Repository metadata or top-level configuration
+.vscode/settings.json,root,metadata,Repository metadata or top-level configuration
+CONTRIBUTING.md,root,metadata,Repository metadata or top-level configuration
+LICENSE,root,metadata,Repository metadata or top-level configuration
+README.md,root,metadata,Repository metadata or top-level configuration
+SECURITY.md,root,metadata,Repository metadata or top-level configuration
+analytics/Dockerfile,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/README.md,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/ingestion-worker/backfill.py,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/ingestion-worker/worker.py,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/migrations/001_star_schema.sql,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/migrations/002_ordering_and_interval_capacity.sql,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/migrations/003_known_creation_cohorts.sql,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/migrations/004_technician_scd2_and_time_off.sql,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/migrations/005_database_invariants.sql,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/quality-tests/checks.sql,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/quality-tests/run_checks.py,analytics,source,"Warehouse schema, ingestion, and quality checks"
+analytics/requirements.txt,analytics,source,"Warehouse schema, ingestion, and quality checks"
+apps/technician-mobile/.env.example,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/.gitignore,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/README.md,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app.config.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app.json,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/(tabs)/_layout.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/(tabs)/account.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/(tabs)/index.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/(tabs)/notifications.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/(tabs)/schedule.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/(tabs)/sync.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/_layout.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/job/[id].tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/job/[id]/stage/[stage].tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/app/oauth/callback.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/expo-env.d.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/package-lock.json,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/package.json,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/api.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/auth.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/contracts.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/login.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/offline/forms.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/offline/queue.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/runtime.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/session-lifecycle.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/assistance.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/components.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/contrast.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/fields.tsx,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/model.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/palette.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/ui/tokens.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/use-bookings.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/src/use-job.ts,apps/technician-mobile,source,Expo technician application
+apps/technician-mobile/tsconfig.json,apps/technician-mobile,source,Expo technician application
+apps/web/.env.example,apps/web,source,React operations portal
+apps/web/README.md,apps/web,source,React operations portal
+apps/web/e2e/login.spec.ts,apps/web,verification,React operations portal
+apps/web/e2e/operations.spec.ts,apps/web,verification,React operations portal
+apps/web/e2e/roles.spec.ts,apps/web,verification,React operations portal
+apps/web/index.html,apps/web,source,React operations portal
+apps/web/package-lock.json,apps/web,source,React operations portal
+apps/web/package.json,apps/web,source,React operations portal
+apps/web/playwright.config.ts,apps/web,source,React operations portal
+apps/web/public/favicon.svg,apps/web,source,React operations portal
+apps/web/scripts/capture-screenshots.mjs,apps/web,source,React operations portal
+apps/web/scripts/capture-web-ux.mjs,apps/web,source,React operations portal
+apps/web/scripts/check-live-notifications.mjs,apps/web,source,React operations portal
+apps/web/scripts/check-replay-layout.mjs,apps/web,source,React operations portal
+apps/web/src/api.ts,apps/web,source,React operations portal
+apps/web/src/auth.tsx,apps/web,source,React operations portal
+apps/web/src/components/BookingEditor.tsx,apps/web,source,React operations portal
+apps/web/src/components/DeliveryEvidence.tsx,apps/web,source,React operations portal
+apps/web/src/components/OrderEditor.tsx,apps/web,source,React operations portal
+apps/web/src/components/RiskAssessment.tsx,apps/web,source,React operations portal
+apps/web/src/components/Shell.tsx,apps/web,source,React operations portal
+apps/web/src/components/TraceEvidence.tsx,apps/web,source,React operations portal
+apps/web/src/components/WarehousePatterns.tsx,apps/web,source,React operations portal
+apps/web/src/components/common.tsx,apps/web,source,React operations portal
+apps/web/src/enterprise.css,apps/web,source,React operations portal
+apps/web/src/format.ts,apps/web,source,React operations portal
+apps/web/src/home.ts,apps/web,source,React operations portal
+apps/web/src/main.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Administration.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Analytics.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Home.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Login.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Notifications.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Overview.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Replay.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Schedule.tsx,apps/web,source,React operations portal
+apps/web/src/pages/WorkOrders.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Workflow.tsx,apps/web,source,React operations portal
+apps/web/src/pages/Workspaces.tsx,apps/web,source,React operations portal
+apps/web/src/pages/home/content.tsx,apps/web,source,React operations portal
+apps/web/src/replay.ts,apps/web,source,React operations portal
+apps/web/src/styles.css,apps/web,source,React operations portal
+apps/web/src/test/analytics.test.tsx,apps/web,verification,React operations portal
+apps/web/src/test/auth.test.ts,apps/web,verification,React operations portal
+apps/web/src/test/delivery.test.tsx,apps/web,verification,React operations portal
+apps/web/src/test/home-content.test.tsx,apps/web,verification,React operations portal
+apps/web/src/test/home.test.ts,apps/web,verification,React operations portal
+apps/web/src/test/jobs.test.tsx,apps/web,verification,React operations portal
+apps/web/src/test/orders.test.tsx,apps/web,verification,React operations portal
+apps/web/src/test/replay.test.ts,apps/web,verification,React operations portal
+apps/web/src/test/setup.ts,apps/web,verification,React operations portal
+apps/web/src/test/trace.test.tsx,apps/web,verification,React operations portal
+apps/web/src/test/workflow.test.tsx,apps/web,verification,React operations portal
+apps/web/src/types.ts,apps/web,source,React operations portal
+apps/web/src/workflow.ts,apps/web,source,React operations portal
+apps/web/tsconfig.json,apps/web,source,React operations portal
+apps/web/vite.config.ts,apps/web,source,React operations portal
+building-blocks/FieldOps.Core/DeliveryObservations.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/FieldOps.Core.csproj,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/IncidentSummary.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/Models.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/ReplayEngine.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/Templates.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/WorkOrderRules.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/WorkflowEngine.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.Core/WorkflowTemplates/hvac-v1.json,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.SchemaTool/FieldOps.SchemaTool.csproj,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.SchemaTool/Program.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/Bootstrap.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/FaultMonitor.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/FieldOps.ServiceHost.csproj,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/Messaging.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/OperationsApi.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/Persistence.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/ReportingApi.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/SchedulingRecommendations.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/SchemaMigrator.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/Security.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/SlaAudit.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/Telemetry.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/TraceProbe.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/WarehouseAnalytics.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/WarehouseExport.cs,building-blocks,source,Shared backend domain and host infrastructure
+building-blocks/FieldOps.ServiceHost/WarehouseQueries.cs,building-blocks,source,Shared backend domain and host infrastructure
+docker-compose.yml,root,metadata,Repository metadata or top-level configuration
+docs/IMPLEMENTATION_STATUS.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/INDEX.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/INSTALLATION.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/UI_WALKTHROUGH.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/adr/001-service-ownership.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/adr/002-browser-auth.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/adr/003-evidence-and-runtime-grants.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/architecture/REQUIREMENTS.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/architecture/contracts.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/architecture/overview.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/architecture/patterns.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/case-study/DELIVERY_REPORT.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/diagrams/data-and-deployment.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/diagrams/sequences.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/CODE_QUALITY_AUDIT.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/DOCUMENTATION_CONSOLIDATION.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/FILE_INVENTORY.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/REFACTORING_BASELINE.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/REFACTORING_RESULTS.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/REPOSITORY_HYGIENE.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/SKILL_USAGE.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/engineering/file-inventory.csv,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/operations/LOCAL_DEPLOYMENT.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/API_REFERENCE.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/DATA_ARCHITECTURE.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/TECHNICAL_QA.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/01-system-context.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/02-container-architecture.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/03-workflow-components.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/04-local-deployment.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/05-authentication-sequence.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/06-api-request-and-outbox.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/07-event-driven-communication.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/08-guided-workflow-state.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/09-sla-lifecycle.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/10-database-architecture.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/11-warehouse-star-schema.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/12-scheduling-optimization.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/13-operational-replay.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/14-mobile-offline-synchronization.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/presentation/diagrams/15-ci-validation.mmd,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/screenshots/guided-service-workflow.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/screenshots/mobile/after/account.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/screenshots/mobile/after/my-jobs.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/screenshots/operational-replay.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/security/threat-model.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/testing/VERIFICATION.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/ACCESSIBILITY_REPORT.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/DESIGN_SYSTEM.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/INFORMATION_ARCHITECTURE.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/RESEARCH.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/ROLE_BASED_HOME.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/USABILITY_RESULTS.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/USER_JOURNEYS.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/UX_AUDIT.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/UX_WRITING_AUDIT.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-administration.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-analytics-tab-duration.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-analytics.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-home-administrator.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-home-analyst.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-home-dispatcher.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-home-manager.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-home-supervisor.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-home-technician.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-login.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-mobile-navigation.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-replay.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-responsive-1024.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-responsive-1440.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-responsive-1920.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-responsive-320.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-responsive-375.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-responsive-768.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-schedule.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-sla-monitoring.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-work-order-detail.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-work-orders-page-2.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/after-work-orders.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/axe-results.json,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-administrator.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-analyst.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-dispatcher.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-login.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-manager.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-supervisor.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/before-technician.png,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/ui-ux/evidence/walkthrough.webm,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+docs/workflows/design.md,docs,documentation,"Architecture, operations, security, UI/UX, engineering, or evidence documentation"
+gateway/FieldOps.Gateway.csproj,gateway,source,Authenticated YARP ingress
+gateway/Program.cs,gateway,source,Authenticated YARP ingress
+gateway/README.md,gateway,source,Authenticated YARP ingress
+global.json,root,metadata,Repository metadata or top-level configuration
+infrastructure/docker/Dockerfile.gateway,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/docker/Dockerfile.service,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/docker/Dockerfile.web,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/docker/compose.demo.yml,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/docker/nginx.conf,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/docker/security-headers.conf,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/monitoring/grafana/dashboards/operations.json,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/monitoring/grafana/provisioning/dashboards/dashboards.yml,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/monitoring/jaeger.yml,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/monitoring/prometheus.yml,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+infrastructure/postgres/grants-warehouse-runtime.sql,infrastructure,operations,"Docker, identity, database, or monitoring configuration"
+intelligence/Dockerfile,intelligence,source,SLA prediction and scheduling optimization
+intelligence/README.md,intelligence,source,SLA prediction and scheduling optimization
+intelligence/evaluation/REPORT.md,intelligence,source,SLA prediction and scheduling optimization
+intelligence/evaluation/results.json,intelligence,source,SLA prediction and scheduling optimization
+intelligence/fieldops_intelligence/__init__.py,intelligence,source,SLA prediction and scheduling optimization
+intelligence/fieldops_intelligence/api.py,intelligence,source,SLA prediction and scheduling optimization
+intelligence/fieldops_intelligence/evaluate.py,intelligence,source,SLA prediction and scheduling optimization
+intelligence/fieldops_intelligence/prediction.py,intelligence,source,SLA prediction and scheduling optimization
+intelligence/fieldops_intelligence/scheduling.py,intelligence,source,SLA prediction and scheduling optimization
+intelligence/pyproject.toml,intelligence,source,SLA prediction and scheduling optimization
+intelligence/requirements-dev.txt,intelligence,source,SLA prediction and scheduling optimization
+intelligence/requirements.txt,intelligence,source,SLA prediction and scheduling optimization
+replay/event-store/README.md,replay,source,Replay evidence model and contract
+scripts/check-docs.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/check-secrets.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/demo-resilience.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/demo-terminal-fault.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/init-local.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/local-auth.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/local_databases.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/prepare-security-snapshot.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/reconcile-database-runtime.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/reconcile-local-identity.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/test-local-bootstrap.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/verify-database-permissions.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/verify-fresh-compose.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/verify-observability.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+scripts/wait-local.py,scripts,operations,"Bootstrap, readiness, reconciliation, security, or docs verification"
+services/ANALYTICS_METRICS.md,services,source,Backend service host or service guide
+services/FieldOps.Backend.slnx,services,source,Backend service host or service guide
+services/OPERATIONS_DEMONSTRATION.md,services,source,Backend service host or service guide
+services/README.md,services,source,Backend service host or service guide
+services/notifications/FieldOps.Notifications.csproj,services,source,Backend service host or service guide
+services/notifications/Program.cs,services,source,Backend service host or service guide
+services/notifications/migrations/001_initial.sql,services,source,Backend service host or service guide
+services/notifications/migrations/002_data_integrity.sql,services,source,Backend service host or service guide
+services/reporting/FieldOps.Reporting.csproj,services,source,Backend service host or service guide
+services/reporting/Program.cs,services,source,Backend service host or service guide
+services/reporting/migrations/001_initial.sql,services,source,Backend service host or service guide
+services/reporting/migrations/002_append_only_evidence.sql,services,source,Backend service host or service guide
+services/reporting/migrations/003_fault_delivery_observations.sql,services,source,Backend service host or service guide
+services/reporting/migrations/004_data_integrity.sql,services,source,Backend service host or service guide
+services/scheduling/FieldOps.Scheduling.csproj,services,source,Backend service host or service guide
+services/scheduling/Program.cs,services,source,Backend service host or service guide
+services/scheduling/migrations/001_initial.sql,services,source,Backend service host or service guide
+services/scheduling/migrations/002_booking_constraints.sql,services,source,Backend service host or service guide
+services/scheduling/migrations/003_data_integrity.sql,services,source,Backend service host or service guide
+services/technicians/FieldOps.Technicians.csproj,services,source,Backend service host or service guide
+services/technicians/Program.cs,services,source,Backend service host or service guide
+services/technicians/migrations/001_initial.sql,services,source,Backend service host or service guide
+services/technicians/migrations/002_data_integrity.sql,services,source,Backend service host or service guide
+services/technicians/migrations/003_relationship_integrity.sql,services,source,Backend service host or service guide
+services/work-orders/FieldOps.WorkOrders.csproj,services,source,Backend service host or service guide
+services/work-orders/Program.cs,services,source,Backend service host or service guide
+services/work-orders/migrations/001_initial.sql,services,source,Backend service host or service guide
+services/work-orders/migrations/002_data_integrity.sql,services,source,Backend service host or service guide
+services/workflows/FieldOps.Workflows.csproj,services,source,Backend service host or service guide
+services/workflows/Program.cs,services,source,Backend service host or service guide
+services/workflows/migrations/001_initial.sql,services,source,Backend service host or service guide
+services/workflows/migrations/002_data_integrity.sql,services,source,Backend service host or service guide
+tests/backend/DispatchAdapterTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/FaultEvidenceTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/FieldOps.Tests.csproj,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/IncidentSummaryTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/PostgresIntegrationTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/SchedulingSecurityReplayTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/SlaAuditTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/TemplateTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/TraceProbeTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/WarehouseAnalyticsTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/WorkOrderRuleTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/WorkflowTests.cs,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/verify_optimizer_http.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/backend/verify_resource_authorization_http.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/integration/test_live_api.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/intelligence/conftest.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/intelligence/test_api.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/intelligence/test_prediction.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/intelligence/test_scheduling.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/mobile/forms.test.ts,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/mobile/offline-queue.test.ts,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/mobile/session-lifecycle.test.ts,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/mobile/ui-model.test.ts,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/security/test_gateway.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"
+tests/warehouse/test_projection.py,tests,verification,"Automated backend, integration, mobile, security, or warehouse verification"

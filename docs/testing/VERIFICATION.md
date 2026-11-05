@@ -6,17 +6,17 @@ This host's system SDK is .NET 11 preview, which fails static-web-asset validati
 
 | Check | Executed result | Evidence boundary |
 |---|---|---|
-| Backend .NET 10 | 54/54 tests; six hosts build with zero warnings/errors (re-run 2026-11-05) | Domain clocks, PostgreSQL/Testcontainers constraints/migrations, immutability, faults, template versions and replay |
+| Backend .NET 10 | 57/57 tests; six hosts build with zero warnings/errors (re-run 2026-11-05) | Domain clocks, PostgreSQL/Testcontainers constraints/migrations, immutability, faults, template versions and replay |
 | Gateway | 7/7 real-process tests (re-run 2026-11-05) | Anonymous/signed boundary checks, spoofed headers, query tokens, security headers, readiness |
 | Live API | 3/3 | Real Keycloak code/PKCE, eight stages, duplicate receipts, parallel booking prevention, pause authorization, offline evidence, replay/export/warehouse |
 | Live resource authorization | 3/3 | Foreign team objects/replay, analyst exclusion, other technician assignments/profiles/time off, booking-first cancellation |
 | Live OR-Tools adapter | 1/1 | Actual scoped Scheduling → intelligence HTTP; valid selection/status/runtime, null travel, invalid inputs |
-| Web unit/component | 33/33 (re-run 2026-11-05) | Forms/history, authentication utilities, replay, delivery grouping, trace availability, nullable warehouse metrics and the three pattern views |
-| Web build and formatting | Passed (2026-11-05) | Production `tsc -b && vite build`; repository `format:check` now passes after formatting previously unformatted committed sources |
-| Web end-to-end | 10/10, no skips (re-run 2026-11-05 after focus/autoFocus changes) | Authenticated dispatcher/supervisor flows, real booking with dynamic free-slot selection, readonly history/playback, desktop and Pixel 7 layouts |
+| Web unit/component | 49/49 (re-run 2026-11-05), including all six role-content configurations | Forms/history, authentication utilities, replay, delivery grouping, trace availability, nullable warehouse metrics and the three pattern views |
+| Web build and formatting | Passed (2026-11-05); entry 399.92 kB plus 156.03 kB cacheable runtime, no >500 kB warning | Production `tsc -b && vite build`; Prettier `format:check` passes |
+| Web end-to-end | 16/16, no skips (re-run 2026-11-05 after the drawer fix) | Six role Homes, deep-link return, unauthorized route, sign-out, responsive reflow/navigation, keyboard order, and dispatcher/supervisor flows |
 | Web accessibility source review | Scoped pass (2026-11-05) | Removed two `outline:none` suppressions, added a visible `:focus-within` list-search border and removed three mobile-unfriendly `autoFocus` props; not a WCAG audit |
 | Replay responsive regression | Five Chromium viewport checks | No document overflow at 1512/1280/1024/760/390 pixels with long valid option text |
-| Expo mobile | 17/17 plus TS6 typecheck (re-run 2026-11-05) | Queue persistence/restart/backoff/conflicts/isolation, conditional forms and session lifecycle |
+| Expo mobile | 23/23 plus TypeScript typecheck (re-run 2026-11-05) | Queue persistence/restart/backoff/conflicts/isolation, conditional forms and session lifecycle |
 | Native Android OAuth + guided entry | Passed (2026-11-05) | Debug APK installed; real Keycloak login as `technician`; callback returned through `fieldops360://oauth/callback`; Keycloak issued a `fieldops-mobile` token; authenticated **My jobs** dashboard rendered for Jordan Rivera; force-stop/relaunch restored the SecureStore session with no new authorization. Guided service then started for synthetic `WO-20261105-FB162B`; stage 1/8 (Job Accepted) became Active and rendered the Assignment/Readiness form. Stage submission and offline queue recovery were not exercised on-device |
 | Expo compatibility / bundle | Passed | SDK 58 compatibility; clean Android Hermes export, 1,266 modules; not a native-device release test |
 | Warehouse | 26/26 PostgreSQL cases (re-run 2026-11-05) | Late/source ordering, cohorts/DST/intervals, deduplication/collision, archive recovery |
@@ -27,6 +27,7 @@ This host's system SDK is .NET 11 preview, which fails static-web-asset validati
 | Observability | 6/6 targets up; 27 retained spans (re-run 2026-11-05) | Prometheus/Grafana/Jaeger started; Grafana health/login 200; includes authorized replay trace-availability check; trace retention is bounded/in-memory |
 | Accelerated resilience demo | Passed | Persisted deadline across restart; warning failure/retry; breach/intervention; completed immutable replay; broker-outage recovery |
 | Terminal consumer failure | Passed | Notifications retry exhaustion; original message independently found in its RabbitMQ error queue and requeued; separate sanitized immutable Replay diagnostics |
+| Documentation links | 129/129 relative links across 47 maintained files; `scripts/check-docs.py` | CI job added; presentation package excluded while it remains untracked |
 | Live SignalR | Passed | Actual WebSocket through served web → gateway; supervisor notice matches persisted history; analyst/anonymous hub requests denied |
 
 Native Android OAuth is verified through the authenticated dashboard and a SecureStore restore after force-stop. The guided service was then started and stage 1's real checklist rendered, but a stage submission, offline queue recovery, notification delivery and physical-device behavior were not exercised; do not infer them from this entry pass. iOS execution remains blocked on macOS.
