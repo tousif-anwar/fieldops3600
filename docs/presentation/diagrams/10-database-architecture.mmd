@@ -1,0 +1,29 @@
+%% Solid owner links; dashed links are logical keys, never cross-database foreign keys.
+flowchart TB
+  subgraph PG["One local PostgreSQL process; separate database ownership"]
+    O[("fieldops_work_orders<br/>work_orders, outbox_messages, inbox_messages")]
+    T[("fieldops_technicians<br/>technicians, time_off")]
+    S[("fieldops_scheduling<br/>bookings + GiST exclusion")]
+    W[("fieldops_workflows<br/>workflows with StagesJson<br/>idempotency_receipts")]
+    N[("fieldops_notifications<br/>notifications + unique EventId")]
+    R[("fieldops_reporting<br/>audit_events, delivery_attempts<br/>replay_projection, fallback facts")]
+    A[("fieldops_warehouse<br/>warehouse schema + analytics views")]
+    K[("keycloak<br/>Identity-provider-owned tables")]
+  end
+  Orders["Work Orders runtime"] --> O
+  Staff["Technicians runtime"] --> T
+  Booking["Scheduling runtime"] --> S
+  Workflow["Workflows runtime"] --> W
+  Notices["Notifications runtime"] --> N
+  Reporting["Reporting runtime"] --> R
+  Reporting -->|"SELECT only"| A
+  Worker["Analytics writer"] --> A
+  Identity["Keycloak runtime"] --> K
+  S -.->|"WorkOrderId / TechnicianId<br/>validated through HTTP"| O
+  S -.-> T
+  W -.->|"WorkOrderId / TechnicianId<br/>validated through HTTP"| O
+  W -.-> T
+  Owners["One-shot migration owners<br/>Separate from app identities"] --> PG
+  classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  class O,T,S,W,N,R,A,K data
+

@@ -1,0 +1,33 @@
+%% Every active stage owns a form from its pinned immutable template version.
+stateDiagram-v2
+  [*] --> Accepted: Start booked, assigned workflow
+  state "0 Job Accepted" as Accepted
+  state "1 Travel / Arrival" as Travel
+  state "2 Initial Inspection" as Inspection
+  state "3 Diagnosis" as Diagnosis
+  state "4 Repair / Service" as Repair
+  state "5 Quality Verification" as Quality
+  state "6 Customer Confirmation" as Customer
+  state "7 Job Completion" as Completion
+  Accepted --> Accepted: Request Reassignment rejected; assistance path
+  Accepted --> Travel: Valid current-stage submission
+  Travel --> Inspection: Valid submission
+  Inspection --> Diagnosis: Valid submission
+  Diagnosis --> Repair: Valid submission
+  Repair --> Quality: Valid submission
+  Quality --> Customer: Valid submission
+  Customer --> Completion: Valid submission
+  Completion --> Done: Valid final submission
+  state "Completed workflow" as Done
+  Done --> [*]
+  note right of Diagnosis
+    Each transition checks expected version.
+    Idempotency receipt protects identical retries.
+    Completed history stays read only.
+  end note
+  note right of Repair
+    Supervisor pause and resume keep the same stage.
+    Reasoned override advances one non-final stage.
+    Assistance does not stop the SLA clock.
+  end note
+

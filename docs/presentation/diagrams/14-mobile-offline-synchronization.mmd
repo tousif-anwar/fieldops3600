@@ -1,0 +1,23 @@
+%% Cache/draft/queue are owner-scoped; tokens are stored separately in SecureStore.
+flowchart LR
+  Form["Current version-pinned stage form"] --> Draft[("AsyncStorage draft<br/>Owner + workflow + stage")]
+  Form --> Queue[("Durable submission queue<br/>Stable key, expected version<br/>Answers and client-reported time")]
+  Cache[("Owner-scoped query cache")] --> Form
+  Network["NetInfo / foreground / timer<br/>Manual synchronize"] --> Lock["Serialized owner queue flush"]
+  Queue --> Lock
+  Lock --> Auth["Generation-guarded token refresh<br/>SecureStore session"]
+  Auth --> API["Gateway and Workflow Service<br/>Role, assignment, version, allowlists<br/>Server-owned SLA time"]
+  API -->|"2xx receipt"| Synced["Mark synchronized<br/>Refresh authoritative queries"]
+  API -->|"409"| Conflict["Durable conflict<br/>Review, discard and re-enter"]
+  API -->|"400 / 403 / 404"| Failed["Failed action<br/>Explicit review required"]
+  API -->|"Network / 401 / 408 / 429 / 5xx"| Backoff["Pending with exponential backoff<br/>Original operation identity retained"]
+  Backoff --> Queue
+  API -.-> Evidence["Offline submission / sync evidence<br/>Original client time is non-authoritative"]
+  Note["Offline storage uses AsyncStorage<br/>Application encryption is not implemented"]
+  Note -.-> Draft
+  Note -.-> Queue
+  classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  classDef warning fill:#FFF7E6,stroke:#B27A17,color:#172B4D
+  class Draft,Queue,Cache data
+  class Conflict,Failed,Backoff,Note warning
+

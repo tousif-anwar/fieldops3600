@@ -1,0 +1,22 @@
+%% MassTransit business topology and independent Python warehouse consumer.
+flowchart LR
+  Producers["Work Orders / Technicians / Scheduling<br/>Workflows / Notifications"] --> Tx[("Owned state + outbox")]
+  Tx --> Dispatcher["Locked outbox dispatcher"]
+  Dispatcher -.-> Exchange["RabbitMQ durable fanout<br/>FieldOps.Core:AuditEvent"]
+  Exchange -.-> OrdersQ["fieldops-work-orders-events<br/>Lifecycle projection + inbox"]
+  Exchange -.-> NoticesQ["fieldops-notifications-events<br/>Alerts + inbox"]
+  Exchange -.-> ReplayQ["fieldops-reporting-events<br/>Immutable evidence + inbox"]
+  Exchange -.-> WarehouseQ["fieldops-warehouse<br/>Redacted projection + ledger"]
+  NoticesQ -.->|"Retry exhaustion"| ErrorQ["Notifications _error queue<br/>Original message retained"]
+  NoticesQ -.->|"Fault of AuditEvent"| FaultQ["fieldops-replay-faults<br/>Independent reporting monitor"]
+  FaultQ --> Diagnostic[("Separate terminal diagnostics<br/>Unknown attempt totals stay unknown")]
+  ReplayQ --> Evidence[("One logical event + separate attempts")]
+  WarehouseQ --> Warehouse[("Warehouse transaction")]
+  WarehouseQ -.->|"Failure, 2-second delay"| RetryQ["fieldops-warehouse.retry"]
+  RetryQ -.-> WarehouseQ
+  WarehouseQ -.->|"Fifth failed attempt"| WarehouseError["fieldops-warehouse.error"]
+  classDef durable fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  classDef error fill:#FFF1ED,stroke:#B85A38,color:#172B4D
+  class Tx,Evidence,Diagnostic,Warehouse durable
+  class ErrorQ,WarehouseError error
+

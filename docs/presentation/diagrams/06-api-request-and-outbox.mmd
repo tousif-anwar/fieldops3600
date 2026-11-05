@@ -1,0 +1,27 @@
+%% Actual representative request: POST /api/work-orders.
+sequenceDiagram
+  autonumber
+  actor Dispatcher
+  participant Web as React web
+  participant GW as YARP
+  participant API as Work Order Service
+  participant DB as Work Orders database
+  participant Publisher as OutboxDispatcher
+  participant Rabbit as RabbitMQ
+  participant Consumer as Reporting / warehouse consumers
+  Dispatcher->>Web: Create synthetic work order
+  Web->>GW: POST /api/work-orders + bearer token
+  GW->>API: Authenticated proxy request
+  API->>API: Dispatch policy, team check, input validation
+  API->>DB: Save order and WorkOrderCreated.v1 outbox row
+  Note over API,DB: One owning-database transaction
+  DB-->>API: Commit
+  API-->>Web: 201 Created + order representation
+  Publisher->>DB: Lock pending outbox rows
+  Publisher->>Rabbit: Publish stable EventId
+  Rabbit-->>Publisher: Broker confirmation
+  Publisher->>DB: Mark published and commit
+  Rabbit-->>Consumer: At-least-once delivery
+  Consumer->>Consumer: Deduplicate event identity and update local read state
+  Note over Web,Consumer: Committed command and analytical visibility have different timing.
+

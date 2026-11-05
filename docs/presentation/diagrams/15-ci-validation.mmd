@@ -1,0 +1,22 @@
+%% Configuration exists; no remote GitHub Actions success or cloud deployment is implied.
+flowchart TB
+  Git["Push / pull request / workflow_dispatch"] --> CI["GitHub Actions<br/>Pinned action references"]
+  CI --> Backend[".NET 10 build and xUnit<br/>Gateway process checks<br/>Dependency audit"]
+  CI --> Web["Node 24 web<br/>Build, Vitest, format, npm audit"]
+  CI --> Mobile["Expo mobile<br/>Typecheck/tests, compatibility<br/>npm audit, Android export"]
+  CI --> Intelligence["Python intelligence<br/>Pinned dependencies, pytest, Ruff"]
+  CI --> Security["Secret guard, Gitleaks<br/>Semgrep, Trivy source scan"]
+  CI --> Integrated["Build Compose images<br/>Start isolated CI stack"]
+  Integrated --> Data["Warehouse PostgreSQL tests<br/>Runtime grant verification"]
+  Data --> HTTP["Live API, resource authorization<br/>Optimizer HTTP contract"]
+  HTTP --> Browser["Playwright real web flows<br/>Live SignalR and replay layout"]
+  Backend --> Artifacts["Retained test artifacts"]
+  Browser --> Artifacts
+  Browser --> Cleanup["Compose down on completion/failure"]
+  Planned["Production deployment / remote-run evidence<br/>Remain separate acceptance work"]
+  CI -.-> Planned
+  classDef app fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  classDef pending fill:#FFF7E6,stroke:#B27A17,color:#172B4D
+  class CI,Backend,Web,Mobile,Intelligence,Security,Integrated,Data,HTTP,Browser,Artifacts,Cleanup app
+  class Planned pending
+

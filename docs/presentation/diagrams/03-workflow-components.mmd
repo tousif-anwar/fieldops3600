@@ -1,0 +1,20 @@
+%% Component view inside the Workflows deployment, not additional services.
+flowchart LR
+  Client["Authenticated command"] --> Endpoint["OperationsApi<br/>Workflow endpoints"]
+  Endpoint --> Policy["JWT policy and Caller<br/>Team / assigned-subject scope"]
+  Policy --> Receipt["Expected version<br/>Idempotency receipt check"]
+  Receipt --> Rules["WorkflowEngine and Templates<br/>Pinned schema and legal transition"]
+  Clock["Quartz SlaSweep<br/>Persisted-state catch-up"] --> Rules
+  Rules --> Unit["ServiceDb.SaveChanges<br/>One owned transaction"]
+  Unit --> Aggregate[("workflows<br/>StagesJson, Version, UTC state")]
+  Unit --> Idempotency[("idempotency_receipts")]
+  Unit --> Outbox[("outbox_messages")]
+  Outbox --> Publisher["OutboxDispatcher<br/>Row locks and retry"]
+  Publisher -.-> Rabbit["MassTransit / RabbitMQ"]
+  Rules --> Audit["SlaAudit / EventFactory<br/>Causation and trace metadata"]
+  Audit --> Unit
+  classDef code fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  class Endpoint,Policy,Receipt,Rules,Clock,Unit,Publisher,Audit code
+  class Aggregate,Idempotency,Outbox data
+

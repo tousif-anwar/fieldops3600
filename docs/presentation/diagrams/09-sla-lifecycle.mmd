@@ -1,0 +1,21 @@
+%% Production-default policy in minutes; demo override uses seconds only in Development.
+flowchart LR
+  Start["Stage activation<br/>Persist server UTC start and deadline"] --> OnTime["0–19 min<br/>On Time"]
+  OnTime -->|"20 min effective elapsed"| Warning["Warning<br/>Technician notification"]
+  Warning -->|"25 min effective elapsed"| Critical["Critical warning<br/>Technician notification"]
+  Critical -->|"30 min effective elapsed"| Breach["Breached<br/>Supervisor escalation"]
+  Sweep["Quartz sweep or late submission<br/>Evaluate persisted stage state"] --> Warning
+  Sweep --> Critical
+  Sweep --> Breach
+  Pause["Authorized supervisor pause<br/>Reason and audit event"] --> Resume["Resume extends deadline<br/>by approved paused seconds"]
+  Resume --> Sweep
+  Breach --> History["Breach remains in history<br/>after pause, resume or completion"]
+  Persist["Threshold level, aggregate version<br/>and outbox commit together"] --> Sweep
+  Restart["Service restart"] -->|"No browser clock needed"| Sweep
+  classDef normal fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  classDef warning fill:#FFF7E6,stroke:#B27A17,color:#172B4D
+  classDef breach fill:#FFF1ED,stroke:#B85A38,color:#172B4D
+  class Start,OnTime,Pause,Resume,Persist,Restart,Sweep,History normal
+  class Warning,Critical warning
+  class Breach breach
+

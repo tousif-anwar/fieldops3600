@@ -1,0 +1,37 @@
+%% Physical relationships within the analytical warehouse only.
+%% Migration 004 adds actual technician SCD2 and time-off fact structures.
+erDiagram
+  DIM_DATE o|--o{ FACT_WORK_ORDER : created_date_key
+  DIM_TECHNICIAN o|--o{ FACT_WORK_ORDER : technician_key
+  DIM_CUSTOMER o|--o{ FACT_WORK_ORDER : customer_key
+  DIM_SERVICE_CATEGORY o|--o{ FACT_WORK_ORDER : category_key
+  DIM_WORK_ORDER_STATUS o|--o{ FACT_WORK_ORDER : status_key
+  FACT_WORK_ORDER ||--o{ FACT_WORKFLOW_STAGE : work_order_id
+  DIM_WORKFLOW_STAGE o|--o{ FACT_WORKFLOW_STAGE : stage_key
+  FACT_WORK_ORDER ||--o{ FACT_BOOKING : work_order_id
+  DIM_TECHNICIAN o|--o{ FACT_BOOKING : technician_key
+  FACT_WORK_ORDER ||--o{ FACT_SLA_BREACH : work_order_id
+  FACT_WORKFLOW_STAGE ||--o{ FACT_SLA_BREACH : stage_instance_id
+  FACT_WORK_ORDER ||--o{ FACT_SUPERVISOR_INTERVENTION : work_order_id
+  DIM_SUPERVISOR o|--o{ FACT_SUPERVISOR_INTERVENTION : supervisor_key
+  DIM_TECHNICIAN o|--o{ FACT_TECHNICIAN_TIME_OFF : technician_key
+  INGESTION_LEDGER ||--o| STAGING_EVENT : event_id
+  INGESTION_LEDGER ||--o| FACT_SLA_BREACH : event_id
+  INGESTION_LEDGER ||--o| FACT_SUPERVISOR_INTERVENTION : event_id
+  INGESTION_LEDGER ||--o| FACT_TECHNICIAN_TIME_OFF : event_id
+  DIM_TECHNICIAN {
+    bigint technician_key PK
+    text technician_id
+    timestamptz effective_from_utc
+    timestamptz effective_to_utc
+    boolean is_current
+  }
+  FACT_WORKFLOW_STAGE {
+    uuid stage_instance_id PK
+    uuid work_order_id FK
+    bigint stage_key FK
+    timestamptz started_at_utc
+    timestamptz completed_at_utc
+    boolean breached
+  }
+

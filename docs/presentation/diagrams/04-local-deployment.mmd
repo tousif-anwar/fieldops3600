@@ -1,0 +1,45 @@
+%% Verified local architecture, not a cloud deployment.
+flowchart TB
+  subgraph Devices["User devices"]
+    Browser["Browser"]
+    Phone["Native Android / iOS-compatible source"]
+  end
+  subgraph Host["Loopback-only published development ports"]
+    Web["Nginx web :8088"]
+    Gateway["YARP :5100"]
+    Keycloak["Keycloak :8080"]
+    RabbitUI["RabbitMQ management :15672"]
+    Monitor["Monitoring profile<br/>Prometheus :9090, Grafana :3000, Jaeger :16686"]
+  end
+  subgraph Network["Private Compose network"]
+    APIs["Six independently deployed .NET services"]
+    Broker["RabbitMQ broker"]
+    Intelligence["Python intelligence :8000"]
+    Worker["Analytics worker"]
+    Postgres[("One PostgreSQL container<br/>Eight separately owned logical databases")]
+    Migration["Seven one-shot migration jobs<br/>Owner identities"]
+    Volumes[("Named PostgreSQL and broker volumes")]
+  end
+  Browser --> Web
+  Web --> Gateway
+  Phone --> Gateway
+  Browser --> Keycloak
+  Phone --> Keycloak
+  Gateway --> APIs
+  Gateway --> Intelligence
+  APIs -->|"Restricted runtime roles"| Postgres
+  APIs -.-> Broker
+  Broker -.-> Worker
+  Worker -->|"Warehouse writer role"| Postgres
+  Keycloak -->|"Keycloak-owned database"| Postgres
+  Migration -->|"DDL then exit"| Postgres
+  RabbitUI --> Broker
+  APIs -.->|"OTLP traces"| Monitor
+  Monitor -->|"HTTP metrics scrape"| APIs
+  Postgres --> Volumes
+  Broker --> Volumes
+  classDef runtime fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  class Web,Gateway,Keycloak,APIs,Intelligence,Worker,Migration runtime
+  class Postgres,Volumes data
+

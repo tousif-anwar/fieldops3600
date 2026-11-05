@@ -1,0 +1,24 @@
+%% FieldOps 360 system context. Local synthetic-data deployment.
+flowchart LR
+  Dispatcher["Dispatcher<br/>Create and assign work"]
+  Technician["Technician<br/>Execute assigned work"]
+  Supervisor["Supervisor<br/>Intervene and investigate"]
+  Manager["Operations manager<br/>Coordinate team operations"]
+  Analyst["Analyst<br/>Read masked analytics"]
+  Administrator["Administrator<br/>Identity and system administration"]
+  Platform["FieldOps 360<br/>Web and native technician experiences"]
+  Identity["Keycloak<br/>OIDC identity provider"]
+  Traces["Jaeger<br/>Optional local trace investigation"]
+  Dispatcher --> Platform
+  Technician --> Platform
+  Supervisor --> Platform
+  Manager --> Platform
+  Analyst --> Platform
+  Administrator --> Platform
+  Platform -->|"Code flow with PKCE"| Identity
+  Platform -->|"Authorized availability check<br/>then separate Jaeger link"| Traces
+  classDef system fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  classDef external fill:#F3F5F7,stroke:#6B778C,color:#172B4D
+  class Platform system
+  class Identity,Traces external
+

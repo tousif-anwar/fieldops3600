@@ -1,0 +1,27 @@
+%% Shared protocol: web oidc-client-ts; native Expo AuthSession/system browser.
+sequenceDiagram
+  autonumber
+  actor Person as User
+  participant Client as Web or native client
+  participant Browser as Identity browser
+  participant KC as Keycloak
+  participant Gateway as YARP
+  participant API as Owning service
+  Person->>Client: Choose sign in
+  Client->>Client: Create state, nonce and PKCE verifier
+  Client->>Browser: Open authorization URL with S256 challenge
+  Browser->>KC: Authorization request
+  KC-->>Browser: Organization sign-in form
+  Person->>Browser: Enter credentials on Keycloak page
+  Browser->>KC: Submit credentials
+  KC-->>Client: Registered callback with code and state
+  Client->>Client: Validate response state
+  Client->>KC: Exchange code + verifier
+  KC-->>Client: Signed access token and session tokens
+  Note over Client: Web tokens stay in memory.<br/>Native tokens use SecureStore.
+  Client->>Gateway: API request with bearer access token
+  Gateway->>Gateway: Validate issuer, audience, signature, lifetime
+  Gateway->>API: Forward request; strip spoofed identity headers
+  API->>API: Repeat JWT validation; enforce role and resource scope
+  API-->>Client: Authorized data or 401 / 403 / hidden-object 404
+

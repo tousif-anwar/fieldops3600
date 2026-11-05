@@ -1,0 +1,22 @@
+%% Replay changes only historical read state; playback never executes business commands.
+flowchart LR
+  Original["Original business envelope<br/>EventId, source sequence, occurrence<br/>Causation, correlation, trace IDs"] -.-> Consumer["Reporting consumer<br/>Order-scoped lock and inbox"]
+  Consumer --> Events[("Append-only audit_events<br/>Original text + SHA256")]
+  Consumer --> Attempts[("Append-only delivery_attempts<br/>Separate consumer observations")]
+  Fault["Independent terminal-fault monitor"] --> Attempts
+  Fault --> Events
+  Events --> Order["ReplayEngine ordering<br/>Causation + source-local sequence<br/>Explicit missing-parent uncertainty"]
+  Order --> Projection[("Mutable replay_projection<br/>Rebuildable historical state")]
+  Projection --> API["Authorized investigation API<br/>Supervisor team / administrator"]
+  Attempts --> API
+  API --> Playback["Read-only timeline and playback<br/>Filters, cursor, incident facts"]
+  API --> Export["Redacted CSV / PDF exports"]
+  API --> Trace["Validate trace belongs to order<br/>Check retained / unavailable / unreachable"]
+  Trace --> Jaeger["Optional local Jaeger"]
+  Events --> Rebuild["Administrator rebuild"]
+  Rebuild --> Projection
+  classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  classDef app fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  class Events,Attempts,Projection data
+  class Consumer,Fault,Order,API,Playback,Export,Trace,Rebuild app
+

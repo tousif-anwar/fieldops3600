@@ -1,0 +1,48 @@
+%% Solid links: HTTP or database access. Dashed links: asynchronous events/updates.
+flowchart TB
+  Web["React web<br/>Nginx :8088"] --> Gateway["YARP gateway<br/>:5100"]
+  Mobile["Expo native app"] --> Gateway
+  Web --> Identity["Keycloak<br/>:8080"]
+  Mobile --> Identity
+  subgraph Business["Six ASP.NET Core service containers"]
+    Orders["Work orders"]
+    Staff["Technicians"]
+    Schedule["Scheduling"]
+    Workflow["Workflows"]
+    Notifications["Notifications"]
+    Reporting["Reporting and Replay"]
+  end
+  Gateway --> Orders
+  Gateway --> Staff
+  Gateway --> Schedule
+  Gateway --> Workflow
+  Gateway --> Notifications
+  Gateway --> Reporting
+  Gateway --> Intelligence["Private Python intelligence<br/>Prediction and OR-Tools"]
+  Schedule -->|"Actual scoped optimize request"| Intelligence
+  Orders --> ServiceDBs[("Six separate service databases")]
+  Staff --> ServiceDBs
+  Schedule --> ServiceDBs
+  Workflow --> ServiceDBs
+  Notifications --> ServiceDBs
+  Reporting --> ServiceDBs
+  Orders -.-> Broker["RabbitMQ<br/>AuditEvent fanout"]
+  Staff -.-> Broker
+  Schedule -.-> Broker
+  Workflow -.-> Broker
+  Notifications -.-> Broker
+  Broker -.-> Orders
+  Broker -.-> Notifications
+  Broker -.-> Reporting
+  Broker -.-> Worker["Python analytics worker"]
+  Worker --> Warehouse[("Independent warehouse")]
+  Reporting -->|"Read only"| Warehouse
+  Notifications -.->|"SignalR, best effort"| Web
+  Identity --> IdentityDB[("Keycloak database")]
+  classDef app fill:#EAF2FF,stroke:#2862B4,color:#172B4D
+  classDef infra fill:#F3F5F7,stroke:#6B778C,color:#172B4D
+  classDef data fill:#E8F5F1,stroke:#27836B,color:#172B4D
+  class Web,Mobile,Gateway,Orders,Staff,Schedule,Workflow,Notifications,Reporting,Worker,Intelligence app
+  class Identity,Broker infra
+  class ServiceDBs,Warehouse,IdentityDB data
+
