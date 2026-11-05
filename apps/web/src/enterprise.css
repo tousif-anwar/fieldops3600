@@ -145,7 +145,7 @@ summary:focus-visible {
   font-size: 13px;
 }
 .workspace-switch small {
-  font-size: 11px;
+  font-size: 12px;
   color: #6d7b8c;
   margin-top: 2px;
 }
@@ -167,7 +167,7 @@ summary:focus-visible {
 .nav-group-label {
   padding: 13px 10px 5px;
   color: #657385;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.075em;
   text-transform: uppercase;
@@ -230,7 +230,7 @@ summary:focus-visible {
   gap: 7px;
   padding: 8px;
   color: #748194;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 .sidebar-collapsed .sidebar {
@@ -2146,6 +2146,41 @@ summary:focus-visible {
     padding: 22px 17px 20px;
   }
 }
+.analytics-pattern-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-bottom: 1px solid #dce3ea;
+  padding: 0 2px;
+}
+.analytics-pattern-tabs [role="tab"] {
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  color: #4b5d70;
+  font-size: 14px;
+  font-weight: 600;
+}
+.analytics-pattern-tabs [role="tab"]:hover {
+  background: #f2f5f9;
+  color: #1d4b82;
+}
+.analytics-pattern-tabs [role="tab"][aria-selected="true"] {
+  border-bottom-color: #1f5aa6;
+  color: #174a8c;
+  background: #f6f9fd;
+}
+.analytics-cohort-note,
+.analytics-evidence-note,
+.analytics-source-figures summary {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #526376;
+}
+
 /* Contrast corrections verified with axe against WCAG 2.2 AA. */
 .brand-copy > small {
   color: #58687a;
@@ -2165,6 +2200,8 @@ summary:focus-visible {
 }
 .user-summary-copy small {
   color: #58687a;
+  font-size: 13px;
+  line-height: 1.4;
 }
 .user-popover-identity span {
   color: #596a7d;
@@ -2210,6 +2247,14 @@ summary:focus-visible {
 }
 .booking-time {
   color: #506a88;
+}
+.booking-time > strong,
+.booking-time > small {
+  white-space: nowrap;
+}
+.home-figure > strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .booking-time > small,
 .booking-content p,

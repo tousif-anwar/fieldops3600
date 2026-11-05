@@ -1,5 +1,4 @@
-import { useState, type ReactNode } from "react";
-import { Tab, TabList } from "@fluentui/react-components";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { CalendarDays, TriangleAlert } from "lucide-react";
 import {
   Area,
@@ -49,6 +48,33 @@ function SourceFigures({
 
 export function WarehousePatterns({ report }: { report: Reports }) {
   const [view, setView] = useState("sla");
+  const views = [
+    { value: "sla", label: "SLA trend", tabId: "analytics-tab-sla" },
+    { value: "duration", label: "Stage durations", tabId: "analytics-tab-duration" },
+    {
+      value: "interventions",
+      label: "Supervisor actions",
+      tabId: "analytics-tab-interventions",
+    },
+  ];
+  const selectView = (value: string) => setView(value);
+  const onTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    let nextIndex: number | undefined;
+    if (event.key === "ArrowRight")
+      nextIndex = (currentIndex + 1) % views.length;
+    if (event.key === "ArrowLeft")
+      nextIndex = (currentIndex - 1 + views.length) % views.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = views.length - 1;
+    if (nextIndex == null) return;
+    event.preventDefault();
+    const next = views[nextIndex]!;
+    selectView(next.value);
+    requestAnimationFrame(() => document.getElementById(next.tabId)?.focus());
+  };
   const compliance = report.slaComplianceTrend ?? [];
   const durations = report.stageDurationDistribution ?? [];
   const interventions = report.supervisorInterventionTrend ?? [];
@@ -92,34 +118,27 @@ export function WarehousePatterns({ report }: { report: Reports }) {
         filter. Missing calendar days are not filled in. Booking coverage
         measures assignment coverage, not route or solver efficiency.
       </p>
-      <TabList
+      <div
         className="analytics-pattern-tabs"
+        role="tablist"
         aria-label="Detailed analytical views"
-        selectedValue={view}
-        onTabSelect={(_, data) => setView(String(data.value))}
       >
-        <Tab
-          id="analytics-tab-sla"
-          aria-controls="analytics-panel-sla"
-          value="sla"
-        >
-          SLA trend
-        </Tab>
-        <Tab
-          id="analytics-tab-duration"
-          aria-controls="analytics-panel-duration"
-          value="duration"
-        >
-          Stage durations
-        </Tab>
-        <Tab
-          id="analytics-tab-interventions"
-          aria-controls="analytics-panel-interventions"
-          value="interventions"
-        >
-          Supervisor actions
-        </Tab>
-      </TabList>
+        {views.map((item, index) => (
+          <button
+            key={item.value}
+            id={item.tabId}
+            type="button"
+            role="tab"
+            aria-selected={view === item.value}
+            aria-controls={`analytics-panel-${item.value}`}
+            tabIndex={view === item.value ? 0 : -1}
+            onClick={() => selectView(item.value)}
+            onKeyDown={(event) => onTabKeyDown(event, index)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
       <div
         role="tabpanel"
         id="analytics-panel-sla"
