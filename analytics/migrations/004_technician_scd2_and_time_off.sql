@@ -90,9 +90,11 @@ CREATE INDEX IF NOT EXISTS fact_supervisor_intervention_work_order
 -- Capacity is calculated over the SCD2 versions that overlap the requested
 -- interval. Weekends are non-working under the published Mon-Fri calendar.
 -- Time off is subtracted per shift and capped at that shift's duration.
+DROP FUNCTION IF EXISTS analytics.technician_utilization(timestamptz,timestamptz,text,boolean,text,text,text);
 CREATE OR REPLACE FUNCTION analytics.technician_utilization(
  p_from timestamptz,p_to timestamptz,p_team text,p_admin boolean,
- p_technician text DEFAULT NULL,p_category text DEFAULT NULL,p_priority text DEFAULT NULL)
+ p_technician text DEFAULT NULL,p_category text DEFAULT NULL,p_priority text DEFAULT NULL,
+ p_include_weekends boolean DEFAULT false)
 RETURNS TABLE(technician_id text,booked_minutes double precision,capacity_minutes double precision,utilization double precision)
 LANGUAGE sql STABLE AS $$
  WITH scoped_bookings AS (
@@ -133,7 +135,7 @@ LANGUAGE sql STABLE AS $$
     (GREATEST(v.effective_from_utc,p_from) AT TIME ZONE v.time_zone)::date,
     ((LEAST(coalesce(v.effective_to_utc,'infinity'::timestamptz),p_to)-interval '1 microsecond') AT TIME ZONE v.time_zone)::date,
     interval '1 day') d(day)
-  WHERE extract(isodow FROM d.day) BETWEEN 1 AND 5
+  WHERE p_include_weekends OR extract(isodow FROM d.day) BETWEEN 1 AND 5
  ), shifts AS (
   SELECT technician_id,local_day,
     GREATEST((local_day+make_interval(hours=>working_start_hour)) AT TIME ZONE time_zone,segment_start) shift_start,

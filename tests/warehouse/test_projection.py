@@ -368,27 +368,40 @@ class WarehouseTests(unittest.TestCase):
             ).fetchone(),
         )
 
-    def publish_hours(self, start=8, end=17, zone="UTC", sequence=1):
+    def publish_hours(self, start=8, end=17, zone="UTC", sequence=1, minutes=0):
         event = self.event(
             "TechnicianAvailabilityChanged.v1",
             sequence,
+            minutes,
             payload={"workingStartHour": start, "workingEndHour": end, "timeZone": zone},
             source="technicians",
         )
         event["workOrderId"] = "00000000-0000-0000-0000-000000000000"
         WORKER.project(self.db, event)
 
-    def utilization(self, start, end, team=None, technician=None):
+    def publish_time_off(self, start, end, minutes=0):
+        event = self.event(
+            "TechnicianTimeOffChanged.v1",
+            1,
+            minutes,
+            payload={"timeOffId": str(uuid4()), "startUtc": start.isoformat(), "endUtc": end.isoformat()},
+            source="technicians",
+        )
+        event["workOrderId"] = "00000000-0000-0000-0000-000000000000"
+        WORKER.project(self.db, event)
+        return event
+
+    def utilization(self, start, end, team=None, technician=None, include_weekends=False):
         return self.db.execute(
-            "SELECT technician_id,booked_minutes,capacity_minutes,utilization FROM analytics.technician_utilization(%s,%s,%s,false,%s,NULL,NULL)",
-            (start, end, team or self.team, technician or "tech-" + self.order),
+            "SELECT technician_id,booked_minutes,capacity_minutes,utilization FROM analytics.technician_utilization(%s,%s,%s,false,%s,NULL,NULL,%s)",
+            (start, end, team or self.team, technician or "tech-" + self.order, include_weekends),
         ).fetchall()
 
     def test_technician_working_hours_use_own_latest_sequence(self):
         self.publish_hours(6, 14, "America/New_York", 3)
         self.publish_hours(8, 17, "UTC", 1)
         row = self.db.execute(
-            "SELECT working_start_hour,working_end_hour,time_zone,working_minutes_per_day,source_sequence FROM warehouse.dim_technician WHERE technician_id=%s",
+            "SELECT working_start_hour,working_end_hour,time_zone,working_minutes_per_day,source_sequence FROM warehouse.dim_technician WHERE technician_id=%s AND is_current",
             ("tech-" + self.order,),
         ).fetchone()
         self.assertEqual((6, 14, "America/New_York", 480, 3), row)
@@ -440,13 +453,78 @@ class WarehouseTests(unittest.TestCase):
         )
 
     def test_local_working_shift_capacity_handles_dst_and_session_timezone(self):
-        self.publish_hours(0, 4, "America/New_York")
+        self.publish_hours(0, 4, "America/New_York", minutes=-4 * 24 * 60)
         self.db.execute("SET LOCAL TIME ZONE 'Pacific/Auckland'")
         # Nov 1, 2026 repeats one hour in New York: 00:00-04:00 is five actual hours.
         start = datetime(2026, 11, 1, 4, tzinfo=timezone.utc)
-        row = self.utilization(start, start + timedelta(hours=5))[0]
+        row = self.utilization(start, start + timedelta(hours=5), include_weekends=True)[0]
         self.assertEqual(300.0, row[2])
         self.assertEqual(0.0, row[3])
+
+    def test_scd2_versions_are_contiguous_and_only_one_is_current(self):
+        self.publish_hours(8, 17, "UTC", sequence=1, minutes=-60)
+        self.publish_hours(9, 18, "UTC", sequence=2)
+        rows = self.db.execute(
+            "SELECT working_start_hour,working_end_hour,is_current,effective_to_utc FROM warehouse.dim_technician WHERE technician_id=%s ORDER BY effective_from_utc",
+            ("tech-" + self.order,),
+        ).fetchall()
+        self.assertEqual(2, len(rows))
+        self.assertEqual((8, 17, False, self.now), rows[0])
+        self.assertEqual((9, 18, True, None), rows[1])
+        self.assertEqual(
+            1,
+            self.db.execute(
+                "SELECT count(*) FROM warehouse.dim_technician WHERE technician_id=%s AND is_current",
+                ("tech-" + self.order,),
+            ).fetchone()[0],
+        )
+
+    def test_late_technician_change_splits_history_without_multiple_current_rows(self):
+        self.publish_hours(10, 18, "UTC", sequence=2)
+        self.publish_hours(9, 17, "UTC", sequence=1, minutes=-60)
+        rows = self.db.execute(
+            "SELECT working_start_hour,effective_from_utc,effective_to_utc,is_current FROM warehouse.dim_technician WHERE technician_id=%s ORDER BY effective_from_utc",
+            ("tech-" + self.order,),
+        ).fetchall()
+        self.assertEqual(2, len(rows))
+        self.assertEqual((9, self.now - timedelta(minutes=60), self.now, False), rows[0])
+        self.assertEqual((10, self.now, None, True), rows[1])
+        self.assertFalse(
+            self.db.execute(
+                "SELECT EXISTS(SELECT 1 FROM warehouse.dim_technician a JOIN warehouse.dim_technician b ON a.technician_id=b.technician_id AND a.technician_key<b.technician_key AND a.effective_from_utc<b.effective_to_utc AND b.effective_from_utc<a.effective_to_utc WHERE a.technician_id=%s)",
+                ("tech-" + self.order,),
+            ).fetchone()[0]
+        )
+
+    def test_time_off_and_weekends_reduce_capacity_without_negative_utilization(self):
+        monday = datetime(2026, 11, 2, tzinfo=timezone.utc)
+        self.publish_hours(8, 17, "UTC", minutes=-5 * 24 * 60)
+        self.publish_time_off(monday + timedelta(hours=10), monday + timedelta(hours=12))
+        rows = self.db.execute(
+            "SELECT technician_id,booked_minutes,capacity_minutes,utilization FROM analytics.technician_utilization(%s,%s,%s,false,%s,NULL,NULL)",
+            (monday, monday + timedelta(days=5), self.team, "tech-" + self.order),
+        ).fetchall()
+        self.assertEqual(1, len(rows))
+        self.assertEqual(0.0, rows[0][1])
+        # Mon-Fri = five 9-hour shifts; Saturday is excluded; two hours are time off.
+        self.assertEqual(2580.0, rows[0][2])
+        self.assertEqual(0.0, rows[0][3])
+
+    def test_time_off_projection_deduplicates_and_excludes_reason(self):
+        start = self.now + timedelta(days=1)
+        event = self.publish_time_off(start, start + timedelta(hours=2))
+        self.assertFalse(WORKER.project(self.db, event))
+        safe = self.db.execute(
+            "SELECT safe_payload FROM warehouse.staging_event WHERE event_id=%s", (event["eventId"],)
+        ).fetchone()[0]
+        self.assertNotIn("reason", safe)
+        self.assertEqual(
+            1,
+            self.db.execute(
+                "SELECT count(*) FROM warehouse.fact_technician_time_off WHERE technician_id=%s",
+                ("tech-" + self.order,),
+            ).fetchone()[0],
+        )
 
     def test_unknown_timezone_or_open_range_has_no_invented_capacity(self):
         self.publish_hours(zone="Unknown/NotAZone")

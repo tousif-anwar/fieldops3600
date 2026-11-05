@@ -37,7 +37,7 @@ public sealed class PostgresIntegrationTests(PostgresFixture fixture)
         var cs = await fixture.Database("reporting", false);
         await using var db = PostgresFixture.Db(cs, "reporting");
         await SchemaMigrator.Apply(db); await SchemaMigrator.Apply(db);
-        Assert.Equal(3, await db.Database.SqlQueryRaw<int>("SELECT count(*)::integer AS \"Value\" FROM fieldops_schema_migrations").SingleAsync());
+        Assert.Equal(4, await db.Database.SqlQueryRaw<int>("SELECT count(*)::integer AS \"Value\" FROM fieldops_schema_migrations").SingleAsync());
         await db.Database.ExecuteSqlRawAsync("UPDATE fieldops_schema_migrations SET sha256='changed' WHERE migration_id LIKE '%001_initial%'");
         await Assert.ThrowsAsync<InvalidOperationException>(() => SchemaMigrator.Apply(db));
     }
@@ -76,6 +76,32 @@ public sealed class PostgresIntegrationTests(PostgresFixture fixture)
             Assert.Equal("42501", rejected.SqlState);
         }
     }
+    [Fact]
+    public async Task DataIntegrityMigrationsRejectInvalidStatesAtTheDatabaseBoundary()
+    {
+        var orders = await fixture.Database("work-orders", false);
+        await using (var db = PostgresFixture.Db(orders, "work-orders")) await SchemaMigrator.Apply(db);
+        await using (var db = PostgresFixture.Db(orders, "work-orders"))
+        {
+            var invalid = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO work_orders("Id","Number","Title","CustomerName","SiteAddress","ServiceCategory","Priority","Status","TeamId","CreatedAtUtc","Version")
+                VALUES(gen_random_uuid(),'WO-BAD','A title','A customer','An address','HVAC','Impossible','Created','north',now(),1)
+                """));
+            Assert.Equal("23514", invalid.SqlState);
+        }
+
+        var workflows = await fixture.Database("workflows", false);
+        await using (var db = PostgresFixture.Db(workflows, "workflows")) await SchemaMigrator.Apply(db);
+        await using (var db = PostgresFixture.Db(workflows, "workflows"))
+        {
+            var invalid = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO workflows("Id","WorkOrderId","TechnicianId","TeamId","TemplateVersion","CurrentStageIndex","Version","Status","StagesJson","StartedAtUtc")
+                VALUES(gen_random_uuid(),gen_random_uuid(),'tech-01','north',1,99,1,'Active','[]',now())
+                """));
+            Assert.Equal("23514", invalid.SqlState);
+        }
+    }
+
     [Fact]
     public async Task DatabaseExclusionConstraintPreventsConcurrentDoubleBooking()
     {

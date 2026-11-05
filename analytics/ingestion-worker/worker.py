@@ -161,6 +161,8 @@ def _apply_technician_version(connection, payload: dict, occurred: datetime, seq
         )
         return active[0]
     if active and active[11] == occurred:
+        if active[12] > sequence:
+            return active[0]
         connection.execute(
             """UPDATE warehouse.dim_technician SET team_id=%s,working_minutes_per_day=%s,capacity_authoritative=%s,
             working_start_hour=%s,working_end_hour=%s,time_zone=%s,supervisor_id=%s,skills=%s,certifications=%s,

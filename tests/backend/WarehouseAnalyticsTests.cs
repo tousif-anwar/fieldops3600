@@ -23,7 +23,7 @@ public sealed class WarehouseAnalyticsTests(PostgresFixture fixture)
         {
             await using var migration = new NpgsqlCommand(await File.ReadAllTextAsync(path), connection); await migration.ExecuteNonQueryAsync();
         }
-        await Execute(connection, "INSERT INTO warehouse.dim_service_category(category) VALUES('HVAC'),('Controls') ON CONFLICT DO NOTHING; INSERT INTO warehouse.dim_technician(technician_id,team_id) VALUES('tech-01','north'),('tech-02','north'),('tech-south','south'); INSERT INTO warehouse.dim_supervisor(supervisor_id,team_id) VALUES('supervisor-01','north'),('supervisor-02','north'),('supervisor-south','south');");
+        await Execute(connection, "INSERT INTO warehouse.dim_service_category(category) VALUES('HVAC'),('Controls') ON CONFLICT DO NOTHING; INSERT INTO warehouse.dim_technician(technician_id,team_id,effective_from_utc,is_current) VALUES('tech-01','north','-infinity',true),('tech-02','north','-infinity',true),('tech-south','south','-infinity',true); INSERT INTO warehouse.dim_supervisor(supervisor_id,team_id) VALUES('supervisor-01','north'),('supervisor-02','north'),('supervisor-south','south');");
         return cs;
     }
 
