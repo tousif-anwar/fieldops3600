@@ -1,5 +1,4 @@
 import { Platform, type TextStyle } from 'react-native';
-import { colors } from './palette';
 
 /**
  * FieldOps mobile tokens.
