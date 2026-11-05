@@ -22,7 +22,9 @@ export const humanize = (value: string) =>
     .replace(/[_.]/g, " ");
 // API percentages are ratios, including utilization above capacity (> 1).
 export const percent = (value: number | null | undefined) =>
-  value == null || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(1)}%`;
+  value == null || !Number.isFinite(value)
+    ? "—"
+    : `${(value * 100).toFixed(1)}%`;
 export function countdown(
   deadline: string | undefined,
   now: number,

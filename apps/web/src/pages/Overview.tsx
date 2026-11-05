@@ -139,7 +139,8 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
               (w) =>
                 w.status === "Completed" &&
                 w.completedAtUtc &&
-                new Date(w.completedAtUtc).toISOString().slice(0, 10) === utcToday,
+                new Date(w.completedAtUtc).toISOString().slice(0, 10) ===
+                  utcToday,
             ).length
           }
           note="Completions since midnight UTC"

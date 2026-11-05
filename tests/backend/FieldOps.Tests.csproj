@@ -8,4 +8,5 @@
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
     <ProjectReference Include="../../building-blocks/FieldOps.ServiceHost/FieldOps.ServiceHost.csproj" />
   </ItemGroup>
+  <ItemGroup><None Include="../../analytics/migrations/*.sql" Link="warehouse-migrations/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

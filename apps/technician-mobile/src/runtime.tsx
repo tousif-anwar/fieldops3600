@@ -70,7 +70,7 @@ function OfflineProvider({ children }: React.PropsWithChildren) {
   }, [queue, online]);
 
   return <RuntimeContext.Provider value={{ online, queue, submissions, queueError,
-    synchronize: () => queue.flush(online) }}>{children}</RuntimeContext.Provider>;
+    synchronize: () => queue.flush(online, { ignoreBackoff: true }) }}>{children}</RuntimeContext.Provider>;
 }
 
 export function SessionRuntime({ children }: React.PropsWithChildren) {

@@ -34,6 +34,7 @@ import {
   Panel,
 } from "../components/common";
 import type { Reports } from "../types";
+import { WarehousePatterns } from "../components/WarehousePatterns";
 
 export function Analytics() {
   const [from, setFrom] = useState("");
@@ -147,26 +148,42 @@ export function Analytics() {
               <Metric
                 label="Completion rate"
                 value={percent(r.completionRate)}
-                note={r.completionRate == null ? "Not available: no orders in scope" : "Completed / total work orders"}
+                note={
+                  r.completionRate == null
+                    ? "Not available: no orders in scope"
+                    : "Completed / total work orders"
+                }
                 icon={<CheckCheck size={20} />}
                 tone="green"
               />
               <Metric
                 label="SLA compliance"
                 value={percent(r.slaComplianceRate)}
-                note={r.slaComplianceRate == null ? "Not available: no completed stages" : "Stages completed without breach"}
+                note={
+                  r.slaComplianceRate == null
+                    ? "Not available: no completed stages"
+                    : "Stages completed without breach"
+                }
                 icon={<TrendingUp size={20} />}
                 tone="green"
               />
               <Metric
                 label="Average stage time"
                 value={
-                  r.averageStageMinutes == null ? "—" : <>
-                    {r.averageStageMinutes.toFixed(1)}
-                    <small> min</small>
-                  </>
+                  r.averageStageMinutes == null ? (
+                    "—"
+                  ) : (
+                    <>
+                      {r.averageStageMinutes.toFixed(1)}
+                      <small> min</small>
+                    </>
+                  )
                 }
-                note={r.averageServiceMinutes == null ? "Average service time not available" : `${r.averageServiceMinutes.toFixed(1)} min average service`}
+                note={
+                  r.averageServiceMinutes == null
+                    ? "Average service time not available"
+                    : `${r.averageServiceMinutes.toFixed(1)} min average service`
+                }
                 icon={<Clock3 size={20} />}
                 tone="amber"
               />
@@ -381,13 +398,20 @@ export function Analytics() {
                           <strong>{t.technicianId}</strong>
                           <span>{percent(t.utilization)}</span>
                         </div>
-                        {t.utilization != null && Number.isFinite(t.utilization) ? <div className="utilization-track">
-                          <span
-                            style={{
-                              width: `${Math.max(0,Math.min(t.utilization * 100, 100))}%`,
-                            }}
-                          />
-                        </div> : <small>Utilization not available for this interval.</small>}
+                        {t.utilization != null &&
+                        Number.isFinite(t.utilization) ? (
+                          <div className="utilization-track">
+                            <span
+                              style={{
+                                width: `${Math.max(0, Math.min(t.utilization * 100, 100))}%`,
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <small>
+                            Utilization not available for this interval.
+                          </small>
+                        )}
                         <small>
                           {t.bookedMinutes.toFixed(0)} booked minutes
                         </small>
@@ -402,6 +426,7 @@ export function Analytics() {
                 )}
               </Panel>
             </div>
+            <WarehousePatterns report={r}/>
             <div className="metric-definitions">
               <Info size={18} />
               <div>
@@ -410,8 +435,9 @@ export function Analytics() {
                   Reporting is eventually consistent with operations. Freshness
                   reflects the latest ingestion. Completion rate uses work order
                   counts; SLA compliance uses completed stages. Empty
-                  populations and unknown durations or capacity display unavailable values rather than assumed zero. Customer information is masked for
-                  analyst access.
+                  populations and unknown durations or capacity display
+                  unavailable values rather than assumed zero. Customer
+                  information is masked for analyst access.
                 </p>
               </div>
             </div>
@@ -434,7 +460,11 @@ export function Analytics() {
                       <tr key={s.stage}>
                         <td>{s.stage}</td>
                         <td>{s.count}</td>
-                        <td>{s.averageMinutes == null ? "Not available" : s.averageMinutes.toFixed(2)}</td>
+                        <td>
+                          {s.averageMinutes == null
+                            ? "Not available"
+                            : s.averageMinutes.toFixed(2)}
+                        </td>
                         <td>{s.breaches}</td>
                       </tr>
                     ))}

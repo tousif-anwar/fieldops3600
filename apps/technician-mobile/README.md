@@ -64,7 +64,13 @@ $env:CI='1'
 npx expo export --platform android --output-dir dist/android
 ```
 
-The upgraded SDK 58 application passed TypeScript 6 typechecking, all 12 offline/form tests, Expo's dependency compatibility check, and a clean-cache Android Metro/Hermes export (1,266 modules). `npm audit` reports zero vulnerabilities. Tests cover persistence/restart, stable idempotency, retry timing, concurrent flushes, remount races, conflicts, account isolation, terminal authorization failures, conditional fields, and hidden-answer removal.
+The upgraded SDK 58 application passed TypeScript 6 typechecking, all 16 offline/form/session tests, Expo's dependency compatibility check, and a clean-cache Android Metro/Hermes export (1,266 modules before the later auth fixes). `npm audit` reports zero vulnerabilities. Tests cover persistence/restart, stable idempotency, retry timing, concurrent flushes, remount races, conflicts, account isolation, terminal authorization failures, conditional fields, hidden-answer removal, stale refreshes across logout/login, secure-write ordering, and identity-request timeouts. The latest auth source passed typechecking and the 16-test suite; its native functional verification is tracked separately.
+
+Authentication discovery retries after reconnect, foreground activation, or a new sign-in/refresh attempt. Identity requests have a 15-second deadline. Each login owns fresh OAuth state and a PKCE verifier. Credential writes and logout erasure are serialized and guarded by a session generation, including when the same account logs in again while an earlier refresh is still finishing.
+
+## Windows native-build troubleshooting
+
+For CMake/Ninja errors involving missing directories or long paths, verify CMake 3.22.1 or newer and Ninja 1.12 or newer; older Ninja versions can mishandle long Windows paths. Keep the Android Gradle Plugin and NDK versions selected by the Expo template. Use a short project path without spaces, or a temporary `subst` drive mapping, and regenerate affected build caches only after build processes stop. Do not disable the New Architecture or downgrade dependencies to conceal the toolchain error. Follow the [official Windows native-build guidance](https://docs.swmansion.com/react-native-reanimated/docs/guides/building-on-windows/). A successful Metro export alone does not establish a native APK or an end-to-end device pass.
 
 ## SDK 58 migration
 
@@ -78,6 +84,6 @@ Rebuild the development client after upgrading; an SDK 55 native binary cannot l
 
 Primary upgrade references: [SDK 58 release notes](https://expo.dev/changelog/sdk-58), [55-to-56 Router migration](https://docs.expo.dev/router/migrate/sdk-55-to-56/), and [57-to-58 Router migration](https://docs.expo.dev/router/migrate/sdk-57-to-58/).
 
-The native Android/iOS app has not been installed on an emulator or physical device in this session. Native OAuth browser return, SecureStore behavior on real devices, touch/VoiceOver/TalkBack interactions, and airplane-mode recovery require device validation before claiming a complete mobile release. There is no claim of a signed store artifact or real-device end-to-end pass.
+The Android debug APK was built and installed on the local Android 37 x86_64 emulator. Native OAuth browser return, guided workflow and offline recovery verification are still in progress; installation alone is not an end-to-end pass. SecureStore behavior on physical devices, VoiceOver/TalkBack interactions, and iOS builds require separate validation. There is no claim of a signed store artifact or physical-device release certification.
 
 Primary references: [Expo authentication](https://docs.expo.dev/guides/authentication/), [AuthSession](https://docs.expo.dev/versions/v58.0.0/sdk/auth-session/), [SecureStore](https://docs.expo.dev/versions/v58.0.0/sdk/securestore/), and [development builds](https://docs.expo.dev/develop/development-builds/introduction/).

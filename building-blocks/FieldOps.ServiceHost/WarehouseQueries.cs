@@ -14,6 +14,10 @@ public static class WarehouseQueries
         var caller = Caller.From(http.User);
         await using var connection = new NpgsqlConnection(config.GetConnectionString("Warehouse"));
         await connection.OpenAsync(ct);
+        // One snapshot keeps all chart numerators and denominators consistent
+        // while the independent ingestion worker commits new facts.
+        await using var snapshot = await connection.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
+        await using (var readOnly = new NpgsqlCommand("SET TRANSACTION READ ONLY", connection, snapshot)) await readOnly.ExecuteNonQueryAsync(ct);
         // A half-open date interval prevents double counting at adjacent reporting boundaries.
         const string filter = """
             WITH selected AS (
@@ -32,7 +36,7 @@ public static class WarehouseQueries
             """;
         NpgsqlCommand Command(string sql)
         {
-            var command = new NpgsqlCommand(filter + sql, connection);
+            var command = new NpgsqlCommand(filter + sql, connection, snapshot);
             command.Parameters.AddWithValue("admin", caller.IsAdministrator);
             command.Parameters.AddWithValue("team", caller.TeamId);
             command.Parameters.AddWithValue("from", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)from?.ToUniversalTime() ?? DBNull.Value);
@@ -53,7 +57,7 @@ public static class WarehouseQueries
               avg(extract(epoch FROM(completed_at_utc-created_at_utc))/60.0)::double precision,
               max(last_ingested_at_utc),
               (SELECT count(*) FILTER(WHERE s.completed_at_utc IS NOT NULL AND NOT s.breached)::double precision/nullif(count(*) FILTER(WHERE s.completed_at_utc IS NOT NULL),0) FROM analytics.v_stage_duration s JOIN selected o USING(work_order_id)),
-              (SELECT avg(s.effective_minutes)::double precision FROM analytics.v_stage_duration s JOIN selected o USING(work_order_id) WHERE s.completed_at_utc IS NOT NULL),
+              (SELECT avg(s.effective_minutes)::double precision FROM analytics.v_stage_duration s JOIN selected o USING(work_order_id) WHERE s.completed_at_utc IS NOT NULL AND s.started_at_utc IS NOT NULL AND s.completed_at_utc>=s.started_at_utc AND s.paused_seconds<=extract(epoch FROM(s.completed_at_utc-s.started_at_utc))),
               (SELECT count(*) FROM warehouse.fact_workflow_stage s JOIN selected o USING(work_order_id) WHERE s.completed_at_utc IS NULL AND s.status='Active' AND s.sla_status IN ('Warning','Critical')),
               (SELECT count(*) FROM warehouse.fact_workflow_stage s JOIN selected o USING(work_order_id) WHERE s.completed_at_utc IS NULL AND s.status='Active' AND s.breached)
             FROM selected
@@ -75,7 +79,7 @@ public static class WarehouseQueries
             while (await reader.ReadAsync(ct)) volume.Add(new { date = reader.GetFieldValue<DateOnly>(0).ToString("yyyy-MM-dd"), total = reader.GetInt64(1), completed = reader.GetInt64(2) });
         var stages = new List<object>();
         await using (var command = Command("""
-            SELECT d.stage_name,avg(s.effective_minutes) FILTER(WHERE s.completed_at_utc IS NOT NULL)::double precision,count(*) FILTER(WHERE s.breached),count(*)
+            SELECT d.stage_name,avg(s.effective_minutes) FILTER(WHERE s.completed_at_utc IS NOT NULL AND s.started_at_utc IS NOT NULL AND s.completed_at_utc>=s.started_at_utc AND s.paused_seconds<=extract(epoch FROM(s.completed_at_utc-s.started_at_utc)))::double precision,count(*) FILTER(WHERE s.breached),count(*)
             FROM analytics.v_stage_duration s JOIN selected o USING(work_order_id)
             LEFT JOIN warehouse.dim_workflow_stage d USING(stage_key) GROUP BY d.stage_index,d.stage_name ORDER BY d.stage_index
             """))
@@ -104,7 +108,8 @@ public static class WarehouseQueries
                     utilization = reader.IsDBNull(3) ? (double?)null : reader.GetDouble(3)
                 });
             }
-        return Results.Ok(new
+        var analytics = await WarehouseAnalytics.Read(Command, ct);
+        var result = Results.Ok(new
         {
             totalWorkOrders = total,
             completedWorkOrders = completed,
@@ -121,6 +126,12 @@ public static class WarehouseQueries
             stageMetrics = stages,
             categoryBreakdown = categories,
             technicianUtilization = utilization,
+            escalationFrequency = analytics.EscalationFrequency,
+            schedulingEfficiency = analytics.SchedulingEfficiency,
+            slaComplianceTrend = analytics.SlaComplianceTrend,
+            stageDurationDistribution = analytics.StageDurationDistribution,
+            stageDurationSampleCount = analytics.StageDurationSampleCount,
+            supervisorInterventionTrend = analytics.SupervisorInterventionTrend,
             dataSource = "Independent PostgreSQL dimensional warehouse, incrementally ingested from RabbitMQ; eventually consistent synthetic demonstration data.",
             metricDefinitions = new
             {
@@ -130,8 +141,15 @@ public static class WarehouseQueries
                 averageServiceMinutes = "Order creation to completion, includes dispatch wait.",
                 activeJobs = "Orders with recorded InProgress lifecycle state in the selected creation-date cohort.",
                 atRiskStages = "Active stages with recorded server Warning or Critical events; eventually consistent.",
+                escalationFrequency = "Distinct selected creation-cohort orders with at least one recorded stage SLA breach / all selected creation-cohort orders. This is a share of orders, not breach events per order; null for an empty cohort.",
+                schedulingEfficiency = "Selected creation-cohort orders with at least one currently Confirmed booking / all selected creation-cohort orders. This is scheduling coverage, not routing or solver efficiency; null for an empty cohort.",
+                slaComplianceTrend = "Completed stage instances grouped by their UTC completion date for the selected order creation cohort; compliant means no recorded breach. Completion dates can extend beyond the creation-date filter. No missing calendar days are synthesized.",
+                stageDurationDistribution = "Counts of completed stages with known valid start/completion timestamps and approved pause time no greater than elapsed time, grouped into fixed half-open effective-minute bins. Missing/invalid durations are excluded, never replaced with zero; a true zero-minute duration remains observed data.",
+                supervisorInterventionTrend = "Recorded pause, resume, override and advisory-decision events grouped by action UTC date, for the selected order creation cohort. Includes distinct affected orders and recorded supervisors; dates can extend beyond the creation-date filter.",
                 technicianUtilization = "Confirmed appointment minutes overlapping the explicit UTC range / published local working-shift minutes overlapping that range. Includes appointments for orders created earlier. Time-off, weekend exclusions and historical working-hours changes are not modeled; null without valid published timezone/hours and both range boundaries."
             }
         });
+        await snapshot.CommitAsync(ct);
+        return result;
     }
 }

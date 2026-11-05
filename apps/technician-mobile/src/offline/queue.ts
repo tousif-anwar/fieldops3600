@@ -111,14 +111,15 @@ export class OfflineQueue {
     });
   }
 
-  async flush(online: boolean): Promise<void> {
+  async flush(online: boolean, options: { ignoreBackoff?: boolean } = {}): Promise<void> {
     if (!online) return;
     return this.serialized(async () => {
       const items = await this.storage.read();
       if (items.some(item => item.ownerId !== this.ownerId)) throw new Error('Queue ownership mismatch.');
       for (const item of items) {
         // A crash during send leaves 'sending'. Retrying the same key is safe.
-        if (!['pending', 'sending'].includes(item.status) || item.nextAttemptAt > this.now()) continue;
+        if (!['pending', 'sending'].includes(item.status)) continue;
+        if (!options.ignoreBackoff && item.nextAttemptAt > this.now()) continue;
         item.status = 'sending';
         item.attempts += 1;
         await this.storage.write(items);

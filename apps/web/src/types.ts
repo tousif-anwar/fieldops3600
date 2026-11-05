@@ -97,6 +97,13 @@ export interface Reports {
   atRiskStages: number;
   overdueStages: number;
   completedToday: number;
+  escalationFrequency: number | null;
+  schedulingEfficiency: number | null;
+  slaComplianceTrend: { date: string; completedStages: number; compliantStages: number; breachedStages: number; complianceRate: number | null }[];
+  stageDurationDistribution: { bucket: string; lowerMinutes: number; upperMinutes: number | null; count: number }[];
+  stageDurationSampleCount: number;
+  supervisorInterventionTrend: { date: string; interventions: number; affectedWorkOrders: number; supervisors: number }[];
+  metricDefinitions?: Record<string,string>;
   refreshedAtUtc: string | null;
   volumeTrend: { date: string; total: number; completed: number }[];
   stageMetrics: {

@@ -55,6 +55,24 @@ test('transient failure backs off then retries the identical logical submission'
   assert.equal((await context.queue.list())[0]?.attempts, 2);
 });
 
+test('manual synchronization bypasses retry timing only for pending or interrupted sends', async () => {
+  const context = fixture();
+  await context.storage.write([
+    { ...context.submission, attempts: 1, nextAttemptAt: 60_000, status: 'pending' },
+    { ...context.submission, id: 'interrupted-key', workflowId: 'wf-02', workOrderId: 'wo-02', attempts: 1, nextAttemptAt: 60_000, status: 'sending' },
+    { ...context.submission, id: 'conflict-key', workflowId: 'wf-03', workOrderId: 'wo-03', attempts: 1, nextAttemptAt: 60_000, status: 'conflict' },
+    { ...context.submission, id: 'failed-key', workflowId: 'wf-04', workOrderId: 'wo-04', attempts: 1, nextAttemptAt: 60_000, status: 'failed' },
+  ]);
+  await context.queue.flush(true);
+  assert.equal(context.sent.length, 0);
+  await context.queue.flush(true, { ignoreBackoff: true });
+  assert.deepEqual(context.sent.map(item => item.id), ['stable-key', 'interrupted-key']);
+  assert.ok(context.sent.every(item => item.expectedVersion === 1
+    && item.clientOccurredAtUtc === context.submission.clientOccurredAtUtc
+    && item.ownerId === 'tech-01'));
+  assert.deepEqual((await context.queue.list()).map(item => item.status), ['synced', 'synced', 'conflict', 'failed']);
+});
+
 test('server conflict stops retries and keeps the original answers for review', async () => {
   let calls = 0;
   const context = fixture({ send: async () => { calls++; throw new SubmissionError(409, 'Workflow changed'); } });
