@@ -32,7 +32,7 @@ Updated 2026-11-05 after an independent resume audit and a successful native And
 | iOS native execution | BLOCKED | Requires macOS/Xcode; not available on this host |
 | Intelligence (SLA prediction, optimizer evaluation) | COMPLETE | 18/18 pytest cases re-run 2026-11-05; deterministic synthetic training, leakage guards and OR-Tools constraints pass; the measured report is unchanged. |
 | Operational Replay console and exports | COMPLETE | Incident-summary role-filter regression test restored and passing; prior live replay integrity, authorization, export and viewport checks |
-| Observability (Prometheus/Grafana/Jaeger) | UNVERIFIED (this audit) | Prior six-target, 11-span evidence; monitoring profile was not started in this audit |
+| Observability (Prometheus/Grafana/Jaeger) | COMPLETE | 2026-11-05: monitoring profile started; Prometheus 6/6 targets up; Grafana health and `local-admin` login HTTP 200; Jaeger HTTP 200; `verify-observability.py` found 6 healthy targets and 27 retained spans. |
 | GitHub Actions | PARTIAL | Workflow paths are locally executable; a prior latent failure existed in `format:check` (now fixed). No remote run was initiated from this host. |
 | Phase 2 expansion (customers, contracts, inventory, billing, etc.) | MISSING | Not started by design; no partial code found to preserve |
 

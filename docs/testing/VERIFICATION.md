@@ -1,6 +1,6 @@
 # Executed verification
 
-Local evidence date: 2026-11-05 (re-verified subset, including native Android OAuth) and 2026-11-04 (inherited suites). Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
+Local evidence date: 2026-11-05 (re-verified subset, including native Android OAuth and monitoring) and 2026-11-04 (inherited suites). Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
 
 This host's system SDK is .NET 11 preview, which fails static-web-asset validation for this solution. All .NET results below were produced with the git-ignored repository SDK `.tools/dotnet` **10.0.403**; CI pins `10.0.x`.
 
@@ -23,7 +23,7 @@ This host's system SDK is .NET 11 preview, which fails static-web-asset validati
 | Bootstrap | 5/5 | Existing secrets preserved, additive credentials and SQL/grant policy |
 | Runtime database grants | Passed against live containers | Six restricted app identities, audit insert-only, warehouse writer/reader; owners absent from runtime DSNs |
 | Intelligence | 18/18 (re-run 2026-11-05) | Chronological dataset/model and independent solver constraints; measured evaluation linked below |
-| Observability | Six healthy targets; retained business trace with 11 spans | Includes authorized replay trace-availability check; trace retention is bounded/in-memory |
+| Observability | 6/6 targets up; 27 retained spans (re-run 2026-11-05) | Prometheus/Grafana/Jaeger started; Grafana health/login 200; includes authorized replay trace-availability check; trace retention is bounded/in-memory |
 | Accelerated resilience demo | Passed | Persisted deadline across restart; warning failure/retry; breach/intervention; completed immutable replay; broker-outage recovery |
 | Terminal consumer failure | Passed | Notifications retry exhaustion; original message independently found in its RabbitMQ error queue and requeued; separate sanitized immutable Replay diagnostics |
 | Live SignalR | Passed | Actual WebSocket through served web → gateway; supervisor notice matches persisted history; analyst/anonymous hub requests denied |
