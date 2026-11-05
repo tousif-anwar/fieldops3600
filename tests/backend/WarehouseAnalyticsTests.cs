@@ -53,20 +53,20 @@ public sealed class WarehouseAnalyticsTests(PostgresFixture fixture)
     {
         var id = Guid.NewGuid();
         await using var command = new NpgsqlCommand("""
-            INSERT INTO warehouse.fact_workflow_stage(stage_instance_id,work_order_id,stage_key,started_at_utc,completed_at_utc,paused_seconds,breached,status)
-            VALUES(@id,@order,(SELECT stage_key FROM warehouse.dim_workflow_stage WHERE stage_index=@index),@start,@completed,@paused,@breached,@status)
+            INSERT INTO warehouse.fact_workflow_stage(stage_instance_id,work_order_id,stage_key,started_at_utc,completed_at_utc,paused_seconds,breached,status,sla_status)
+            VALUES(@id,@order,(SELECT stage_key FROM warehouse.dim_workflow_stage WHERE stage_index=@index),@start,@completed,@paused,@breached,@status,@sla)
             """, connection);
         command.Parameters.AddWithValue("id", id); command.Parameters.AddWithValue("order", order); command.Parameters.AddWithValue("index", index);
         command.Parameters.AddWithValue("start", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)start ?? DBNull.Value);
         command.Parameters.AddWithValue("completed", NpgsqlTypes.NpgsqlDbType.TimestampTz, (object?)completed ?? DBNull.Value);
-        command.Parameters.AddWithValue("paused", paused); command.Parameters.AddWithValue("breached", breached); command.Parameters.AddWithValue("status", completed.HasValue ? "Completed" : "Active");
+        command.Parameters.AddWithValue("paused", paused); command.Parameters.AddWithValue("breached", breached); command.Parameters.AddWithValue("status", completed.HasValue ? "Completed" : "Active"); command.Parameters.AddWithValue("sla", breached ? "Breached" : "OnTime");
         await command.ExecuteNonQueryAsync(); return id;
     }
 
     private static async Task EventFact(NpgsqlConnection connection, Guid order, Guid stage, string kind, DateTimeOffset occurred, string? supervisor = null)
     {
         var eventId = Guid.NewGuid();
-        await Execute(connection, "INSERT INTO warehouse.ingestion_ledger(event_id,event_type,source_service,occurred_at_utc,payload_hash,schema_version) VALUES(@id,@kind,'workflows',@occurred,'synthetic-test',1)", ("id", eventId), ("kind", kind), ("occurred", occurred));
+        await Execute(connection, "INSERT INTO warehouse.ingestion_ledger(event_id,event_type,source_service,occurred_at_utc,payload_hash,schema_version) VALUES(@id,@kind,'workflows',@occurred,repeat('a',64),1)", ("id", eventId), ("kind", kind), ("occurred", occurred));
         if (supervisor is null) await Execute(connection, "INSERT INTO warehouse.fact_sla_breach(event_id,work_order_id,stage_instance_id,occurred_at_utc) VALUES(@id,@order,@stage,@occurred)", ("id", eventId), ("order", order), ("stage", stage), ("occurred", occurred));
         else await Execute(connection, "INSERT INTO warehouse.fact_supervisor_intervention(event_id,work_order_id,supervisor_key,intervention_type,occurred_at_utc) VALUES(@id,@order,(SELECT supervisor_key FROM warehouse.dim_supervisor WHERE supervisor_id=@supervisor),@kind,@occurred)", ("id", eventId), ("order", order), ("supervisor", supervisor), ("kind", kind), ("occurred", occurred));
     }

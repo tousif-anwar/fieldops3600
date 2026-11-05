@@ -103,6 +103,35 @@ public sealed class PostgresIntegrationTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task TechnicianTimeOffRelationshipAndVersionAreEnforcedInPostgreSql()
+    {
+        var cs = await fixture.Database("technicians", false);
+        await using (var migrate = PostgresFixture.Db(cs, "technicians")) await SchemaMigrator.Apply(migrate);
+        await using var db = PostgresFixture.Db(cs, "technicians");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO technicians("Id","Name","TeamId","SupervisorId","SkillsJson","CertificationsJson","WorkingStartHour","WorkingEndHour","TimeZone","Available","Version")
+            VALUES('tech-fk','Synthetic Technician','north','supervisor-01','[]','[]',8,17,'UTC',true,1)
+            """);
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO time_off("Id","TechnicianId","StartUtc","EndUtc","Reason")
+            VALUES(gen_random_uuid(),'tech-fk',now(),now()+interval '1 hour','Synthetic training')
+            """);
+        Assert.Equal(1, await db.Database.SqlQueryRaw<int>("SELECT \"Version\" AS \"Value\" FROM time_off").SingleAsync());
+
+        var orphan = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO time_off("Id","TechnicianId","StartUtc","EndUtc","Reason")
+            VALUES(gen_random_uuid(),'missing-technician',now(),now()+interval '1 hour','Synthetic orphan')
+            """));
+        Assert.Equal("23503", orphan.SqlState);
+
+        var invalidVersion = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO time_off("Id","TechnicianId","StartUtc","EndUtc","Reason","Version")
+            VALUES(gen_random_uuid(),'tech-fk',now(),now()+interval '1 hour','Synthetic invalid',0)
+            """));
+        Assert.Equal("23514", invalidVersion.SqlState);
+    }
+
+    [Fact]
     public async Task DatabaseExclusionConstraintPreventsConcurrentDoubleBooking()
     {
         var cs = await fixture.Database("scheduling");

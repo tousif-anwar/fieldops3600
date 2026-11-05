@@ -379,12 +379,12 @@ class WarehouseTests(unittest.TestCase):
         event["workOrderId"] = "00000000-0000-0000-0000-000000000000"
         WORKER.project(self.db, event)
 
-    def publish_time_off(self, start, end, minutes=0):
+    def publish_time_off(self, start, end, minutes=0, time_off_id=None, sequence=1):
         event = self.event(
             "TechnicianTimeOffChanged.v1",
-            1,
+            sequence,
             minutes,
-            payload={"timeOffId": str(uuid4()), "startUtc": start.isoformat(), "endUtc": end.isoformat()},
+            payload={"timeOffId": time_off_id or str(uuid4()), "startUtc": start.isoformat(), "endUtc": end.isoformat()},
             source="technicians",
         )
         event["workOrderId"] = "00000000-0000-0000-0000-000000000000"
@@ -509,6 +509,33 @@ class WarehouseTests(unittest.TestCase):
         # Mon-Fri = five 9-hour shifts; Saturday is excluded; two hours are time off.
         self.assertEqual(2580.0, rows[0][2])
         self.assertEqual(0.0, rows[0][3])
+
+    def test_late_time_off_change_cannot_overwrite_newer_interval(self):
+        time_off_id = str(uuid4())
+        newer_start = self.now + timedelta(days=2)
+        older_start = self.now + timedelta(days=1)
+        self.publish_time_off(
+            newer_start, newer_start + timedelta(hours=2), time_off_id=time_off_id, sequence=2
+        )
+        self.publish_time_off(
+            older_start, older_start + timedelta(hours=1), time_off_id=time_off_id, sequence=1
+        )
+        self.assertEqual(
+            (newer_start, newer_start + timedelta(hours=2), 2),
+            self.db.execute(
+                "SELECT start_utc,end_utc,source_sequence FROM warehouse.fact_technician_time_off WHERE time_off_id=%s",
+                (time_off_id,),
+            ).fetchone(),
+        )
+
+    def test_scd2_database_exclusion_rejects_overlapping_versions(self):
+        self.publish_hours(8, 17, "UTC", sequence=1, minutes=-60)
+        with self.assertRaises(psycopg.errors.ExclusionViolation):
+            self.db.execute(
+                """INSERT INTO warehouse.dim_technician(technician_id,team_id,effective_from_utc,effective_to_utc,is_current,capacity_authoritative,working_start_hour,working_end_hour,time_zone)
+                VALUES(%s,'north',%s,%s,false,true,8,17,'UTC')""",
+                ("tech-" + self.order, self.now - timedelta(minutes=30), self.now + timedelta(minutes=30)),
+            )
 
     def test_time_off_projection_deduplicates_and_excludes_reason(self):
         start = self.now + timedelta(days=1)

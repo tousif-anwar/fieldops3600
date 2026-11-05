@@ -124,7 +124,7 @@ public static class OperationsApi
             db.TimeOff.Add(record);
             // The reason stays operational; analytics receives only the interval and scope.
             db.Enqueue(EventFactory.Create(http, "technicians", "TechnicianTimeOffChanged.v1", Guid.Empty,
-                new { timeOffId = record.Id, technicianId = id, tech.TeamId, record.StartUtc, record.EndUtc }, tech.Version, clock.GetUtcNow()));
+                new { timeOffId = record.Id, technicianId = id, tech.TeamId, record.StartUtc, record.EndUtc }, record.Version, clock.GetUtcNow()));
             await db.SaveChangesAsync(ct); return Results.Ok(record);
         }).RequireAuthorization("supervise");
         group.MapPut("/{id}", async (string id, Technician request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>

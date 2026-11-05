@@ -243,7 +243,8 @@ def _project_time_off(connection, event_id: str, payload: dict, occurred: dateti
         VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(time_off_id) DO UPDATE SET
         technician_key=COALESCE(excluded.technician_key,warehouse.fact_technician_time_off.technician_key),
         start_utc=excluded.start_utc,end_utc=excluded.end_utc,
-        source_sequence=GREATEST(excluded.source_sequence,warehouse.fact_technician_time_off.source_sequence)""",
+        source_sequence=excluded.source_sequence
+        WHERE excluded.source_sequence>warehouse.fact_technician_time_off.source_sequence""",
         (event_id, time_off_id, key, technician, team, start, end, sequence),
     )
 

@@ -51,6 +51,7 @@ public sealed class TimeOff
     public DateTimeOffset StartUtc { get; set; }
     public DateTimeOffset EndUtc { get; set; }
     public string Reason { get; set; } = "Time off";
+    public int Version { get; set; } = 1;
 }
 
 public sealed class Booking
