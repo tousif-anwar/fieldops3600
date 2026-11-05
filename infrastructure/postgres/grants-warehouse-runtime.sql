@@ -38,7 +38,7 @@ BEGIN
  WHERE n.nspname='warehouse' AND c.relkind IN ('r','p') AND c.relname IN (
   'dim_date','dim_technician','dim_supervisor','dim_customer','dim_service_category',
   'dim_workflow_stage','dim_work_order_status','fact_work_order','fact_workflow_stage',
-  'fact_booking','fact_sla_breach','fact_supervisor_intervention')
+  'fact_booking','fact_sla_breach','fact_supervisor_intervention','fact_technician_time_off')
  LOOP EXECUTE format('GRANT UPDATE,DELETE ON TABLE %I.%I TO fieldops_warehouse_app',relation.nspname,relation.relname); END LOOP;
  IF to_regclass('warehouse.schema_migration') IS NOT NULL THEN
   REVOKE ALL ON TABLE warehouse.schema_migration FROM fieldops_warehouse_app;

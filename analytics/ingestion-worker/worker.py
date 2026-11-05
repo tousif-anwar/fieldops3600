@@ -42,7 +42,208 @@ SAFE_FIELDS = {
     "workingStartHour",
     "workingEndHour",
     "timeZone",
+    "supervisorId",
+    "skills",
+    "certifications",
+    "available",
+    "timeOffId",
 }
+
+TECHNICIAN_EVENT = "TechnicianAvailabilityChanged.v1"
+TIME_OFF_EVENT = "TechnicianTimeOffChanged.v1"
+
+
+def _utc(value) -> datetime:
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _array(value) -> list:
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str)]
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+            return [item for item in decoded if isinstance(item, str)] if isinstance(decoded, list) else []
+        except ValueError:
+            return []
+    return []
+
+
+def _technician_state(payload: dict) -> dict:
+    start, end, zone = (
+        payload.get("workingStartHour"),
+        payload.get("workingEndHour"),
+        payload.get("timeZone"),
+    )
+    valid_hours = (
+        isinstance(start, int)
+        and isinstance(end, int)
+        and 0 <= start < end <= 24
+    )
+    minutes = (end - start) * 60 if valid_hours else 1
+    return {
+        "team_id": payload.get("teamId") or "Unknown",
+        "supervisor_id": payload.get("supervisorId"),
+        "working_minutes_per_day": max(1, min(1440, minutes)),
+        "working_start_hour": start if valid_hours else None,
+        "working_end_hour": end if valid_hours else None,
+        "time_zone": zone if isinstance(zone, str) and zone.strip() else None,
+        "available": bool(payload.get("available", True)),
+        "skills": _array(payload.get("skills", [])),
+        "certifications": _array(payload.get("certifications", [])),
+    }
+
+
+def _state_hash(state: dict) -> str:
+    return hashlib.sha256(
+        json.dumps(state, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _same_version(row, state: dict) -> bool:
+    return (
+        row[1] == state["team_id"]
+        and row[2] == state["working_minutes_per_day"]
+        and row[3] == state["capacity_authoritative"]
+        and row[4] == state["working_start_hour"]
+        and row[5] == state["working_end_hour"]
+        and row[6] == state["time_zone"]
+        and row[7] == state["supervisor_id"]
+        and row[8] == state["skills"]
+        and row[9] == state["certifications"]
+        and row[10] == state["available"]
+    )
+
+
+def _insert_version(connection, technician: str, state: dict, occurred, effective_to, current: bool, sequence: int) -> int:
+    return connection.execute(
+        """INSERT INTO warehouse.dim_technician(technician_id,team_id,working_minutes_per_day,capacity_authoritative,source_sequence,working_start_hour,working_end_hour,time_zone,effective_from_utc,effective_to_utc,is_current,supervisor_id,skills,certifications,available,row_hash)
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING technician_key""",
+        (
+            technician, state["team_id"], state["working_minutes_per_day"],
+            state["capacity_authoritative"], sequence, state["working_start_hour"],
+            state["working_end_hour"], state["time_zone"], occurred, effective_to,
+            current, state["supervisor_id"], Jsonb(state["skills"]),
+            Jsonb(state["certifications"]), state["available"],
+            _state_hash(state),
+        ),
+    ).fetchone()[0]
+
+
+def _apply_technician_version(connection, payload: dict, occurred: datetime, sequence: int) -> int:
+    """Append or correct an SCD2 version, including late and out-of-order events."""
+    state = _technician_state(payload)
+    state["capacity_authoritative"] = bool(
+        state["working_start_hour"] is not None
+        and state["time_zone"] is not None
+        and connection.execute(
+            "SELECT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=%s)",
+            (state["time_zone"],),
+        ).fetchone()[0]
+    )
+    technician = str(payload["technicianId"])
+    active = connection.execute(
+        """SELECT technician_key,team_id,working_minutes_per_day,capacity_authoritative,working_start_hour,working_end_hour,time_zone,supervisor_id,skills,certifications,available,effective_from_utc,source_sequence
+        FROM warehouse.dim_technician WHERE technician_id=%s AND effective_from_utc<=%s
+        AND (effective_to_utc IS NULL OR %s<effective_to_utc) ORDER BY effective_from_utc DESC,technician_key DESC LIMIT 1""",
+        (technician, occurred, occurred),
+    ).fetchone()
+    if active and _same_version(active, state):
+        connection.execute(
+            "UPDATE warehouse.dim_technician SET source_sequence=GREATEST(source_sequence,%s) WHERE technician_key=%s",
+            (sequence, active[0]),
+        )
+        return active[0]
+    if active and active[11] == occurred:
+        connection.execute(
+            """UPDATE warehouse.dim_technician SET team_id=%s,working_minutes_per_day=%s,capacity_authoritative=%s,
+            working_start_hour=%s,working_end_hour=%s,time_zone=%s,supervisor_id=%s,skills=%s,certifications=%s,
+            available=%s,row_hash=%s,source_sequence=GREATEST(source_sequence,%s) WHERE technician_key=%s""",
+            (state["team_id"], state["working_minutes_per_day"], state["capacity_authoritative"],
+             state["working_start_hour"], state["working_end_hour"], state["time_zone"],
+             state["supervisor_id"], Jsonb(state["skills"]), Jsonb(state["certifications"]),
+             state["available"], _state_hash(state), sequence, active[0]),
+        )
+        return active[0]
+    next_row = connection.execute(
+        "SELECT effective_from_utc FROM warehouse.dim_technician WHERE technician_id=%s AND effective_from_utc>%s ORDER BY effective_from_utc LIMIT 1",
+        (technician, occurred),
+    ).fetchone()
+    if active:
+        connection.execute(
+            "UPDATE warehouse.dim_technician SET effective_to_utc=%s,is_current=false WHERE technician_key=%s",
+            (occurred, active[0]),
+        )
+    else:
+        previous = connection.execute(
+            "SELECT technician_key FROM warehouse.dim_technician WHERE technician_id=%s AND effective_from_utc<%s ORDER BY effective_from_utc DESC LIMIT 1",
+            (technician, occurred),
+        ).fetchone()
+        if previous:
+            connection.execute(
+                "UPDATE warehouse.dim_technician SET effective_to_utc=%s,is_current=false WHERE technician_key=%s",
+                (occurred, previous[0]),
+            )
+    return _insert_version(
+        connection, technician, state, occurred,
+        next_row[0] if next_row else None, next_row is None, sequence,
+    )
+
+
+def _ensure_technician(connection, payload: dict, occurred: datetime) -> int:
+    technician = str(payload["technicianId"])
+    existing = connection.execute(
+        "SELECT technician_key FROM warehouse.dim_technician WHERE technician_id=%s AND is_current LIMIT 1",
+        (technician,),
+    ).fetchone()
+    if existing:
+        return existing[0]
+    state = _technician_state(payload)
+    state["capacity_authoritative"] = False
+    return _insert_version(connection, technician, state, occurred, None, True, 0)
+
+
+def _technician_key_at(connection, technician: str, at: datetime) -> int | None:
+    row = connection.execute(
+        """SELECT technician_key FROM warehouse.dim_technician WHERE technician_id=%s
+        AND effective_from_utc<=%s AND (effective_to_utc IS NULL OR %s<effective_to_utc)
+        ORDER BY effective_from_utc DESC,technician_key DESC LIMIT 1""",
+        (technician, at, at),
+    ).fetchone()
+    if row:
+        return row[0]
+    row = connection.execute(
+        "SELECT technician_key FROM warehouse.dim_technician WHERE technician_id=%s ORDER BY effective_from_utc,technician_key LIMIT 1",
+        (technician,),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def _project_time_off(connection, event_id: str, payload: dict, occurred: datetime, sequence: int) -> None:
+    time_off_id = payload.get("timeOffId") or payload.get("id")
+    technician = payload.get("technicianId")
+    team = payload.get("teamId")
+    if not time_off_id or not technician or not team:
+        raise ValueError("Time-off events require timeOffId, technicianId and teamId")
+    start, end = _utc(payload["startUtc"]), _utc(payload["endUtc"])
+    if end <= start:
+        raise ValueError("Time-off interval must be positive")
+    technician = str(technician)
+    key = _technician_key_at(connection, technician, start) or _ensure_technician(connection, payload, occurred)
+    connection.execute(
+        """INSERT INTO warehouse.fact_technician_time_off(event_id,time_off_id,technician_key,technician_id,team_id,start_utc,end_utc,source_sequence)
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(time_off_id) DO UPDATE SET
+        technician_key=COALESCE(excluded.technician_key,warehouse.fact_technician_time_off.technician_key),
+        start_utc=excluded.start_utc,end_utc=excluded.end_utc,
+        source_sequence=GREATEST(excluded.source_sequence,warehouse.fact_technician_time_off.source_sequence)""",
+        (event_id, time_off_id, key, technician, team, start, end, sequence),
+    )
 
 
 def migrate(connection) -> None:
