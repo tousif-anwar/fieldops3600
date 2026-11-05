@@ -49,6 +49,8 @@ export function WorkOrders() {
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [status, setStatus] = useState(params.get("status") ?? "");
   const [priority, setPriority] = useState(params.get("priority") ?? "");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   useEffect(() => {
     setSearch(params.get("q") ?? "");
     setStatus(params.get("status") ?? "");
@@ -78,6 +80,14 @@ export function WorkOrders() {
       (!status || w.status === status) &&
       (!priority || w.priority === priority),
   );
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, priority]);
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
   return (
     <>
       <PageHeader
@@ -180,7 +190,7 @@ export function WorkOrders() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((w) => (
+                {pageRows.map((w) => (
                   <tr key={w.id}>
                     <td>
                       <Link
@@ -215,6 +225,35 @@ export function WorkOrders() {
                 ))}
               </tbody>
             </table>
+            {filtered.length > pageSize && (
+              <div className="table-pagination">
+                <span>
+                  Showing {(page - 1) * pageSize + 1}–
+                  {Math.min(page * pageSize, filtered.length)} of {filtered.length}
+                </span>
+                <div>
+                  <Button
+                    appearance="subtle"
+                    disabled={page === 1}
+                    onClick={() => setPage((value) => Math.max(1, value - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span>
+                    Page {page} of {pageCount}
+                  </span>
+                  <Button
+                    appearance="subtle"
+                    disabled={page === pageCount}
+                    onClick={() =>
+                      setPage((value) => Math.min(pageCount, value + 1))
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Panel>

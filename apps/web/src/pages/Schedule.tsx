@@ -100,7 +100,9 @@ export function Schedule() {
         title="Dispatch board"
         description="Assign qualified technicians, review availability, and prevent overlapping bookings."
       />
-      <div className="schedule-grid">
+      <div
+        className={`schedule-grid ${auth.can("Dispatcher", "OperationsManager") ? "" : "schedule-review"}`}
+      >
         {auth.can("Dispatcher", "OperationsManager") && (
           <Panel
             title="Plan an appointment"

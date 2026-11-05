@@ -144,7 +144,7 @@ test("supervisor reviews completed dropdown history and replays evidence without
   expect(order).toBeTruthy();
   if ((page.viewportSize()?.width ?? 1440) <= 760)
     await page.getByRole("button", { name: "Open navigation" }).click();
-  await page.getByRole("link", { name: "My work", exact: true }).click();
+  await page.getByRole("link", { name: "Workflow review", exact: true }).click();
   const card = page.locator(".job-card").filter({
     has: page.getByRole("heading", { name: order.title, exact: true }),
   });

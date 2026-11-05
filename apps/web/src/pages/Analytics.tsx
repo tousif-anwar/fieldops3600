@@ -202,6 +202,7 @@ export function Analytics() {
                 }
               >
                 {r.volumeTrend.length ? (
+                  <>
                   <div
                     className="chart"
                     role="img"
@@ -269,6 +270,28 @@ export function Analytics() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+                  <div className="chart-data-table">
+                    <table>
+                      <caption>Work order volume by reporting date</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Date</th>
+                          <th scope="col">Created</th>
+                          <th scope="col">Completed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.volumeTrend.map((point) => (
+                          <tr key={point.date}>
+                            <th scope="row">{point.date}</th>
+                            <td>{point.total}</td>
+                            <td>{point.completed}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  </>
                 ) : (
                   <Empty
                     title="Waiting for service history"
@@ -317,6 +340,32 @@ export function Analytics() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                ) : (
+                  <Empty
+                    title="No category data"
+                    description="Category totals will be available after ingestion."
+                  />
+                )}
+                {r.categoryBreakdown.length ? (
+                  <div className="chart-data-table">
+                    <table>
+                      <caption>Work orders by service category</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Service category</th>
+                          <th scope="col">Work orders</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.categoryBreakdown.map((category) => (
+                          <tr key={category.category}>
+                            <th scope="row">{category.category}</th>
+                            <td>{category.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <Empty

@@ -66,6 +66,7 @@ const roles = [
     navigation: [
       "Home",
       "Work orders",
+      "Workflow review",
       "SLA monitoring",
       "Operational replay",
       "Analytics",
@@ -79,6 +80,7 @@ const roles = [
     navigation: [
       "Home",
       "Work orders",
+      "Workflow review",
       "SLA monitoring",
       "Analytics",
       "Operations overview",
@@ -162,9 +164,9 @@ test("a protected deep link survives reauthentication and retains its query", as
     .getByRole("button", { name: "Continue to secure sign-in" })
     .click();
   await completeKeycloak(page, "supervisor");
-  await expect(page.getByRole("heading", { name: "Work orders" })).toBeVisible({
-    timeout: 45000,
-  });
+  await expect(
+    page.getByRole("heading", { name: "Work orders", exact: true }),
+  ).toBeVisible({ timeout: 45000 });
   await expect(page).toHaveURL(/\/work-orders\?status=Created$/);
   await expect(page.getByLabel("Filter status")).toHaveValue("Created");
   await expect(

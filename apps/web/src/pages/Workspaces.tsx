@@ -56,6 +56,14 @@ const workspaces: Workspace[] = [
     icon: <Wrench size={22} />,
   },
   {
+    to: "/my-jobs",
+    title: "Workflow review",
+    description: "Review assigned service workflows and completed stage history.",
+    group: "Monitoring",
+    roles: ["Supervisor", "OperationsManager"],
+    icon: <History size={22} />,
+  },
+  {
     to: "/supervisor",
     title: "SLA monitoring",
     description: "Review at-risk work, overdue stages, and recorded interventions.",

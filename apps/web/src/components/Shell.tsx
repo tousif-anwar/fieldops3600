@@ -80,6 +80,12 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
         icon: Wrench,
         roles: ["Technician"],
       },
+      {
+        to: "/my-jobs",
+        label: "Workflow review",
+        icon: ClipboardList,
+        roles: ["Supervisor", "OperationsManager"],
+      },
     ],
   },
   {
@@ -128,8 +134,6 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     ],
   },
 ];
-
-const flatNavigation = navigationGroups.flatMap((group) => group.items);
 
 const extraRoutes: { match: RegExp; label: string; to?: string }[] = [
   { match: /^\/workflow\//, label: "Workflow", to: "/my-jobs" },
@@ -201,6 +205,7 @@ export function Shell() {
       ),
     }))
     .filter((group) => group.items.length > 0);
+  const visibleNavigation = visibleGroups.flatMap((group) => group.items);
 
   useEffect(() => {
     const handleOnline = () => setOnline(true);
@@ -272,7 +277,7 @@ export function Shell() {
     };
   }, [qc, notificationsAllowed]);
 
-  const section = flatNavigation.find(
+  const section = visibleNavigation.find(
     (item) =>
       item.to !== "/" &&
       (location.pathname === item.to ||

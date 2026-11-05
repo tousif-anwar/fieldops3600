@@ -665,10 +665,10 @@ summary:focus-visible {
 }
 .freshness {
   color: #647385;
-  font-size: 12px;
+  font-size: 13px;
 }
 .status {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   padding: 3px 7px;
   border-radius: 4px;
@@ -715,6 +715,52 @@ summary:focus-visible {
   font-size: 13px;
   color: #6c7989;
   max-width: 280px;
+}
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 16px;
+  border-top: 1px solid #e4e9ef;
+  background: #fafbfc;
+  color: #657487;
+  font-size: 13px;
+}
+.table-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #536477;
+}
+.schedule-grid.schedule-review {
+  grid-template-columns: minmax(0, 1fr);
+}
+.schedule-review .booking-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 18px 20px;
+}
+.schedule-review .booking-card {
+  border: 1px solid #e1e7ee;
+  border-radius: 7px;
+  padding: 14px;
+  background: #ffffff;
+}
+.schedule-review .booking-card:last-child {
+  border-bottom: 1px solid #e1e7ee;
+}
+.chart-data-table {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 .mini-avatar {
   font-size: 12px;
@@ -887,7 +933,7 @@ summary:focus-visible {
 .home-today span {
   display: block;
   color: #657487;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -902,7 +948,7 @@ summary:focus-visible {
 .home-today small {
   display: block;
   color: #6f7d8d;
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 4px;
 }
 .home-snapshot {
@@ -923,7 +969,7 @@ summary:focus-visible {
 .home-figure > span {
   display: block;
   color: #617084;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.045em;
@@ -953,7 +999,7 @@ summary:focus-visible {
   display: block;
   margin-top: 4px;
   color: #687789;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1067,7 +1113,7 @@ summary:focus-visible {
 .attention-copy small {
   display: block;
   color: #667588;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
   margin-top: 2px;
   overflow: hidden;
@@ -1079,7 +1125,7 @@ summary:focus-visible {
   align-items: center;
   gap: 3px;
   color: #1c518c;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1152,7 +1198,7 @@ summary:focus-visible {
 .home-action small {
   display: block;
   color: #657487;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.35;
   margin-top: 2px;
 }
@@ -1193,7 +1239,7 @@ summary:focus-visible {
 .home-work-row small {
   display: block;
   color: #657487;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
   margin-top: 2px;
   overflow: hidden;
@@ -1206,6 +1252,25 @@ summary:focus-visible {
 .home-capacity-list,
 .home-coverage-list {
   padding: 7px 20px 15px;
+}
+.home-coverage-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 42px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef1f5;
+  color: #405064;
+  font-size: 14px;
+}
+.home-coverage-list > div:last-child {
+  border-bottom: 0;
+}
+.home-coverage-list strong {
+  color: #263b52;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 .home-capacity-row {
   display: grid;
@@ -1227,7 +1292,7 @@ summary:focus-visible {
 .home-capacity-row small {
   display: block;
   color: #687789;
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 1px;
 }
 .home-capacity-track {
@@ -1619,6 +1684,100 @@ summary:focus-visible {
     padding: 34px 24px 58px;
   }
 }
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    width: 276px;
+    flex-basis: 276px;
+    box-shadow: 8px 0 24px rgba(23, 42, 62, 0.16);
+  }
+  .sidebar-open {
+    transform: translateX(0);
+  }
+  .sidebar-collapsed .sidebar {
+    width: 276px;
+    flex-basis: 276px;
+  }
+  .workspace-main,
+  .sidebar-collapsed .workspace-main {
+    margin-left: 0;
+    width: 100%;
+  }
+  .sidebar-collapsed .brand-copy,
+  .sidebar-collapsed .workspace-switch-copy,
+  .sidebar-collapsed .nav-group-label,
+  .sidebar-collapsed .nav-item span,
+  .sidebar-collapsed .sidebar-toggle span,
+  .sidebar-collapsed .sidebar-security span {
+    display: block;
+  }
+  .sidebar-collapsed .brand-copy {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-collapsed .brand {
+    padding: 20px 18px 16px;
+  }
+  .sidebar-collapsed .workspace-switch {
+    margin: 0 14px 16px;
+    justify-content: flex-start;
+    padding: 9px 10px;
+  }
+  .sidebar-collapsed .nav-item {
+    justify-content: flex-start;
+    width: auto;
+    padding: 8px 10px;
+    margin: 1px 0;
+  }
+  .sidebar-collapsed .sidebar-toggle {
+    justify-content: flex-start;
+  }
+  .sidebar-collapsed .nav-group-label {
+    display: block;
+  }
+  .mobile-menu,
+  .mobile-close {
+    display: inline-flex;
+  }
+  .sidebar-toggle,
+  .sidebar-security {
+    display: none;
+  }
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    border: 0;
+    background: rgba(21, 39, 59, 0.4);
+  }
+  .topbar {
+    height: 60px;
+    padding: 0 18px;
+  }
+  .topbar-left {
+    flex: 1;
+    min-width: 0;
+  }
+  .topbar-right {
+    gap: 6px;
+  }
+  .global-search,
+  .connection,
+  .environment-badge {
+    display: none;
+  }
+  .user-summary > svg {
+    display: none;
+  }
+  .page-content {
+    padding: 24px 20px 34px;
+  }
+  .schedule-review .booking-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 760px) {
   .sidebar {
     transform: translateX(-100%);
@@ -1765,7 +1924,6 @@ summary:focus-visible {
     font-size: 14px;
   }
   .home-today {
-    order: -1;
     min-width: 0;
     padding: 0;
     border: 0;
@@ -1941,8 +2099,11 @@ summary:focus-visible {
     grid-column: 2;
     grid-row: 1 / span 2;
     margin-top: 0;
-    font-size: 18px;
-    max-width: 52vw;
+    font-size: 16px;
+    max-width: 58vw;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
   }
   .home-figure > small {
     grid-column: 1;
@@ -1984,6 +2145,85 @@ summary:focus-visible {
   .login-box {
     padding: 22px 17px 20px;
   }
+}
+/* Contrast corrections verified with axe against WCAG 2.2 AA. */
+.brand-copy > small {
+  color: #58687a;
+}
+.workspace-switch small {
+  color: #586a7d;
+}
+.sidebar-security {
+  color: #5d6c7f;
+}
+.global-search kbd {
+  color: #56677a;
+}
+.notification-button > span {
+  background: #b54037;
+  color: #ffffff;
+}
+.user-summary-copy small {
+  color: #58687a;
+}
+.user-popover-identity span {
+  color: #596a7d;
+}
+.home-today small {
+  color: #5b6b7d;
+}
+.workspace-footer,
+.workspace-footer span {
+  color: #59697c;
+}
+.table-subline {
+  color: #5f6e81;
+}
+.attention-copy small {
+  color: #5e6d80;
+}
+.quick-actions small {
+  color: #5a6a7d;
+}
+.mini-avatar {
+  color: #3d5e80;
+}
+.metric-value small {
+  color: #526376;
+}
+.chart-key {
+  color: #526376;
+  font-size: 12px;
+}
+.utilization-list > div > div > strong {
+  color: #425c7a;
+  font-size: 13px;
+}
+.metric-definitions > div > p,
+.metric-definitions p {
+  color: #4c6480;
+}
+.count-pill {
+  background: #e9eff7;
+  color: #4b6280;
+  font-size: 12px;
+}
+.booking-time {
+  color: #506a88;
+}
+.booking-time > small,
+.booking-content p,
+.booking-content > small {
+  color: #506a88;
+}
+.login-box > .login-assistance {
+  color: #5f6f82;
+}
+.login-bottom {
+  color: #5f6f82;
+}
+.login-bottom > span {
+  color: #5f6f82;
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar,

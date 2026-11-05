@@ -255,7 +255,12 @@ function App() {
               </RequireRole>
             }
           />
-          <Route path="auth/callback" element={<Navigate to="/" replace />} />
+          {/* AuthProvider completes the PKCE callback and navigates to the
+              original deep link. This route must not redirect on its own. */}
+          <Route
+            path="auth/callback"
+            element={<Loading label="Completing secure sign-in…" />}
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
