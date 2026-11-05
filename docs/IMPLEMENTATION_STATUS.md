@@ -30,7 +30,7 @@ Updated 2026-11-05 after an independent resume audit and a successful native And
 | Native mobile OAuth round trip | COMPLETE | 2026-11-05: real Keycloak PKCE login as `technician`, return through `fieldops360://oauth/callback`, `fieldops-mobile` token exchange, and authenticated **My jobs** dashboard for Jordan Rivera. Force-stop/relaunch restored the SecureStore session with no new authorization. |
 | Native guided stage and offline recovery | PARTIAL | Source tests cover queue/idempotency/conflicts (17/17), but stage submission and offline queue recovery were not exercised in the native emulator pass. |
 | iOS native execution | BLOCKED | Requires macOS/Xcode; not available on this host |
-| Intelligence (SLA prediction, optimizer evaluation) | UNVERIFIED (this audit) | 18 prior tests and the measured synthetic report exist; not re-executed today and unaffected by today's changes |
+| Intelligence (SLA prediction, optimizer evaluation) | COMPLETE | 18/18 pytest cases re-run 2026-11-05; deterministic synthetic training, leakage guards and OR-Tools constraints pass; the measured report is unchanged. |
 | Operational Replay console and exports | COMPLETE | Incident-summary role-filter regression test restored and passing; prior live replay integrity, authorization, export and viewport checks |
 | Observability (Prometheus/Grafana/Jaeger) | UNVERIFIED (this audit) | Prior six-target, 11-span evidence; monitoring profile was not started in this audit |
 | GitHub Actions | PARTIAL | Workflow paths are locally executable; a prior latent failure existed in `format:check` (now fixed). No remote run was initiated from this host. |
