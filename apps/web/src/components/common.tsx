@@ -196,7 +196,7 @@ export function TextLink({
     </button>
   );
 }
-export function Freshness({ value }: { value?: string }) {
+export function Freshness({ value }: { value?: string | null }) {
   return (
     <span className="freshness">
       <Clock3 size={13} />

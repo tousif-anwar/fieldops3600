@@ -89,19 +89,19 @@ export interface Notification {
 export interface Reports {
   totalWorkOrders: number;
   completedWorkOrders: number;
-  completionRate: number;
-  slaComplianceRate: number;
-  averageServiceMinutes: number;
-  averageStageMinutes: number;
+  completionRate: number | null;
+  slaComplianceRate: number | null;
+  averageServiceMinutes: number | null;
+  averageStageMinutes: number | null;
   activeJobs: number;
   atRiskStages: number;
   overdueStages: number;
   completedToday: number;
-  refreshedAtUtc: string;
+  refreshedAtUtc: string | null;
   volumeTrend: { date: string; total: number; completed: number }[];
   stageMetrics: {
     stage: string;
-    averageMinutes: number;
+    averageMinutes: number | null;
     breaches: number;
     count: number;
   }[];
@@ -109,7 +109,8 @@ export interface Reports {
   technicianUtilization: {
     technicianId: string;
     bookedMinutes: number;
-    utilization: number;
+    capacityMinutes?: number | null;
+    utilization: number | null;
   }[];
 }
 export interface DeliveryAttempt {

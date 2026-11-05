@@ -20,8 +20,9 @@ export const humanize = (value: string) =>
     .replace(/\.v\d+$/, "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[_.]/g, " ");
-export const percent = (value: number) =>
-  `${(value <= 1 ? value * 100 : value).toFixed(1)}%`;
+// API percentages are ratios, including utilization above capacity (> 1).
+export const percent = (value: number | null | undefined) =>
+  value == null || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(1)}%`;
 export function countdown(
   deadline: string | undefined,
   now: number,

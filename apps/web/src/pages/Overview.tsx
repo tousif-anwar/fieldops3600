@@ -83,6 +83,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
     month: "long",
     day: "numeric",
   });
+  const utcToday = new Date().toISOString().slice(0, 10);
   return (
     <>
       <PageHeader
@@ -131,18 +132,17 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
           tone="red"
         />
         <Metric
-          label="Completed today"
+          label="Completed today (UTC)"
           value={
             report.data?.completedToday ??
             all.filter(
               (w) =>
                 w.status === "Completed" &&
                 w.completedAtUtc &&
-                new Date(w.completedAtUtc).toDateString() ===
-                  new Date().toDateString(),
+                new Date(w.completedAtUtc).toISOString().slice(0, 10) === utcToday,
             ).length
           }
-          note="Warehouse-backed when available"
+          note="Completions since midnight UTC"
           icon={<CheckCheck size={20} />}
           tone="green"
         />

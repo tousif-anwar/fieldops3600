@@ -125,6 +125,7 @@ public static class WarehouseQueries
             metricDefinitions = new
             {
                 completionRate = "Completed orders / orders created in selected half-open UTC interval.",
+                completedToday = "Orders completed during the current UTC calendar day within the selected creation-date cohort.",
                 slaComplianceRate = "Completed stages with no recorded breach / completed stages. Approved pauses excluded from effective duration.",
                 averageServiceMinutes = "Order creation to completion, includes dispatch wait.",
                 activeJobs = "Orders with recorded InProgress lifecycle state in the selected creation-date cohort.",
