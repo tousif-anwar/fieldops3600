@@ -591,7 +591,6 @@ export function WorkflowPage() {
             </p>
             <Field label="Reason" required>
               <Input
-                autoFocus
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Describe why this action is needed"

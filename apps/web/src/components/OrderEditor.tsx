@@ -65,7 +65,6 @@ export function OrderEditor({
         >
           <Field label="Work order title" required>
             <Input
-              autoFocus
               required
               minLength={3}
               maxLength={160}

@@ -117,7 +117,6 @@ export function BookingEditor({
               required
               minLength={3}
               maxLength={240}
-              autoFocus
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Explain this dispatch change"

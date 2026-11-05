@@ -402,7 +402,6 @@ pre {
 }
 .global-search input {
   border: 0;
-  outline: none;
   font-size: 11px;
   width: 170px;
   color: #52647b;
@@ -1000,9 +999,11 @@ tbody tr:hover {
   color: #97a5b9;
   flex: 1;
 }
+.search-field:focus-within {
+  border-color: #719cdd;
+}
 .search-field input {
   border: 0;
-  outline: none;
   font-size: 11px;
   width: 100%;
   min-width: 0;
