@@ -14,6 +14,7 @@ Gateway prefix `/api`; every business route requires a signed `fieldops-api` acc
 | POST `/bookings/{id}/cancel` | Dispatch | `{expectedVersion,reason}` |
 | POST `/scheduling/recommendations` | Dispatch | `{workOrderId,startUtc,durationMinutes,strategy}`; explanations and feasible staff |
 | GET `/workflows/templates/default` | Operational | Version, stage names and conditional option allowlists |
+| GET `/workflows/templates/{version}` | Operational | Immutable configuration pinned by an existing workflow; unknown version returns 404 |
 | GET/POST `/workflows` | Operational / execute | Filter by `workOrderId`; start `{workOrderId}` after booking validation |
 | POST `/workflows/{id}/submit` | Execute | `{expectedVersion,idempotencyKey,answers,clientOccurredAtUtc?,offline?}` |
 | POST `/workflows/{id}/pause`, `/resume`, `/override` | Supervise | `{expectedVersion,reason,targetStageIndex?}` |
@@ -24,6 +25,7 @@ Gateway prefix `/api`; every business route requires a signed `fieldops-api` acc
 | GET `/reports/summary`, `/export.csv`, `/export.pdf` | Report | Warehouse filters: `from`, `to`, `technicianId`, `serviceCategory`, `priority` |
 | GET `/replay/{workOrderId}` | Replay | Optional `eventType`, `service`, `actor`, `correlationId`, `traceId`, `from`, `to` |
 | GET `/replay/{id}/export.csv`, `/export.pdf` | Replay | Redacted factual incident evidence and trace metadata |
+| GET `/replay/{id}/traces/{traceId}/availability` | Replay | Requires trace membership in the scoped order; retained/not retained/unreachable status and aggregate span count |
 | POST `/replay/projections/rebuild` | Administrator | Recover derived replay state from immutable events |
 | POST `/intelligence/predict`, `/optimize` | Authorized dispatch/supervision | See `intelligence/README.md`; advisory only |
 

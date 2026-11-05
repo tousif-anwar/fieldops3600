@@ -21,8 +21,10 @@ Local evidence date: 2026-11-04. Counts are separate suites with overlapping sce
 | Intelligence | 18/18 | Chronological dataset/model and independent solver constraints; measured evaluation linked below |
 | Observability | Six healthy targets; retained business trace with 11 spans | Includes authorized replay trace-availability check; trace retention is bounded/in-memory |
 | Accelerated resilience demo | Passed | Persisted deadline across restart; warning failure/retry; breach/intervention; completed immutable replay; broker-outage recovery |
+| Terminal consumer failure | Passed | Notifications retry exhaustion; original message independently found in its RabbitMQ error queue and requeued; separate sanitized immutable Replay diagnostics |
+| Live SignalR | Passed | Actual WebSocket through served web → gateway; supervisor notice matches persisted history; analyst/anonymous hub requests denied |
 
-Native Android APK/emulator acceptance and terminal-fault/error-queue demonstration are being finalized; see implementation status for latest outcomes. Do not infer native OAuth success from Metro export or code tests.
+Native Android APK/emulator acceptance is being finalized; see implementation status for latest outcomes. Do not infer native OAuth success from Metro export or code tests.
 
 ## Repeat source and service checks
 

@@ -33,6 +33,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: npm run format:check
       - run: npm audit --audit-level=moderate
   mobile:
     runs-on: ubuntu-latest
@@ -44,6 +45,8 @@ jobs:
         with: {node-version: '24', cache: npm, cache-dependency-path: apps/technician-mobile/package-lock.json}
       - run: npm ci
       - run: npm run check
+      - run: npx expo install --check
+      - run: npm audit --audit-level=moderate
       - run: npx expo export --platform android --output-dir dist
   intelligence:
     runs-on: ubuntu-latest
@@ -70,9 +73,16 @@ jobs:
       - run: docker compose run --rm -v "$PWD:/repo:ro" migrate-warehouse python /repo/tests/warehouse/test_projection.py -v
       - run: python scripts/verify-database-permissions.py
       - run: python -m unittest discover -s tests/integration -v
+      - run: python tests/backend/verify_resource_authorization_http.py -v
+      - run: python tests/backend/verify_optimizer_http.py -v
       - run: npm ci && npx playwright install --with-deps chromium && npm run test:e2e
         working-directory: apps/web
         env: {WEB_BASE_URL: 'http://localhost:8088', FIELDOPS_LIVE_E2E: '1'}
+      - run: node scripts/check-live-notifications.mjs
+        working-directory: apps/web
+        env: {WEB_BASE_URL: 'http://localhost:8088'}
+      - run: npm run check:replay-layout
+        working-directory: apps/web
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with: {name: browser-results, path: 'apps/web/test-results'}

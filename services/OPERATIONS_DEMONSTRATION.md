@@ -19,6 +19,8 @@ Tests using Testcontainers require access to the Docker engine and test runner I
 
 ## Accelerated SLA and one controlled consumer failure
 
+Executed locally on 2026-11-04: `scripts/demo-resilience.py` passed persisted-deadline recovery, controlled Reporting warning failure/retry, breach escalation/acknowledgment, pause/resume preserving breach, advisory decision, eight-stage completion, immutable replay and broker-outage outbox recovery. Its 40-event synthetic incident is retained locally; machine-readable evidence is ignored under `artifacts/demo-resilience.json`. Run the checked-in `compose.demo.yml` override and script using the root README commands. The manual flow below explains its observations.
+
 Create a local Compose override file, for example `infrastructure/docker/compose.demo.local.yml`, containing:
 
 ```yaml
@@ -73,6 +75,10 @@ Inspect persisted notification history and the event timeline after reconnect. C
 If a consumer still fails after MassTransit's configured retry intervals (1, 3 and 10 seconds), inspect its `<endpoint>_error` queue. Preserve the message ID, fault metadata and original body. Reporting's separate fault monitor appends `MessageProcessingFailed.v1` and `DeadLetterRecorded.v1` diagnostic evidence without duplicating the original business action. It records sanitized exception type names and the failed consumer when recognized, not raw exception messages or stack traces. Terminal retry counts remain unknown when not established by the fault contract. Automatic dead-letter repair and a generalized record of every intermediate failure across all consumers are not implemented.
 
 To exercise retry exhaustion locally, add `Demo__AlwaysFailConsumer: "true"` alongside `Demo__EnableConsumerFailure: "true"` and one selected `Demo__FailEventType` on **one** business consumer. For example, setting it on Notifications for `AssistanceRequested.v1` tests a consumer failure while Reporting can still ingest the original assistance event. Create a new assistance request; wait for retries to exhaust, then check both the error queue and Replay's terminal diagnostics. Remove the failure override afterward. The monitor has its own queue and is not disabled by the Operational consumer's injected failure. The permanent-failure configuration is rejected outside Development.
+
+`python scripts/demo-terminal-fault.py` automates that second local scenario and restores ordinary Notifications settings in `finally`. It passed on 2026-11-04, independently verifying the original event in `fieldops-notifications-events_error` through RabbitMQ management and requeuing the inspected message. It leaves diagnostic evidence and reports unknown retry totals as unknown. The script never purges/ack-deletes the error queue. Run it only against this local synthetic environment.
+
+The live browser-side check `node scripts/check-live-notifications.mjs` from `apps/web` passed a real supervisor WebSocket notice through the served web/gateway, matched its persisted notification ID, and checked analyst/anonymous hub denial. It creates its own labeled synthetic assistance workflow and does not test background mobile push delivery.
 
 ## Trace interpretation
 

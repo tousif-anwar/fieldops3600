@@ -43,6 +43,8 @@ def main():
         AND NOT has_table_privilege(current_user,'warehouse.ingestion_ledger','UPDATE')
         AND NOT has_table_privilege(current_user,'warehouse.staging_event','DELETE')
         AND NOT has_table_privilege(current_user,'warehouse.schema_migration','INSERT')
+        AND has_table_privilege(current_user,'analytics.v_team_summary','SELECT')
+        AND NOT has_table_privilege(current_user,'analytics.v_team_summary','INSERT')
         AND NOT has_schema_privilege(current_user,'warehouse','CREATE')""")
     sql("fieldops_warehouse", "fieldops_warehouse_reader", """SELECT
         has_table_privilege(current_user,'warehouse.fact_work_order','SELECT')

@@ -20,11 +20,14 @@ REVOKE ALL ON SCHEMA public,warehouse,analytics FROM fieldops_warehouse_app,fiel
 GRANT USAGE ON SCHEMA warehouse,analytics TO fieldops_warehouse_app,fieldops_warehouse_reader;
 REVOKE ALL ON ALL TABLES IN SCHEMA warehouse,analytics FROM fieldops_warehouse_app,fieldops_warehouse_reader;
 GRANT SELECT,INSERT ON ALL TABLES IN SCHEMA warehouse TO fieldops_warehouse_app;
+-- Quality/reconciliation jobs may inspect analytical views but cannot mutate them.
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO fieldops_warehouse_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA warehouse,analytics TO fieldops_warehouse_reader;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA warehouse,analytics FROM fieldops_warehouse_app,fieldops_warehouse_reader;
 GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA warehouse TO fieldops_warehouse_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE fieldops_warehouse IN SCHEMA warehouse REVOKE ALL ON TABLES FROM fieldops_warehouse_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE fieldops_warehouse IN SCHEMA warehouse GRANT SELECT,INSERT ON TABLES TO fieldops_warehouse_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE fieldops_warehouse IN SCHEMA analytics GRANT SELECT ON TABLES TO fieldops_warehouse_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE fieldops_warehouse IN SCHEMA warehouse,analytics REVOKE ALL ON TABLES FROM fieldops_warehouse_reader;
 ALTER DEFAULT PRIVILEGES FOR ROLE fieldops_warehouse IN SCHEMA warehouse,analytics GRANT SELECT ON TABLES TO fieldops_warehouse_reader;
 ALTER DEFAULT PRIVILEGES FOR ROLE fieldops_warehouse IN SCHEMA warehouse GRANT USAGE,SELECT ON SEQUENCES TO fieldops_warehouse_app;
