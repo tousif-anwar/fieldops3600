@@ -1,0 +1,42 @@
+CREATE TABLE
+INSERT 0 200000
+ANALYZE
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=7072.82..7129.81 rows=500 width=38) (actual time=11.074..13.050 rows=500.00 loops=1)
+   Buffers: shared hit=1712
+   ->  Gather Merge  (cost=7072.82..18485.84 rows=100140 width=38) (actual time=11.072..13.019 rows=500.00 loops=1)
+         Workers Planned: 1
+         Workers Launched: 1
+         Buffers: shared hit=1712
+         ->  Sort  (cost=6072.81..6220.08 rows=58906 width=38) (actual time=7.321..7.339 rows=500.00 loops=2)
+               Sort Key: "CreatedAtUtc" DESC, "Id"
+               Sort Method: top-N heapsort  Memory: 60kB
+               Buffers: shared hit=1712
+               Worker 0:  Sort Method: top-N heapsort  Memory: 60kB
+               ->  Parallel Seq Scan on work_orders  (cost=0.00..3137.59 rows=58906 width=38) (actual time=0.011..4.817 rows=50000.00 loops=2)
+                     Filter: ("TeamId" = 'north'::text)
+                     Rows Removed by Filter: 50000
+                     Buffers: shared hit=1667
+ Planning:
+   Buffers: shared hit=52
+ Planning Time: 0.303 ms
+ Execution Time: 13.369 ms
+(19 rows)
+
+CREATE INDEX
+ANALYZE
+                                                                       QUERY PLAN                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..50.82 rows=500 width=38) (actual time=0.030..0.100 rows=500.00 loops=1)
+   Buffers: shared hit=9 read=6
+   ->  Index Scan using work_orders_team_recent on work_orders  (cost=0.42..9980.96 rows=99020 width=38) (actual time=0.029..0.079 rows=500.00 loops=1)
+         Index Cond: ("TeamId" = 'north'::text)
+         Index Searches: 1
+         Buffers: shared hit=9 read=6
+ Planning:
+   Buffers: shared hit=16 read=1
+ Planning Time: 0.196 ms
+ Execution Time: 0.126 ms
+(10 rows)
+
