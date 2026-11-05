@@ -34,4 +34,18 @@ public sealed class IncidentSummaryTests
         Assert.Null(incident.ActualCompletionAtUtc); Assert.Null(incident.DelayMinutes);
         Assert.Equal("Completion not yet observed", incident.CompletionKind);
     }
+
+    [Fact]
+    public void SummaryOnlyTreatsStageControlsAsSupervisorActionsForAuthorizedRoles()
+    {
+        var stage = Guid.NewGuid();
+        var technicianResume = Event("StageResumed.v1", stage, new { reason = "Technician resumed work" }, 2, "Technician");
+        var supervisorPause = Event("StagePaused.v1", stage, new { reason = "Supervisor approved pause" }, 3, "Supervisor");
+
+        var summary = IncidentSummaries.Create([technicianResume, supervisorPause]);
+
+        var action = Assert.Single(summary.SupervisorActions);
+        Assert.Equal("Supervisor", action.ActorRole);
+        Assert.Equal("StagePaused.v1", action.EventType);
+    }
 }
