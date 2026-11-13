@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import {
   Button,
+  Checkbox,
   Field,
   Input,
   Select,
@@ -41,6 +42,18 @@ import {
 } from "../components/common";
 import type { WorkOrder, Workflow } from "../types";
 import { OrderEditor } from "../components/OrderEditor";
+import { CustomerServiceDetails } from "../components/CustomerServiceDetails";
+import {
+  locationAddress,
+  type Customer,
+  type Page,
+} from "../customer-contracts";
+import {
+  assetIdentity,
+  warrantyLabel,
+  type Asset,
+  type AssetSummary,
+} from "../asset-contracts";
 
 export function WorkOrders() {
   const auth = useAuth();
@@ -282,11 +295,41 @@ const orderSchema = z.object({
 type OrderInput = z.infer<typeof orderSchema>;
 export function CreateOrder() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const qc = useQueryClient();
   const auth = useAuth();
+  const [customerId, setCustomerId] = useState(params.get("customerId") ?? "");
+  const [locationId, setLocationId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [assetId, setAssetId] = useState("");
+  const [unregistered, setUnregistered] = useState(false);
+  const [exceptionReason, setExceptionReason] = useState("");
+  const [referenceError, setReferenceError] = useState("");
+  const customers = useQuery({
+    queryKey: ["customers", "lookup", customerSearch],
+    queryFn: () =>
+      api<Page<Customer>>(
+        `/api/customers?${new URLSearchParams({ search: customerSearch, status: "Active", page: "1", pageSize: "25", sort: "name" })}`,
+      ),
+    enabled: !unregistered,
+  });
+  const selectedCustomer = useQuery({
+    queryKey: ["customer", customerId],
+    queryFn: () => api<Customer>(`/api/customers/${customerId}`),
+    enabled: !!customerId && !unregistered,
+  });
+  const assets = useQuery({
+    queryKey: ["assets", "new-order", customerId, locationId],
+    queryFn: () =>
+      api<Page<AssetSummary>>(
+        `/api/assets?${new URLSearchParams({ customerId, serviceLocationId: locationId, status: "Active", page: "1", pageSize: "100", sort: "name" })}`,
+      ),
+    enabled: !unregistered && !!customerId && !!locationId,
+  });
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<OrderInput>({
     resolver: zodResolver(orderSchema),
@@ -301,9 +344,26 @@ export function CreateOrder() {
       ),
     },
   });
+  useEffect(() => {
+    if (unregistered || !selectedCustomer.data) return;
+    setValue("customerName", selectedCustomer.data.displayName);
+    const location = selectedCustomer.data.locations.find(
+      (l) => l.id === locationId,
+    );
+    setValue("siteAddress", location ? locationAddress(location) : "");
+  }, [selectedCustomer.data, locationId, setValue, unregistered]);
   const mutation = useMutation({
     throwOnError: false,
-    mutationFn: (body: OrderInput) => post<WorkOrder>("/api/work-orders", body),
+    mutationFn: (body: OrderInput) =>
+      post<WorkOrder>("/api/work-orders", {
+        ...body,
+        customerId: unregistered ? null : customerId,
+        serviceLocationId: unregistered ? null : locationId,
+        assetId: unregistered ? null : assetId || null,
+        unregisteredCustomerReason: unregistered
+          ? exceptionReason.trim()
+          : null,
+      }),
     onSuccess: (order) => {
       void qc.invalidateQueries({ queryKey: ["work-orders"] });
       navigate(`/work-orders/${order.id}`);
@@ -334,8 +394,149 @@ export function CreateOrder() {
           <form
             className="form-body"
             noValidate
-            onSubmit={handleSubmit((v) => mutation.mutate(v))}
+            onSubmit={handleSubmit((v) => {
+              if (
+                !unregistered &&
+                (!customerId || !locationId || !selectedCustomer.data)
+              ) {
+                setReferenceError(
+                  "Select a registered customer and an active service location.",
+                );
+                return;
+              }
+              if (unregistered && exceptionReason.trim().length < 8) {
+                setReferenceError(
+                  "Explain the unregistered customer exception using at least eight characters.",
+                );
+                return;
+              }
+              setReferenceError("");
+              mutation.mutate(v);
+            })}
           >
+            {" "}
+            <Checkbox
+              label="Use an unregistered customer exception"
+              checked={unregistered}
+              onChange={(_, d) => {
+                setUnregistered(d.checked === true);
+                setAssetId("");
+                setReferenceError("");
+              }}
+            />
+            {!unregistered && (
+              <>
+                <Field label="Search registered customers">
+                  <Input
+                    value={customerSearch}
+                    onChange={(_, d) => setCustomerSearch(d.value)}
+                    placeholder="Search the customer registry…"
+                  />
+                </Field>
+                {customers.isPending ? (
+                  <Loading label="Loading customers…" />
+                ) : customers.isError ? (
+                  <ErrorState
+                    error={customers.error}
+                    retry={() => void customers.refetch()}
+                  />
+                ) : (
+                  <Field label="Registered customer" required>
+                    {" "}
+                    <Select
+                      value={customerId}
+                      onChange={(e) => {
+                        setCustomerId(e.target.value);
+                        setLocationId("");
+                        setAssetId("");
+                        setValue("customerName", "");
+                        setValue("siteAddress", "");
+                      }}
+                    >
+                      <option value="">Choose a customer</option>
+                      {selectedCustomer.data &&
+                        !customers.data.items.some(
+                          (c) => c.id === customerId,
+                        ) && (
+                          <option value={selectedCustomer.data.id}>
+                            {selectedCustomer.data.displayName}
+                          </option>
+                        )}
+                      {customers.data.items.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.displayName}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                )}
+                {selectedCustomer.isError && (
+                  <ErrorState
+                    error={selectedCustomer.error}
+                    retry={() => void selectedCustomer.refetch()}
+                  />
+                )}
+                <Field label="Registered service location" required>
+                  <Select
+                    value={locationId}
+                    disabled={
+                      !selectedCustomer.data || selectedCustomer.isPending
+                    }
+                    onChange={(e) => {
+                      setLocationId(e.target.value);
+                      setAssetId("");
+                    }}
+                  >
+                    <option value="">Choose a service location</option>
+                    {selectedCustomer.data?.locations
+                      .filter((l) => l.status === "Active")
+                      .map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name} — {locationAddress(l)}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+                <Field
+                  label="Equipment"
+                  hint="Optional: link one active registered asset at this location."
+                >
+                  <Select
+                    value={assetId}
+                    disabled={!locationId || assets.isPending}
+                    onChange={(e) => setAssetId(e.target.value)}
+                  >
+                    <option value="">No specific equipment</option>
+                    {assets.data?.items
+                      .filter((a) => a.serviceLocationId === locationId)
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} — Serial {a.serialNumber}
+                        </option>
+                      ))}
+                  </Select>
+                  {assets.isError && (
+                    <InlineMessage>{assets.error.message}</InlineMessage>
+                  )}
+                </Field>
+                <Link to="/customers/new">
+                  Register a customer and location
+                </Link>
+              </>
+            )}
+            {unregistered && (
+              <Field
+                label="Unregistered customer reason"
+                required
+                hint="This exception is retained in the work order audit history."
+              >
+                <Textarea
+                  value={exceptionReason}
+                  maxLength={500}
+                  onChange={(_, d) => setExceptionReason(d.value)}
+                />
+              </Field>
+            )}
             <Field
               label="Work order title"
               required
@@ -356,6 +557,7 @@ export function CreateOrder() {
               >
                 <Input
                   placeholder="Business or customer name"
+                  readOnly={!unregistered}
                   {...register("customerName")}
                 />
               </Field>
@@ -380,6 +582,7 @@ export function CreateOrder() {
             >
               <Textarea
                 placeholder="Street address, city, and access details"
+                readOnly={!unregistered}
                 {...register("siteAddress")}
               />
             </Field>
@@ -401,6 +604,7 @@ export function CreateOrder() {
             {mutation.isError && (
               <InlineMessage>{mutation.error.message}</InlineMessage>
             )}
+            {referenceError && <InlineMessage>{referenceError}</InlineMessage>}
             <div className="form-actions">
               <Button onClick={() => navigate("/work-orders")}>Cancel</Button>
               <Button
@@ -454,6 +658,11 @@ export function OrderDetails() {
     queryFn: () =>
       api<Workflow[]>(`/api/workflows?workOrderId=${encodeURIComponent(id!)}`),
     enabled: !!id,
+  });
+  const linkedAsset = useQuery({
+    queryKey: ["asset", order.data?.assetId],
+    queryFn: () => api<Asset>(`/api/assets/${order.data!.assetId}`),
+    enabled: !!order.data?.assetId,
   });
   const start = useMutation({
     mutationFn: () => post<Workflow>("/api/workflows", { workOrderId: id }),
@@ -591,7 +800,153 @@ export function OrderDetails() {
           </div>
         </Panel>
       </div>
+      <CustomerServiceDetails order={w} />
+      <OrderEquipmentPanel
+        order={w}
+        asset={linkedAsset.data}
+        loading={linkedAsset.isPending}
+        error={linkedAsset.error}
+        retry={() => void linkedAsset.refetch()}
+      />
       {editing && <OrderEditor order={w} onClose={() => setEditing(false)} />}
     </>
+  );
+}
+
+function OrderEquipmentPanel({
+  order,
+  asset,
+  loading,
+  error,
+  retry,
+}: {
+  order: WorkOrder;
+  asset?: Asset;
+  loading: boolean;
+  error: Error | null;
+  retry: () => void;
+}) {
+  const auth = useAuth();
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [assetId, setAssetId] = useState(order.assetId ?? "");
+  const available = useQuery({
+    queryKey: [
+      "assets",
+      "order-link",
+      order.customerId,
+      order.serviceLocationId,
+    ],
+    queryFn: () =>
+      api<Page<Asset>>(
+        `/api/assets?${new URLSearchParams({ customerId: order.customerId!, serviceLocationId: order.serviceLocationId!, status: "Active", page: "1", pageSize: "100", sort: "name" })}`,
+      ),
+    enabled: editing && !!order.customerId && !!order.serviceLocationId,
+  });
+  const save = useMutation({
+    mutationFn: () =>
+      api<WorkOrder>(`/api/work-orders/${order.id}/asset`, {
+        method: "PUT",
+        body: JSON.stringify({
+          expectedVersion: order.version,
+          assetId: assetId || null,
+        }),
+      }),
+    onSuccess: (updated) => {
+      qc.setQueryData(["work-order", order.id], updated);
+      void qc.invalidateQueries({ queryKey: ["asset-orders"] });
+      setEditing(false);
+    },
+  });
+  const canChange = auth.can("Dispatcher", "OperationsManager");
+  return (
+    <Panel
+      title="Equipment"
+      description="Equipment service history is scoped to the linked registered asset."
+      action={
+        canChange && !editing ? (
+          <Button onClick={() => setEditing(true)}>
+            {order.assetId ? "Change link" : "Link equipment"}
+          </Button>
+        ) : undefined
+      }
+    >
+      {order.assetId ? (
+        loading ? (
+          <Loading />
+        ) : error ? (
+          <ErrorState error={error} retry={retry} />
+        ) : asset ? (
+          <dl className="detail-list">
+            <div>
+              <dt>Asset</dt>
+              <dd>
+                <Link to={`/assets/${asset.id}`}>{asset.name}</Link>
+              </dd>
+            </div>
+            <div>
+              <dt>Identity</dt>
+              <dd>{assetIdentity(asset)}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>
+                {asset.assetType} · {asset.criticality} criticality
+              </dd>
+            </div>
+            <div>
+              <dt>Warranty</dt>
+              <dd>
+                {asset.warrantyEndUtc
+                  ? `${asset.warrantyEndUtc.slice(0, 10)} · ${warrantyLabel(asset)}`
+                  : "No warranty recorded"}
+              </dd>
+            </div>
+          </dl>
+        ) : null
+      ) : (
+        <p className="customer-note">
+          No registered equipment is linked to this work order. Link one when
+          the visit concerns a specific asset.
+        </p>
+      )}
+      {editing && (
+        <div className="form-body">
+          <Field
+            label="Linked equipment"
+            hint="Only active equipment at this work order's customer location is selectable."
+          >
+            <Select
+              value={assetId}
+              disabled={available.isPending}
+              onChange={(e) => setAssetId(e.target.value)}
+            >
+              <option value="">No specific equipment</option>
+              {available.data?.items
+                .filter((a) => a.serviceLocationId === order.serviceLocationId)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} — Serial {a.serialNumber}
+                  </option>
+                ))}
+            </Select>
+            {available.isError && (
+              <InlineMessage>{available.error.message}</InlineMessage>
+            )}
+          </Field>
+          {save.isError && <InlineMessage>{save.error.message}</InlineMessage>}
+          <div className="form-actions">
+            <Button onClick={() => setEditing(false)}>Cancel</Button>
+            <Button
+              appearance="primary"
+              disabled={save.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending ? "Saving…" : "Save equipment link"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }

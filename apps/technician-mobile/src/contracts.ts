@@ -4,6 +4,9 @@ export interface WorkOrder {
   title: string;
   customerName: string;
   siteAddress: string;
+  customerId?: string | null;
+  serviceLocationId?: string | null;
+  assetId?: string | null;
   serviceCategory: string;
   priority: string;
   status: string;
@@ -11,6 +14,48 @@ export interface WorkOrder {
   technicianId: string | null;
   createdAtUtc: string;
   version: number;
+}
+
+export interface CustomerServiceContext {
+  customerId: string;
+  displayName: string;
+  customerType: string;
+  preferredChannel: string;
+  version: number;
+  location: {
+    id: string;
+    name: string;
+    addressLine1: string;
+    addressLine2?: string | null;
+    city: string;
+    region: string;
+    postalCode: string;
+    countryCode: string;
+    accessNotes?: string | null;
+    status: string;
+  };
+  contacts: {
+    id: string;
+    fullName: string;
+    email?: string | null;
+    phone?: string | null;
+    isPrimary: boolean;
+    emailConsent: boolean;
+    phoneConsent: boolean;
+  }[];
+}
+
+export interface AssetSummary {
+  id: string;
+  name: string;
+  assetType: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  criticality: string;
+  status: string;
+  warrantyEndUtc?: string | null;
+  serviceLocationId: string;
 }
 
 export interface Booking {

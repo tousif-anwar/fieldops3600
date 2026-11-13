@@ -76,15 +76,6 @@ npm run test:e2e -- --workers=1
 
 The live suite uses real PKCE login, dispatcher creation and booking, supervisor warehouse analytics, and replay navigation. A further read-only test uses a completed workflow from the root API demonstration to verify disabled historical dropdowns, playback stepping, and real incident downloads without operational mutations. It skips that scenario explicitly when no completed workflow exists. Passwords are read into memory from `DEMO_PASSWORD` or the generated root `.env`; they are never logged or copied into browser storage or test fixtures. The repository-level test report records the final executed live results.
 
-To capture actual application screenshots after running the demonstration:
-
-```powershell
-$env:WEB_BASE_URL = 'http://localhost:8088'
-npm run screenshots
-```
-
-Screenshots are written to `apps/web/artifacts`. The script signs in as the synthetic supervisor, captures the real overview, supervisor and warehouse workspaces, selects the available investigation with the strongest recorded incident history, and captures a guided workflow when available. It reads operational evidence without creating or changing work. Screenshot contents depend on the actual local data and ingestion progress.
-
 ## Accessibility and limits
 
 The application uses semantic headings and tables, visible keyboard focus, a skip link, associated form labels, text plus color for severity, accessible notification counts, a native playback range, responsive navigation, reduced-motion handling, and Fluent Dialog focus trapping. Main and secondary operational text use a restrained palette with readable sizes. A complete WCAG 2.2 AA audit and assistive-technology review have not been performed.

@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FieldOps.ServiceHost;
 
-public sealed record CreateOrder(string Title, string CustomerName, string SiteAddress, string ServiceCategory, string Priority, string TeamId);
+public sealed record CreateOrder(string Title, string? CustomerName, string? SiteAddress, string ServiceCategory, string Priority, string TeamId, Guid? CustomerId = null, Guid? ServiceLocationId = null, string? UnregisteredCustomerReason = null, Guid? AssetId = null);
 public sealed record UpdateOrder(int ExpectedVersion, string Title, string Priority, string Status);
+public sealed record LinkOrderAsset(int ExpectedVersion, Guid? AssetId);
+public sealed record AssetReferenceView(Guid Id, string TeamId, Guid CustomerId, Guid ServiceLocationId, string Status);
 public sealed record CreateBooking(Guid WorkOrderId, string TechnicianId, DateTimeOffset StartUtc, DateTimeOffset EndUtc, string? OverrideReason);
 public sealed record MoveBooking(int ExpectedVersion, DateTimeOffset StartUtc, DateTimeOffset EndUtc, string Reason);
 public sealed record StartWorkflow(Guid WorkOrderId);
@@ -35,6 +37,8 @@ public static class OperationsApi
     {
         switch (service)
         {
+            case "customers": CustomerApi.Map(app); break;
+            case "assets": AssetApi.Map(app); break;
             case "work-orders": MapOrders(app); break;
             case "technicians": MapTechnicians(app); break;
             case "scheduling": MapScheduling(app); break;
@@ -59,20 +63,104 @@ public static class OperationsApi
             Caller.From(http.User).Demand(order.TeamId, order.TechnicianId);
             return Results.Ok(order);
         });
-        group.MapPost("", async (CreateOrder request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        group.MapGet("/by-customer/{customerId:guid}", async (Guid customerId, ServiceDb db, RemoteServices remote, HttpContext http, CancellationToken ct, int page = 1, int pageSize = 25) =>
+        {
+            if (page < 1 || page > 1_000_000 || pageSize is < 1 or > 100) throw new DomainException(400, "Invalid work order pagination.");
+            _ = await remote.Get<CustomerView>("Customers", $"/api/customers/{customerId}", http, ct);
+            var caller = Caller.From(http.User);
+            var query = db.WorkOrders.AsNoTracking().Where(x => x.CustomerId == customerId && (caller.IsAdministrator || x.TeamId == caller.TeamId));
+            var total = await query.CountAsync(ct);
+            var items = await query.OrderByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+            return Results.Ok(new { items, total, page, pageSize });
+        }).RequireAuthorization("dispatch");
+        group.MapGet("/by-asset/{assetId:guid}", async (Guid assetId, ServiceDb db, RemoteServices remote, HttpContext http, CancellationToken ct, int page = 1, int pageSize = 25) =>
+        {
+            if (page < 1 || page > 1_000_000 || pageSize is < 1 or > 100) throw new DomainException(400, "Invalid work order pagination.");
+            var caller = Caller.From(http.User);
+            var query = db.WorkOrders.AsNoTracking().Where(x => x.AssetId == assetId);
+            if (!caller.IsAdministrator) query = query.Where(x => x.TeamId == caller.TeamId);
+            if (caller.IsTechnician) query = query.Where(x => x.TechnicianId == caller.Id);
+            if (caller.IsTechnician)
+            {
+                // The technician's own assigned work is the authorization proof.
+                // The office-only asset reference lookup intentionally hides
+                // assets from technicians and cannot authorize this history.
+                if (!await query.AnyAsync(ct)) throw new DomainException(404, "Equipment history was not found in your assigned work.");
+            }
+            else
+            {
+                var asset = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId}/reference", http, ct);
+                if (!caller.IsAdministrator && asset.TeamId != caller.TeamId) throw new DomainException(404, "Equipment was not found in this team.");
+            }
+            http.Response.Headers.CacheControl = "no-store";
+            var total = await query.CountAsync(ct);
+            var items = await query.OrderByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+            return Results.Ok(new { items, total, page, pageSize });
+        }).RequireAuthorization("operational");
+        group.MapPost("", async (CreateOrder request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
             var caller = Caller.From(http.User);
             caller.Demand(request.TeamId);
-            ValidateText(request.Title, 3, 160, "title"); ValidateText(request.CustomerName, 2, 100, "customer name"); ValidateText(request.SiteAddress, 3, 240, "site address");
+            ValidateText(request.Title, 3, 160, "title");
+            string customerName, siteAddress;
+            int? customerVersion = null;
+            string? unregisteredReason = null;
+            if (request.CustomerId.HasValue && request.ServiceLocationId.HasValue)
+            {
+                if (!string.IsNullOrWhiteSpace(request.UnregisteredCustomerReason)) throw new DomainException(400, "A registered customer does not need an unregistered exception.");
+                var customer = await remote.Get<CustomerView>("Customers", $"/api/customers/{request.CustomerId}", http, ct);
+                if (customer.TeamId != request.TeamId) throw new DomainException(404, "Customer was not found in this team.");
+                var location = customer.Locations.SingleOrDefault(x => x.Id == request.ServiceLocationId) ?? throw new DomainException(400, "Service location does not belong to this customer.");
+                if (customer.Status != "Active" || location.Status != "Active") throw new DomainException(409, "New work requires an active customer and service location.");
+                if (request.AssetId is { } assetId)
+                {
+                    var asset = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId}/reference", http, ct);
+                    if (asset.TeamId != request.TeamId || asset.CustomerId != customer.Id || asset.ServiceLocationId != location.Id)
+                        throw new DomainException(400, "Equipment must be active equipment at this customer service location.");
+                    if (asset.Status != "Active") throw new DomainException(409, "Only active equipment can be linked to new work.");
+                }
+                customerName = customer.DisplayName;
+                customerVersion = customer.Version;
+                siteAddress = string.Join(", ", new[] { location.AddressLine1, location.AddressLine2, location.City, location.Region, location.PostalCode, location.CountryCode }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            }
+            else
+            {
+                if (request.CustomerId.HasValue || request.ServiceLocationId.HasValue) throw new DomainException(400, "Customer and service location references must be supplied together.");
+                if (request.AssetId.HasValue) throw new DomainException(400, "Equipment can be linked only to a registered customer work order.");
+                ValidateText(request.UnregisteredCustomerReason, 8, 500, "unregistered customer exception reason");
+                ValidateText(request.CustomerName, 2, 100, "customer name"); ValidateText(request.SiteAddress, 3, 240, "site address");
+                customerName = request.CustomerName!.Trim(); siteAddress = request.SiteAddress!.Trim(); unregisteredReason = request.UnregisteredCustomerReason!.Trim();
+            }
             if (!new[] { "HVAC", "Electrical", "Mechanical", "Refrigeration", "Controls", "Heating", "Cooling", "Ventilation" }.Contains(request.ServiceCategory)) throw new DomainException(400, "Unknown service category.");
             if (!new[] { "Low", "Normal", "High", "Critical" }.Contains(request.Priority)) throw new DomainException(400, "Unknown priority.");
             var now = clock.GetUtcNow();
-            var order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title.Trim(), CustomerName = request.CustomerName.Trim(), SiteAddress = request.SiteAddress.Trim(), ServiceCategory = request.ServiceCategory, Priority = request.Priority, TeamId = request.TeamId, CreatedAtUtc = now };
+            var order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title.Trim(), CustomerName = customerName, SiteAddress = siteAddress, CustomerId = request.CustomerId, CustomerVersion = customerVersion, ServiceLocationId = request.ServiceLocationId, AssetId = request.AssetId, UnregisteredCustomerReason = unregisteredReason, ServiceCategory = request.ServiceCategory, Priority = request.Priority, TeamId = request.TeamId, CreatedAtUtc = now };
             db.WorkOrders.Add(order);
             // Customer and address are deliberately excluded from integration/audit events.
             db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderCreated.v1", order.Id, OrderPayload(order), order.Version, now));
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/work-orders/{order.Id}", order);
+        }).RequireAuthorization("dispatch");
+        group.MapPut("/{id:guid}/asset", async (Guid id, LinkOrderAsset request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        {
+            var order = await db.WorkOrders.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Work order not found.");
+            Caller.From(http.User).Demand(order.TeamId);
+            if (order.Version != request.ExpectedVersion) throw new DomainException(409, "Work order changed. Refresh before saving.");
+            if (order.CustomerId is null || order.ServiceLocationId is null) throw new DomainException(409, "Equipment can be linked only to a registered customer work order.");
+            if (order.Status is "Completed" or "Cancelled") throw new DomainException(409, "Equipment cannot be changed after the work order is closed.");
+            if (request.AssetId is { } assetId)
+            {
+                var asset = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId}/reference", http, ct);
+                if (asset.TeamId != order.TeamId || asset.CustomerId != order.CustomerId || asset.ServiceLocationId != order.ServiceLocationId)
+                    throw new DomainException(400, "Equipment must belong to this work order's customer and service location.");
+                if (asset.Status != "Active") throw new DomainException(409, "Only active equipment can be linked to work.");
+            }
+            if (order.AssetId == request.AssetId) return Results.Ok(order);
+            order.AssetId = request.AssetId;
+            order.Version++;
+            db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderUpdated.v1", order.Id, OrderPayload(order), order.Version, clock.GetUtcNow()));
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(order);
         }).RequireAuthorization("dispatch");
         group.MapPut("/{id:guid}", async (Guid id, UpdateOrder request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
@@ -89,7 +177,7 @@ public static class OperationsApi
         }).RequireAuthorization("dispatch");
     }
 
-    public static object OrderPayload(WorkOrder order) => new { workOrderId = order.Id, order.Number, order.TeamId, order.TechnicianId, order.ServiceCategory, order.Priority, order.Status, order.CreatedAtUtc, order.CompletedAtUtc };
+    public static object OrderPayload(WorkOrder order) => new { workOrderId = order.Id, order.Number, order.TeamId, order.TechnicianId, order.CustomerId, order.CustomerVersion, order.ServiceLocationId, order.AssetId, customerReferenceStatus = order.CustomerId.HasValue ? "Registered" : "ExplicitException", order.ServiceCategory, order.Priority, order.Status, order.CreatedAtUtc, order.CompletedAtUtc };
 
     private static void MapTechnicians(WebApplication app)
     {

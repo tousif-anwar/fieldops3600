@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
+  Building2,
   CalendarDays,
   ClipboardList,
   History,
@@ -25,6 +26,15 @@ interface Workspace {
 }
 
 const workspaces: Workspace[] = [
+  {
+    to: "/customers",
+    title: "Customers",
+    description:
+      "Manage customers, service locations, contacts and consent history.",
+    group: "Operations",
+    roles: ["Dispatcher", "Supervisor", "OperationsManager", "Administrator"],
+    icon: <Building2 size={22} />,
+  },
   {
     to: "/work-orders",
     title: "Work orders",

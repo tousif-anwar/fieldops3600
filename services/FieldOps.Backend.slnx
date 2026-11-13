@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/assets/">
+    <Project Path="assets/FieldOps.Assets.csproj" />
+  </Folder>
+  <Folder Name="/customers/">
+    <Project Path="customers/FieldOps.Customers.csproj" />
+  </Folder>
   <Folder Name="/notifications/">
     <Project Path="notifications/FieldOps.Notifications.csproj" />
   </Folder>

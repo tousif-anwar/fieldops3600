@@ -44,6 +44,12 @@ test("dispatcher creates a real request and confirms a feasible booking through 
   await page.getByRole("link", { name: /Create work order/ }).click();
   const title = `Synthetic E2E cooling inspection ${Date.now()}`;
   await page.getByLabel("Work order title", { exact: false }).fill(title);
+  await page.getByLabel("Use an unregistered customer exception").check();
+  await page
+    .getByLabel("Unregistered customer reason", { exact: false })
+    .fill(
+      "Synthetic browser regression fixture without a registered customer.",
+    );
   await page
     .getByLabel("Customer name", { exact: false })
     .fill("Synthetic E2E Customer");
@@ -148,7 +154,7 @@ test("supervisor reviews completed dropdown history and replays evidence without
     .getByRole("link", { name: "Workflow review", exact: true })
     .click();
   const card = page.locator(".job-card").filter({
-    has: page.getByRole("heading", { name: order.title, exact: true }),
+    has: page.getByText(order.number, { exact: true }),
   });
   await card
     .getByRole("button", { name: "Review service", exact: true })

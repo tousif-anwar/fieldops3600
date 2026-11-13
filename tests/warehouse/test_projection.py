@@ -12,6 +12,7 @@ from uuid import uuid4
 import psycopg
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "analytics/ingestion-worker"))
 SPEC = importlib.util.spec_from_file_location(
     "warehouse_worker", ROOT / "analytics/ingestion-worker/worker.py"
 )
@@ -72,6 +73,34 @@ class WarehouseTests(unittest.TestCase):
                 "SELECT count(*) FROM warehouse.ingestion_ledger WHERE event_id=%s",
                 (event["eventId"],),
             ).fetchone()[0],
+        )
+
+    def test_work_order_asset_reference_is_projected_and_preserved(self):
+        asset = str(uuid4())
+        created = self.event(
+            "WorkOrderCreated.v1",
+            payload={"createdAtUtc": self.now.isoformat(), "assetId": asset},
+        )
+        WORKER.project(self.db, created)
+        self.assertEqual(
+            asset,
+            str(self.db.execute(
+                "SELECT asset_reference FROM warehouse.fact_work_order WHERE work_order_id=%s",
+                (self.order,),
+            ).fetchone()[0]),
+        )
+        # A later update without assetId must not erase the existing link.
+        updated = self.event(
+            "WorkOrderUpdated.v1", sequence=2, minutes=5,
+            payload={"createdAtUtc": self.now.isoformat(), "status": "Scheduled"},
+        )
+        WORKER.project(self.db, updated)
+        self.assertEqual(
+            asset,
+            str(self.db.execute(
+                "SELECT asset_reference FROM warehouse.fact_work_order WHERE work_order_id=%s",
+                (self.order,),
+            ).fetchone()[0]),
         )
 
     def test_archive_reconciliation_does_not_write_without_apply(self):

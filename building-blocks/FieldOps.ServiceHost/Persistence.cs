@@ -9,6 +9,13 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
 {
     public string ServiceName => identity.Name;
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerContact> CustomerContacts => Set<CustomerContact>();
+    public DbSet<ServiceLocation> ServiceLocations => Set<ServiceLocation>();
+    public DbSet<CustomerChange> CustomerChanges => Set<CustomerChange>();
+    public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<AssetLocationChange> AssetLocationChanges => Set<AssetLocationChange>();
+    public DbSet<AssetChange> AssetChanges => Set<AssetChange>();
     public DbSet<Technician> Technicians => Set<Technician>();
     public DbSet<TimeOff> TimeOff => Set<TimeOff>();
     public DbSet<Booking> Bookings => Set<Booking>();
@@ -28,6 +35,8 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
         var owned = identity.Name switch
         {
             "work-orders" => new[] { typeof(WorkOrder) },
+            "customers" => [typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange)],
+            "assets" => [typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange)],
             "technicians" => [typeof(Technician), typeof(TimeOff)],
             "scheduling" => [typeof(Booking)],
             "workflows" => [typeof(Workflow)],
@@ -35,7 +44,7 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
             "reporting" => [typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact)],
             _ => []
         };
-        foreach (var type in new[] { typeof(WorkOrder), typeof(Technician), typeof(TimeOff), typeof(Booking), typeof(Workflow), typeof(Notification), typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact) })
+        foreach (var type in new[] { typeof(WorkOrder), typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange), typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange), typeof(Technician), typeof(TimeOff), typeof(Booking), typeof(Workflow), typeof(Notification), typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact) })
             if (!owned.Contains(type)) b.Ignore(type);
         b.Entity<OutboxMessage>().ToTable("outbox_messages").HasKey(x => x.Id);
         b.Entity<OutboxMessage>().HasIndex(x => new { x.PublishedAtUtc, x.NextAttemptAtUtc });
@@ -44,10 +53,43 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
         b.Entity<IdempotencyReceipt>().ToTable("idempotency_receipts").HasKey(x => x.Id);
         switch (identity.Name)
         {
+            case "customers":
+                b.Entity<Customer>().ToTable("customers");
+                b.Entity<Customer>().Property(x => x.Version).IsConcurrencyToken();
+                b.Entity<Customer>().HasIndex(x => new { x.TeamId, x.Status, x.DisplayName });
+                b.Entity<Customer>().HasMany(x => x.Contacts).WithOne().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                b.Entity<Customer>().HasMany(x => x.Locations).WithOne().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                b.Entity<CustomerContact>().ToTable("customer_contacts");
+                b.Entity<CustomerContact>().HasIndex(x => x.CustomerId).IsUnique().HasFilter("\"IsPrimary\"");
+                b.Entity<ServiceLocation>().ToTable("service_locations");
+                b.Entity<ServiceLocation>().HasIndex(x => new { x.CustomerId, x.Status });
+                b.Entity<CustomerChange>().ToTable("customer_changes");
+                b.Entity<CustomerChange>().Property(x => x.DetailsJson).HasColumnType("jsonb");
+                b.Entity<CustomerChange>().HasIndex(x => new { x.CustomerId, x.Version }).IsUnique();
+                b.Entity<CustomerChange>().HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                break;
+            case "assets":
+                b.Entity<Asset>().ToTable("assets");
+                b.Entity<Asset>().Property(x => x.Version).IsConcurrencyToken();
+                b.Entity<Asset>().HasIndex(x => new { x.CustomerId, x.Status, x.Name });
+                b.Entity<Asset>().HasIndex(x => new { x.TeamId, x.AssetType, x.Status });
+                b.Entity<Asset>().HasIndex(x => new { x.TeamId, x.SerialNumber }).IsUnique();
+                b.Entity<Asset>().HasIndex(x => new { x.TeamId, x.QrCode }).IsUnique().HasFilter("\"QrCode\" IS NOT NULL");
+                b.Entity<Asset>().HasOne<Asset>().WithMany().HasForeignKey(x => x.ParentAssetId).OnDelete(DeleteBehavior.Restrict);
+                b.Entity<Asset>().HasMany(x => x.LocationHistory).WithOne().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
+                b.Entity<AssetLocationChange>().ToTable("asset_location_history");
+                b.Entity<AssetLocationChange>().HasIndex(x => new { x.AssetId, x.EffectiveFromUtc });
+                b.Entity<AssetChange>().ToTable("asset_changes");
+                b.Entity<AssetChange>().Property(x => x.DetailsJson).HasColumnType("jsonb");
+                b.Entity<AssetChange>().HasIndex(x => new { x.AssetId, x.Version }).IsUnique();
+                b.Entity<AssetChange>().HasOne<Asset>().WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
+                break;
             case "work-orders":
                 b.Entity<WorkOrder>().ToTable("work_orders");
                 b.Entity<WorkOrder>().HasIndex(x => x.Number).IsUnique();
                 b.Entity<WorkOrder>().Property(x => x.Version).IsConcurrencyToken();
+                b.Entity<WorkOrder>().HasIndex(x => new { x.CustomerId, x.CreatedAtUtc });
+                b.Entity<WorkOrder>().HasIndex(x => new { x.TeamId, x.AssetId, x.CreatedAtUtc }).HasFilter("\"AssetId\" IS NOT NULL");
                 break;
             case "technicians":
                 b.Entity<Technician>().ToTable("technicians");
@@ -94,7 +136,10 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         if (ChangeTracker.Entries<StoredEvent>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
-            ChangeTracker.Entries<DeliveryAttempt>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
+            ChangeTracker.Entries<DeliveryAttempt>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<CustomerChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<AssetChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<AssetLocationChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Audit evidence is append-only.");
         return base.SaveChangesAsync(cancellationToken);
     }

@@ -87,6 +87,8 @@ builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddSe
 
 var servicePaths = new Dictionary<string, string[]>
 {
+    ["customers"] = ["/api/customers/{**remaining}"],
+    ["assets"] = ["/api/assets/{**remaining}"],
     ["work-orders"] = ["/api/work-orders/{**remaining}"],
     ["technicians"] = ["/api/technicians/{**remaining}"],
     ["scheduling"] = ["/api/bookings/{**remaining}", "/api/scheduling/{**remaining}"],
@@ -165,7 +167,7 @@ public sealed class UpstreamReadiness(IHttpClientFactory clients, IConfiguration
 {
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var names = new[] { "work-orders", "technicians", "scheduling", "workflows", "notifications", "reporting" };
+        var names = new[] { "work-orders", "customers", "assets", "technicians", "scheduling", "workflows", "notifications", "reporting" };
         var checks = names.Select(async (name, index) =>
         {
             var address = configuration[$"Services:{name}"] ?? $"http://localhost:{5101 + index}";

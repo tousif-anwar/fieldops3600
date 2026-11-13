@@ -17,12 +17,15 @@ from uuid import UUID
 import pika
 import psycopg
 from psycopg.types.json import Jsonb
+import assets
+import customers
 
 LOG = logging.getLogger("fieldops.warehouse")
 QUEUE = "fieldops-warehouse"
 SAFE_FIELDS = {
     "teamId",
     "technicianId",
+    "assetId",
     "number",
     "serviceCategory",
     "priority",
@@ -47,6 +50,26 @@ SAFE_FIELDS = {
     "certifications",
     "available",
     "timeOffId",
+    "customerId",
+    "customerVersion",
+    "serviceLocationId",
+    "customerType",
+    "preferredChannel",
+    "contactCount",
+    "locationCount",
+    "activeLocationCount",
+    "emailConsentCount",
+    "phoneConsentCount",
+    "updatedAtUtc",
+    "assetId",
+    "assetVersion",
+    "assetType",
+    "criticality",
+    "manufacturer",
+    "model",
+    "warrantyEndUtc",
+    "installedAtUtc",
+    "parentAssetId",
 }
 
 TECHNICIAN_EVENT = "TechnicianAvailabilityChanged.v1"
@@ -297,6 +320,16 @@ def project(connection, event: dict) -> bool:
     team = payload.get("teamId")
     technician = payload.get("technicianId")
     occurred_at = _utc(occurred)
+    if kind in customers.EVENTS:
+        if event["sourceService"] != "customers" or UUID(order_id).int != 0:
+            raise ValueError("Customer registry events require the customer owner and no work-order identity")
+        customers.project(connection, event, payload)
+        return True
+    if kind in assets.EVENTS:
+        if event["sourceService"] != "assets" or UUID(order_id).int != 0:
+            raise ValueError("Asset registry events require the asset owner and no work-order identity")
+        assets.project(connection, event, payload)
+        return True
     tech_key = None
     if technician and team:
         if event["sourceService"] == "technicians" and kind == TECHNICIAN_EVENT:
@@ -340,7 +373,8 @@ def project(connection, event: dict) -> bool:
         )
         connection.execute(
             """UPDATE warehouse.fact_work_order SET number=%s,category_key=%s,created_date_key=%s,priority=%s,
-            created_at_utc=COALESCE(created_at_utc,%s::timestamptz),customer_key=(SELECT customer_key FROM warehouse.dim_customer ORDER BY customer_key LIMIT 1),
+            created_at_utc=COALESCE(created_at_utc,%s::timestamptz),
+            asset_reference=COALESCE(%s::uuid,asset_reference),
             source_status=%s,order_source_sequence=GREATEST(order_source_sequence,%s),order_source_occurred_at_utc=%s
             WHERE work_order_id=%s AND ((order_source_sequence>0 AND %s>=order_source_sequence)
               OR (order_source_sequence=0 AND (order_source_occurred_at_utc IS NULL OR %s::timestamptz>=order_source_occurred_at_utc)))""",
@@ -350,6 +384,7 @@ def project(connection, event: dict) -> bool:
                 date_key,
                 payload.get("priority", "Normal"),
                 created,
+                payload.get("assetId"),
                 status,
                 sequence,
                 occurred,
@@ -358,6 +393,7 @@ def project(connection, event: dict) -> bool:
                 occurred,
             ),
         )
+        customers.link_order(connection, order_id, payload, team)
     if kind == "WorkflowStarted.v1":
         connection.execute(
             "UPDATE warehouse.fact_work_order SET workflow_started_at_utc=COALESCE(workflow_started_at_utc,%s::timestamptz),technician_key=COALESCE(%s,technician_key) WHERE work_order_id=%s",

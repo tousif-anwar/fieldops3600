@@ -1,4 +1,6 @@
-# Executed verification
+# Historical executed verification
+
+**Current status:** the table below preserves earlier execution snapshots and counts. It is not the current expanded-stack acceptance report. See [implementation status](../IMPLEMENTATION_STATUS.md) and the [current feature matrix](../engineering/FULL_STACK_FEATURE_COMPLETION_MATRIX.md) for the eight-service/nine-database implementation, current suite totals and outstanding gates. Current live web E2E rerun is pending; historical browser/API results must not be treated as its result.
 
 Local evidence date: 2026-11-05 (re-verified subset, including native Android OAuth and monitoring) and 2026-11-04 (inherited suites). Counts are separate suites with overlapping scenarios; they must not be added into a fictional independent coverage percentage. Raw reports/toolchains/generated credentials are ignored. Tests use synthetic records and local services. Remote GitHub Actions has not been run.
 

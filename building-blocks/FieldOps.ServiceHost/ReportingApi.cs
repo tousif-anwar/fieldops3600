@@ -33,6 +33,8 @@ public static class ReportingApi
 
     public static void MapReporting(WebApplication app)
     {
+        CustomerAnalytics.Map(app);
+        AssetAnalytics.Map(app);
         var group = app.MapGroup("/api/reports").RequireAuthorization("report");
         group.MapGet("/summary", async (DateTimeOffset? from, DateTimeOffset? to, string? technicianId, string? serviceCategory, string? priority, ServiceDb db, IConfiguration configuration, HttpContext http, TimeProvider clock, CancellationToken ct) =>
         {

@@ -1,84 +1,43 @@
 # FieldOps 360 implementation status
 
-Updated 2026-11-05 after an independent resume audit and a successful native Android acceptance pass. Statuses below reflect code inspection plus commands executed on this host, not directory names or inherited documentation.
+Current local status: **2026-11-05**. The web application and Android development app run against the local stack. Customer and asset registration, linked work orders, guided workflows, scheduling, notifications, reports and operational replay are available. The broader enterprise expansion remains **PARTIAL**; the [feature completion matrix](engineering/FULL_STACK_FEATURE_COMPLETION_MATRIX.md) records individual implemented and missing capabilities.
 
-## Verification environment
+## Running application and data
 
-- Repository: `main`, clean at audit start (`6c497ae`), no uncommitted work was found. Existing history and migrations were preserved.
-- Toolchain actually used: repository-local `.tools/dotnet/dotnet` **10.0.403** (git-ignored), Node 24.15.0, Python 3.14.4, Docker 29.9.2 / Compose v5.6.1.
-- The system-wide SDK is **11.0.100-rc.3 preview**. It fails this solution's static-web-asset validation (`_framework/...DotNetWatch...lib.module.js` has no matching endpoint), so it is not a valid build environment for this repository. Use .NET 10 LTS (the local `.tools` SDK or `dotnet-version: 10.0.x` in CI).
-- Live local Compose stack: 13 services up; gateway `:5100`, web `:8088`, Keycloak `:8080` all returned HTTP 200.
+| Area | Current implementation / observed evidence |
+|---|---|
+| Backend | Eight .NET 10 service hosts: customers, assets, work orders, technicians, scheduling, workflows, notifications and reporting; YARP gateway; Keycloak authorization-code/PKCE authentication |
+| Data ownership | Nine FieldOps databases, including the independent warehouse; 71 physical tables, 35 local physical FKs, six views and 28 applied migration entries in the 2026-11-05 16:34 UTC catalog |
+| Customers and assets | Owner-scoped registry APIs, web editors/history, version checks, append-only change history, privacy-limited events and analytical projections. Work orders validate logical customer/location/asset references; legacy exceptions retain explicit reasons and original snapshots |
+| Synthetic demonstration records | API-driven batch of 24 customers, 24 assets and 30 linked orders, preserving existing data. Twenty-two workflows completed, six active and two unassigned; these are batch counts, not total database populations |
+| Warehouse | Ten dimensions and eight facts; technician SCD2 epochs, history-aware capacity and time-off/weekend exclusions. Customer revisions use source-version snapshots rather than temporal SCD2. Current asset and linked-order projections are event-derived |
+| Android | Installed debug development app on `emulator-5556`; real Keycloak login and SecureStore session. Three logout/login cycles returned automatically to Home. Live job customer/contact/location/consent, equipment metadata and equipment service history are visible without the prior unavailable-history warning |
+| Monitoring | Eight healthy Prometheus application targets, Grafana dashboard/login and RabbitMQ management access verified; retained business trace with 15 spans verified. Credentials remain in ignored local configuration; [monitoring guide](operations/MONITORING.md) explains demonstrations |
 
-## Component audit
+The local metadata capture is documented in the [data dictionary](data/DATA_DICTIONARY.md) and [physical diagrams](data/ENTITY_RELATIONSHIP_DIAGRAMS.md). Separate owner/runtime identities are verified for all eight services. Original registry events were reconciled after correcting an early warehouse grant omission; retained originals and ledger identities were preserved.
 
-| Component | Status | Verified basis |
+## Current verification
+
+| Check | Result | Boundary |
 |---|---|---|
-| Six .NET service hosts (work orders, technicians, scheduling, workflows, notifications, reporting) | COMPLETE | Solution builds 0 warnings / 0 errors; 54/54 backend tests including real PostgreSQL Testcontainers, migrations, outbox/inbox, overlap exclusion and SLA ordering |
-| YARP API gateway | COMPLETE | Builds clean; 7/7 real-process security/readiness tests re-run 2026-11-05 (anonymous/invalid token rejection, spoofed headers, query token, CORS, no-store, readiness) |
-| Keycloak OIDC / PKCE login | COMPLETE | Live realm discovery 200; signed role/team claims exercised by prior live checks and gateway tests; browser and mobile both initiate the real authorization-code flow |
-| Backend authorization and resource scoping | COMPLETE | Unit cases for foreign teams/technicians; prior live 3/3 resource-authorization suite (not re-run in this audit) |
-| Eight-stage workflow and versioned forms | COMPLETE | Workflow/admission/idempotency/template tests in the backend suite; UI and mobile forms covered by component tests |
-| 30-minute SLA engine (20/25/30) | COMPLETE | Persisted-deadline, pause/resume, restart and breach tests; prior accelerated live demonstration |
-| Scheduling: baseline + OR-Tools advice | COMPLETE | Constraint, overlap and scoped-availability tests; prior live optimizer contract check; travel estimate intentionally null without routing data |
-| Transactional outbox, retries, DLQ evidence | COMPLETE | Backend fault/outbox/inbox tests; prior broker-outage and error-queue demonstration artifacts |
-| Analytics warehouse and ingestion worker | COMPLETE | 26/26 PostgreSQL cases and zero-defect quality checks re-run 2026-11-05; schema, late/source ordering, deduplication, archive recovery and metric grains pass. |
-| Reporting APIs, exports and warehouse metrics | COMPLETE | Backend warehouse analytics tests run today; nullable-cohort, UTC grouping, deduplication and zero-vs-unknown cases pass |
-| Web operations UI | COMPLETE | `npm ci` clean; 33/33 unit/component tests; production build succeeds; `format:check` passes; 10/10 live Playwright checks passed at desktop and Pixel 7 sizes after focus/autoFocus fixes |
-| Warehouse pattern visualizations (SLA trend, stage durations, supervisor actions) | COMPLETE | Newly added component now covered by 4 tests (nullable rate, empty histogram, empty and populated action volume); 33/33 web suite green |
-| Expo technician app (source) | COMPLETE | TypeScript 6 typecheck plus 17/17 offline/form/session tests |
-| Native Android build and launch | COMPLETE | Debug APK (93,150,707 bytes) built and installed on `emulator-5556`; Metro bundles and the dev-client deep link load the JS application. |
-| Native mobile OAuth round trip | COMPLETE | 2026-11-05: real Keycloak PKCE login as `technician`, return through `fieldops360://oauth/callback`, `fieldops-mobile` token exchange, and authenticated **My jobs** dashboard for Jordan Rivera. Force-stop/relaunch restored the SecureStore session with no new authorization. |
-| Native guided stage and offline recovery | PARTIAL | 2026-11-05: started the guided service for synthetic `WO-20261105-FB162B`; stage 1/8 (Job Accepted) became Active and rendered the Assignment/Readiness form with the SLA countdown. Native stage submission and offline queue recovery were not completed; source tests still cover queue/idempotency/conflicts (17/17). |
-| iOS native execution | BLOCKED | Requires macOS/Xcode; not available on this host |
-| Intelligence (SLA prediction, optimizer evaluation) | COMPLETE | 18/18 pytest cases re-run 2026-11-05; deterministic synthetic training, leakage guards and OR-Tools constraints pass; the measured report is unchanged. |
-| Operational Replay console and exports | COMPLETE | Incident-summary role-filter regression test restored and passing; prior live replay integrity, authorization, export and viewport checks |
-| Observability (Prometheus/Grafana/Jaeger) | COMPLETE | 2026-11-05: monitoring profile started; Prometheus 6/6 targets up; Grafana health and `local-admin` login HTTP 200; Jaeger HTTP 200; `verify-observability.py` found 6 healthy targets and 27 retained spans. |
-| GitHub Actions | PARTIAL | Workflow paths are locally executable; a prior latent failure existed in `format:check` (now fixed). No remote run was initiated from this host. |
-| Phase 2 expansion (customers, contracts, inventory, billing, etc.) | MISSING | Not started by design; no partial code found to preserve |
+| Backend | **75/75 passed** | Domain and PostgreSQL/migration/resource tests; .NET 10.0.403 used on this host |
+| Web | **55/55 passed**, TypeScript and production build passed | Includes customer/asset contracts and actual registry-insights aggregate rendering; current live browser suite rerun is pending |
+| Native source | **34/34 passed**, TypeScript passed | Session, offline queue, forms and customer/asset context contracts |
+| Warehouse | **41/41 passed** | PostgreSQL projections, duplicate/late/version/privacy cases and linked asset preservation |
+| Warehouse data quality | **33 SELECT checks, zero defects** | Executed against the configured local warehouse; not every proposed new-domain invariant |
+| Native UI | Three real logout/login cycles passed; live customer/equipment/history observed | Android emulator development build; full native offline/conflict/physical-device acceptance is separate |
+| Observability | Eight targets healthy; 15 retained business spans | Bounded local monitoring/trace retention, not a production availability guarantee |
 
-## What was broken and repaired in this audit
+The [historical verification record](testing/VERIFICATION.md) preserves earlier execution results. Historical counts and older live E2E results do not establish acceptance of the current expanded source. Ignored local logs, TRX and JSON reports retain current execution evidence; generated credentials, screenshots and media are not source deliverables.
 
-1. **Two failing web tests and a duplicate accessible name.** The new analytics tab was labeled "SLA compliance", the same as the compliance KPI. `getByText` matched both, and screen-reader users heard two unrelated metrics with one name. The tab is now **SLA trend**.
-2. **A deleted regression test.** Commit `6c497ae` rewrote the supervisor-action predicate and removed the only test proving a technician's stage resume is not a supervisor action. The test is restored (`cb0051c`); the predicate's meaning is unchanged.
-3. **CI `format:check` failure on committed code.** `Analytics.tsx`, `styles.css` and `types.ts` were not Prettier-clean, so the web workflow would fail before tests. They are formatted (`5502841`), and the new component/tests are formatted too.
-4. **Uncovered new analytics views.** Added four tests for nullable compliance, empty duration histograms, empty action populations and recorded action volume (`15b455d`).
-5. **Local install instability.** Concurrent `npm ci` runs and orphaned `esbuild.exe` processes produced Windows `EPERM` extraction errors. Clearing `node_modules` and installing serially resolved it; this is a local environment note, not a repository defect.
-6. **Native OAuth evidence was incomplete.** The earlier audit captured only the sign-in screen. A reproduced run loaded the saved Metro bundle, completed the callback and token exchange, rendered the authenticated dashboard, and restored the session from SecureStore after a force-stop. The previous observation is superseded by this evidence.
+## Remaining scope and limitations
 
-## What the previous agent was most likely doing
+- Full asset browser editor/relocation/retirement and complete foreign-team/role acceptance remain pending. Current live web E2E verification is still being completed; no final result is claimed here.
+- The expanded stack still needs a complete fresh-install and restore-based populated-upgrade rehearsal. No production off-host restore objective, load/capacity certification, external CI run or cloud deployment is established.
+- General inspection authoring/evidence, preventive-maintenance agreements/recurrence, inventory/procurement/stock, pricing/invoices/payments, IoT devices/telemetry/alerts and configurable knowledge/automation/webhooks remain missing. Expanded labor/cost/crew/territory requirements remain partial or missing.
+- QR identity storage exists; QR scanning does not. Manufacturer/model values are attributes rather than separate catalogs. Warranty claims and standalone native equipment administration are absent.
+- Technician utilization excludes recorded time off and defaults to weekdays, but overlapping absence intervals are summed/capped rather than unioned. Cross-service HTTP validation is not a distributed serializable transaction. SignalR delivery is best effort; persisted state is authoritative.
+- Native offline drafts use AsyncStorage and are not application-encrypted. No iOS execution, signed mobile store release or physical-device certification is claimed. The advisory risk model uses synthetic data and has no established real-world accuracy.
+- Hostinger deployment is **not implemented**. The inspected account did not expose an existing VPS; server/account/domain/access details remain unresolved. The local Compose identity settings and URLs require a reviewed production configuration before deployment; see [Hostinger status](deployment/HOSTINGER.md).
 
-The final commits add warehouse analytics patterns and reshuffle `IncidentSummary`. The likely in-flight work was the last analytics acceptance item ("additional requested analytical visualizations/filters") plus native Android validation. The Android retry actually finished `BUILD SUCCESSFUL`, but the captured emulator screen was still Expo's dev-client launcher, so native acceptance was never closed out.
-
-## Remaining work, prioritized
-
-1. **Native guided workflow and offline recovery (Priority 1).** OAuth, callback, token exchange and SecureStore restore are verified. The guided service now starts and stage 1 renders its real form, but a native stage submission, assistance request, queued offline submission and conflict recovery remain to be completed on the emulator.
-2. **Remote CI and clean-checkout verification (Priority 2).** Warehouse 26/26, quality checks and intelligence 18/18 were re-run locally on 2026-11-05. Run GitHub Actions on a clean checkout and record the result; no remote run is claimed yet.
-3. **Operational hardening (Priority 3).** TLS, MFA/device policy, secret rotation, approved retention/backup and a restore drill.
-4. **Accessibility and responsive review (Priority 3).** Scoped focus/autoFocus fixes and desktop/mobile browser checks passed; a real WCAG 2.2 AA audit (including assistive technology and contrast tooling), not only the five-viewport overflow check, remains.
-5. **Warehouse depth (Priority 4).** SCD2 staff/hour history and time-off/weekend capacity exclusions.
-6. **Template administration (Priority 5).** Only immutable HVAC template v1 ships; runtime authoring is absent.
-7. **Consumer attempt evidence (Priority 5).** Terminal faults are recorded, but every intermediate delivery attempt is not.
-
-## Preserved known limits
-
-- Cross-service profile/time-off edits and cancellation racing an unprojected booking are not distributed serializable transactions. Cancel the booking first; direct cancellation of a scheduled order returns 409.
-- SignalR is best effort; persisted notification history is authoritative.
-- Mobile AsyncStorage drafts are not application-encrypted; OS-protected devices and synthetic data are assumed.
-- Native Android login and SecureStore restore are verified; guided stage submission, offline queue recovery, notification delivery and physical-device behavior are not.
-- Historical staff/capacity dimensions are type 1; time off/weekends are not excluded from utilization.
-- Jaeger retention is bounded/in-memory; a trace ID is not a retention guarantee.
-- The SLA model is advisory and trained/evaluated on synthetic data; no real-world accuracy is claimed.
-- No signed store release, physical-device certification, production deployment or external CI run is claimed.
-
-## Agent skills selected for this pass
-
-Detailed evidence, findings and limitations: [engineering/SKILL_USAGE.md](engineering/SKILL_USAGE.md).
-
-- **`find-skills`** — used for accessibility/testing discovery; no extra skill installed because the existing review skill and Playwright covered the need.
-- **`agent-browser`** — unavailable (CLI not installed); the existing Playwright suite was used for real login, dispatcher booking, supervisor analytics/replay and responsive checks.
-- **`web-design-guidelines`** — applied to the web shell, forms, analytics and replay screens; removed two focus-outline suppressions and three mobile-unfriendly `autoFocus` props, then revalidated tests/build/E2E.
-- **`frontend-design` and `high-end-visual-design`** — used for a restrained visual and hierarchy review; Fluent UI was preserved and no template-style rewrite or decorative churn was introduced.
-- **`performance-optimization`** — measured API/web smoke latency and bundle output; no change was justified because no measured bottleneck existed and route splitting is already present.
-- **`improve-codebase-architecture`** — applied a focused deletion-test and role-gate review; no high-confidence deepening or rewrite was justified.
-- **`design-mobile-apps`** — blocked by a missing `SLEEK_API_KEY`; ADB/emulator inspection was used instead. The native guided service reached stage 1, but submission/offline recovery remains partial.
-- **`tailwind-design-system` and `nodejs-backend-patterns`** — not applicable; the project intentionally uses Fluent UI and ASP.NET Core/.NET.
+Presentation media and screenshots have been archived outside this repository at the user's request. The repository retains runtime clients/server code, essential data/docs/infrastructure and verification tools.

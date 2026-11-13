@@ -1,4 +1,4 @@
-"""Live local integration: real Keycloak PKCE + gateway + six service databases + RabbitMQ.
+"""Live local integration: real Keycloak PKCE + gateway + operational databases + RabbitMQ.
 
 Requires `docker compose up -d --build`. Creates labeled synthetic records, never production data.
 """
@@ -41,7 +41,7 @@ class LiveIntegrationTests(unittest.TestCase):
                 return error.code, json.loads(body) if "json" in error.headers.get("Content-Type", "") else body
 
     def create(self, title="Synthetic integration HVAC inspection"):
-        status, order = self.request("POST", "/api/work-orders", data={"title": title, "customerName": "Synthetic Customer", "siteAddress": "100 Demonstration Avenue", "serviceCategory": "HVAC", "priority": "High", "teamId": "north"})
+        status, order = self.request("POST", "/api/work-orders", data={"title": title, "customerName": "Synthetic Customer", "siteAddress": "100 Demonstration Avenue", "serviceCategory": "HVAC", "priority": "High", "teamId": "north", "unregisteredCustomerReason": "Legacy synthetic test fixture without a customer registry reference."})
         self.assertEqual(201, status, order)
         return order
 
@@ -58,7 +58,7 @@ class LiveIntegrationTests(unittest.TestCase):
         status, identity = self.request("GET", "/api/session")
         self.assertEqual(200, status); self.assertEqual("dispatcher-01", identity["id"])
         for role in ["technician", "analyst"]:
-            status, _ = self.request("POST", "/api/work-orders", role, {"title": "Unauthorized synthetic", "customerName": "Synthetic", "siteAddress": "Synthetic", "serviceCategory": "HVAC", "priority": "Normal", "teamId": "north"})
+            status, _ = self.request("POST", "/api/work-orders", role, {"title": "Unauthorized synthetic", "customerName": "Synthetic", "siteAddress": "Synthetic", "serviceCategory": "HVAC", "priority": "Normal", "teamId": "north", "unregisteredCustomerReason": "Legacy synthetic test fixture without a customer registry reference."})
             self.assertEqual(403, status)
         status, _ = self.request("GET", "/api/reports/summary", "technician")
         self.assertEqual(403, status)

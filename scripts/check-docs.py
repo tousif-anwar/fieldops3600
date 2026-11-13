@@ -2,9 +2,7 @@
 """Validate relative links and image paths in maintained Markdown.
 
 External URLs, mail links, and pure anchors are intentionally out of scope.
-The checker works from tracked/untracked-but-not-ignored files and skips the
-pre-existing presentation package, whose ownership is separate from this
-repository documentation build.
+The checker works from tracked/untracked-but-not-ignored files and covers the maintained source documentation.
 """
 
 from __future__ import annotations
@@ -18,7 +16,7 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 LINK = re.compile(r"!?\[[^\]]*\]\(([^)\n]+)\)")
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
-SKIP_PREFIXES = ("docs/presentation/",)
+SKIP_PREFIXES: tuple[str, ...] = ()
 
 
 def markdown_files() -> list[Path]:

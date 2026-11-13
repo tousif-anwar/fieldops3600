@@ -1,0 +1,87 @@
+erDiagram
+  public_audit_events {
+    uuid EventId PK
+    uuid WorkOrderId
+    text EventType
+    text SourceService
+    text TeamId
+    text ActorId
+    text Body
+    timestamp_with_time_zone OccurredAtUtc
+    timestamp_with_time_zone ReceivedAtUtc
+    timestamp_with_time_zone ProcessedAtUtc
+    bigint SequenceNumber
+    text CorrelationId
+    text TraceId
+    text IntegrityHash
+  }
+  public_delivery_attempts {
+    uuid Id PK
+    uuid EventId
+    integer Attempt
+    timestamp_with_time_zone ReceivedAtUtc
+    timestamp_with_time_zone ProcessedAtUtc
+    text Status
+    text Error
+    text ConsumerService
+    uuid FaultId
+    timestamp_with_time_zone OccurredAtUtc
+  }
+  public_fact_work_order {
+    uuid WorkOrderId PK
+    text Number
+    text TeamId
+    text ServiceCategory
+    text Priority
+    text TechnicianId
+    timestamp_with_time_zone CreatedAtUtc
+    timestamp_with_time_zone CompletedAtUtc
+    text Status
+    timestamp_with_time_zone UpdatedAtUtc
+  }
+  public_fact_workflow_stage {
+    uuid StageInstanceId PK
+    uuid WorkOrderId
+    text TeamId
+    text Stage
+    text TechnicianId
+    timestamp_with_time_zone StartedAtUtc
+    timestamp_with_time_zone CompletedAtUtc
+    timestamp_with_time_zone DeadlineUtc
+    boolean Breached
+    double_precision PausedSeconds
+    text SlaStatus
+    timestamp_with_time_zone UpdatedAtUtc
+  }
+  public_fieldops_schema_migrations {
+    text migration_id PK
+    text sha256
+    timestamp_with_time_zone applied_at_utc
+  }
+  public_idempotency_receipts {
+    text Id PK
+    text ActorId
+    text RequestHash
+    text ResponseJson
+    timestamp_with_time_zone CreatedAtUtc
+  }
+  public_inbox_messages {
+    text Id PK
+    timestamp_with_time_zone ProcessedAtUtc
+  }
+  public_outbox_messages {
+    uuid Id PK
+    jsonb Body
+    timestamp_with_time_zone CreatedAtUtc
+    timestamp_with_time_zone PublishedAtUtc
+    integer Attempts
+    timestamp_with_time_zone NextAttemptAtUtc
+    text LastError
+  }
+  public_replay_projection {
+    uuid WorkOrderId PK
+    text TeamId
+    jsonb StateJson
+    integer EventCount
+    timestamp_with_time_zone UpdatedAtUtc
+  }

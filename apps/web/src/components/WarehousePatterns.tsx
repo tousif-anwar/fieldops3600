@@ -100,10 +100,19 @@ export function WarehousePatterns({ report }: { report: Reports }) {
           note={
             report.escalationFrequency == null
               ? "Not available: no selected orders"
-              : "Distinct orders with a recorded SLA breach / selected orders"
+              : "Distinct orders with a breach / selected · target ≤ 15%"
           }
           icon={<TriangleAlert size={20} />}
           tone="amber"
+          indicator={
+            report.escalationFrequency == null
+              ? { label: "No data", tone: "neutral" }
+              : report.escalationFrequency <= 0.15
+                ? { label: "On target", tone: "green" }
+                : report.escalationFrequency <= 0.25
+                  ? { label: "Watch", tone: "amber" }
+                  : { label: "At risk", tone: "red" }
+          }
         />
         <Metric
           label="Confirmed-booking coverage"
@@ -111,9 +120,18 @@ export function WarehousePatterns({ report }: { report: Reports }) {
           note={
             report.schedulingEfficiency == null
               ? "Not available: no selected orders"
-              : "Orders with a currently confirmed booking / selected orders"
+              : "Orders with a confirmed booking / selected · target ≥ 80%"
           }
           icon={<CalendarDays size={20} />}
+          indicator={
+            report.schedulingEfficiency == null
+              ? { label: "No data", tone: "neutral" }
+              : report.schedulingEfficiency >= 0.8
+                ? { label: "On target", tone: "green" }
+                : report.schedulingEfficiency >= 0.65
+                  ? { label: "Watch", tone: "amber" }
+                  : { label: "At risk", tone: "red" }
+          }
         />
       </div>
       <p className="analytics-cohort-note">

@@ -14,6 +14,8 @@ x-backend-environment: &backend-environment
   RabbitMq__Password: ${RABBITMQ_PASSWORD:?Run python scripts/init-local.py}
   RabbitMq__VirtualHost: /
   Services__WorkOrders: http://work-orders:8080
+  Services__Customers: http://customers:8080
+  Services__Assets: http://assets:8080
   Services__Technicians: http://technicians:8080
   Services__Scheduling: http://scheduling:8080
   Services__Workflows: http://workflows:8080
@@ -40,6 +42,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Run python scripts/init-local.py}
+    ports: ["127.0.0.1:5432:5432"]
     volumes:
       - postgres-data:/var/lib/postgresql
       - ./infrastructure/postgres/init.generated.sql:/docker-entrypoint-initdb.d/10-fieldops.sql:ro
@@ -88,6 +91,34 @@ services:
       timeout: 5s
       retries: 40
       start_period: 30s
+    restart: unless-stopped
+
+  customers:
+    image: fieldops360-customers:local
+    build: &customers-build
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/customers/FieldOps.Customers.csproj, SERVICE_ASSEMBLY: FieldOps.Customers.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_customers;Username=fieldops_customers_app;Password=${CUSTOMERS_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-customers: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  assets:
+    image: fieldops360-assets:local
+    build: &assets-build
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/assets/FieldOps.Assets.csproj, SERVICE_ASSEMBLY: FieldOps.Assets.dll}
+    environment:
+      <<: *backend-environment
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_assets;Username=fieldops_assets_app;Password=${ASSETS_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-assets: {condition: service_completed_successfully}
     restart: unless-stopped
 
   work-orders:
@@ -190,6 +221,28 @@ services:
       migrate-warehouse: {condition: service_completed_successfully}
     restart: unless-stopped
 
+  migrate-customers:
+    image: fieldops360-customers:local
+    build: *customers-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_customers_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_customers;Username=fieldops_customers;Password=${CUSTOMERS_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
+  migrate-assets:
+    image: fieldops360-assets:local
+    build: *assets-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_assets_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_assets;Username=fieldops_assets;Password=${ASSETS_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
   migrate-work-orders:
     image: fieldops360-work-orders:local
     build: *work-orders-build
@@ -283,6 +336,8 @@ services:
       Auth__Authority: http://localhost:8080/realms/fieldops
       Auth__MetadataAddress: http://keycloak:8080/realms/fieldops/.well-known/openid-configuration
       Services__work-orders: http://work-orders:8080
+      Services__customers: http://customers:8080
+      Services__assets: http://assets:8080
       Services__technicians: http://technicians:8080
       Services__scheduling: http://scheduling:8080
       Services__workflows: http://workflows:8080
@@ -294,6 +349,8 @@ services:
     depends_on:
       keycloak: {condition: service_healthy}
       work-orders: {condition: service_started}
+      customers: {condition: service_started}
+      assets: {condition: service_started}
       technicians: {condition: service_started}
       scheduling: {condition: service_started}
       workflows: {condition: service_started}

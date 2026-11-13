@@ -2,11 +2,15 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Field, Input, Select } from "@fluentui/react-components";
 import {
+  Activity,
   ArrowDownToLine,
   BarChart3,
   CheckCheck,
+  CheckCircle2,
   Clock3,
   Info,
+  RefreshCw,
+  TriangleAlert,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -36,6 +40,87 @@ import {
 import type { Reports } from "../types";
 import { WarehousePatterns } from "../components/WarehousePatterns";
 
+type Indicator = {
+  label: string;
+  tone: "green" | "amber" | "red" | "neutral";
+};
+
+type Highlight = {
+  key: string;
+  title: string;
+  text: string;
+  tone: Indicator["tone"];
+};
+
+function higherRateIndicator(
+  value: number | null,
+  target: number,
+  watchFloor: number,
+): Indicator {
+  if (value == null) return { label: "No data", tone: "neutral" };
+  if (value >= target) return { label: "On target", tone: "green" };
+  if (value >= watchFloor) return { label: "Watch", tone: "amber" };
+  return { label: "At risk", tone: "red" };
+}
+
+function lowerRateIndicator(
+  value: number | null,
+  target: number,
+  watchCeiling: number,
+): Indicator {
+  if (value == null) return { label: "No data", tone: "neutral" };
+  if (value <= target) return { label: "On target", tone: "green" };
+  if (value <= watchCeiling) return { label: "Watch", tone: "amber" };
+  return { label: "At risk", tone: "red" };
+}
+
+function countIndicator(value: number, watchCeiling: number): Indicator {
+  if (value === 0) return { label: "Clear", tone: "green" };
+  if (value <= watchCeiling) return { label: "Watch", tone: "amber" };
+  return { label: "Action needed", tone: "red" };
+}
+
+function selectedDate(value: string) {
+  if (!value) return "";
+  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function reportHighlights(report: Reports): Highlight[] {
+  const highlights: Highlight[] = [];
+  if (report.slaComplianceRate != null) {
+    const status = higherRateIndicator(report.slaComplianceRate, 0.95, 0.85);
+    highlights.push({
+      key: "sla",
+      title: "SLA health",
+      text: `${percent(report.slaComplianceRate)} of completed stages met SLA against a 95% target.`,
+      tone: status.tone,
+    });
+  }
+  highlights.push({
+    key: "overdue",
+    title: "Dispatch attention",
+    text:
+      report.overdueStages > 0
+        ? `${report.overdueStages.toLocaleString()} stages are past SLA${report.activeJobs ? ` across ${report.activeJobs.toLocaleString()} active jobs` : ""}.`
+        : "No overdue stages in the selected cohort.",
+    tone: report.overdueStages > 0 ? "red" : "green",
+  });
+  if (report.schedulingEfficiency != null) {
+    const status = higherRateIndicator(report.schedulingEfficiency, 0.8, 0.65);
+    highlights.push({
+      key: "coverage",
+      title: "Booking coverage",
+      text: `${percent(report.schedulingEfficiency)} of selected orders have a confirmed booking; target ≥ 80%.`,
+      tone: status.tone,
+    });
+  }
+  return highlights;
+}
+
 export function Analytics() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -56,18 +141,43 @@ export function Analytics() {
     queryFn: () => api<Reports>(`/api/reports/summary?${query}`),
     refetchInterval: 30000,
   });
+  const clearFilters = () => {
+    setFrom("");
+    setTo("");
+    setCategory("");
+    setTechnician("");
+    setExportError("");
+  };
   const exportFile = async (extension: "csv" | "pdf") => {
     setExportError("");
     try {
       await download(
         `/api/reports/export.${extension}?${query}`,
-        `fieldops-operational-report.${extension}`,
+        `fieldops-operational-report-${new Date().toISOString().slice(0, 10)}.${extension}`,
       );
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Export failed.");
     }
   };
   const r = report.data;
+  const hasFilters = Boolean(from || to || category || technician);
+  const dateScope =
+    from || to
+      ? `${from ? selectedDate(from) : "Earliest date"} – ${to ? selectedDate(to) : "Today"}`
+      : "All history";
+  const completionIndicator = higherRateIndicator(
+    r?.completionRate ?? null,
+    0.7,
+    0.5,
+  );
+  const slaIndicator = higherRateIndicator(
+    r?.slaComplianceRate ?? null,
+    0.95,
+    0.85,
+  );
+  const atRiskIndicator = countIndicator(r?.atRiskStages ?? 0, 5);
+  const overdueIndicator = countIndicator(r?.overdueStages ?? 0, 5);
+  const highlights = r ? reportHighlights(r) : [];
   return (
     <>
       <PageHeader
@@ -76,6 +186,13 @@ export function Analytics() {
         description="Validated service performance, capacity, and trends from the reporting warehouse."
         actions={
           <>
+            <Button
+              icon={<RefreshCw size={16} />}
+              onClick={() => void report.refetch()}
+              disabled={report.isFetching}
+            >
+              Refresh
+            </Button>
             <Button
               icon={<ArrowDownToLine size={16} />}
               onClick={() => void exportFile("csv")}
@@ -130,6 +247,21 @@ export function Analytics() {
         </Field>
         <Freshness value={r?.refreshedAtUtc} />
       </div>
+      <div className="report-scope" aria-label="Current report scope">
+        <span className="report-scope-label">REPORT SCOPE</span>
+        <span className="report-scope-chip">{dateScope}</span>
+        <span className="report-scope-chip">
+          {category || "All categories"}
+        </span>
+        <span className="report-scope-chip">
+          {technician ? "Selected technician" : "All technicians"}
+        </span>
+        {hasFilters && (
+          <Button appearance="subtle" size="small" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
+      </div>
       {exportError && <InlineMessage>{exportError}</InlineMessage>}
       {report.isPending ? (
         <Loading label="Loading validated warehouse metrics…" />
@@ -138,6 +270,15 @@ export function Analytics() {
       ) : (
         r && (
           <>
+            <div className="analytics-scorecard-heading">
+              <div>
+                <div className="eyebrow">PERFORMANCE SCORECARD</div>
+                <h2>Key performance indicators</h2>
+              </div>
+              <span className="scorecard-targets">
+                Targets: completion ≥ 70% · SLA ≥ 95% · booking coverage ≥ 80%
+              </span>
+            </div>
             <div className="metrics-grid">
               <Metric
                 label="Total work orders"
@@ -151,10 +292,11 @@ export function Analytics() {
                 note={
                   r.completionRate == null
                     ? "Not available: no orders in scope"
-                    : "Completed / total work orders"
+                    : "Completed / total · target ≥ 70%"
                 }
                 icon={<CheckCheck size={20} />}
                 tone="green"
+                indicator={completionIndicator}
               />
               <Metric
                 label="SLA compliance"
@@ -162,10 +304,11 @@ export function Analytics() {
                 note={
                   r.slaComplianceRate == null
                     ? "Not available: no completed stages"
-                    : "Stages completed without breach"
+                    : "Stages without breach · target ≥ 95%"
                 }
                 icon={<TrendingUp size={20} />}
                 tone="green"
+                indicator={slaIndicator}
               />
               <Metric
                 label="Average stage time"
@@ -187,7 +330,64 @@ export function Analytics() {
                 icon={<Clock3 size={20} />}
                 tone="amber"
               />
+              <Metric
+                label="Active jobs"
+                value={r.activeJobs.toLocaleString()}
+                note="In progress in the selected cohort"
+                icon={<Activity size={20} />}
+                indicator={
+                  r.activeJobs === 0
+                    ? { label: "Clear", tone: "green" }
+                    : { label: "Live", tone: "neutral" }
+                }
+              />
+              <Metric
+                label="At-risk stages"
+                value={r.atRiskStages.toLocaleString()}
+                note="Active stages flagged warning or critical"
+                icon={<TriangleAlert size={20} />}
+                tone="amber"
+                indicator={atRiskIndicator}
+              />
+              <Metric
+                label="Overdue stages"
+                value={r.overdueStages.toLocaleString()}
+                note="Stages past their SLA deadline"
+                icon={<Clock3 size={20} />}
+                tone="red"
+                indicator={overdueIndicator}
+              />
+              <Metric
+                label="Completed today"
+                value={r.completedToday.toLocaleString()}
+                note="Closed during the current UTC day"
+                icon={<CheckCircle2 size={20} />}
+                tone="green"
+                indicator={{ label: "Today", tone: "neutral" }}
+              />
             </div>
+            {highlights.length > 0 && (
+              <div
+                className="analytics-highlights"
+                aria-label="Report highlights"
+              >
+                {highlights.map((highlight) => (
+                  <article
+                    key={highlight.key}
+                    className={`analytics-highlight ${highlight.tone}`}
+                  >
+                    <span
+                      className="analytics-highlight-signal"
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <strong>{highlight.title}</strong>
+                      <p>{highlight.text}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
             <div className="analytics-grid">
               <Panel
                 title="Work order volume"
@@ -355,6 +555,7 @@ export function Analytics() {
                         <tr>
                           <th scope="col">Service category</th>
                           <th scope="col">Work orders</th>
+                          <th scope="col">Share</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -362,6 +563,11 @@ export function Analytics() {
                           <tr key={category.category}>
                             <th scope="row">{category.category}</th>
                             <td>{category.count}</td>
+                            <td>
+                              {r.totalWorkOrders
+                                ? percent(category.count / r.totalWorkOrders)
+                                : "—"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -488,6 +694,9 @@ export function Analytics() {
                   unavailable values rather than assumed zero. Customer
                   information is masked for analyst access.
                 </p>
+                {r.dataSource && (
+                  <p className="analytics-data-source">{r.dataSource}</p>
+                )}
               </div>
             </div>
             <Panel
@@ -496,12 +705,17 @@ export function Analytics() {
             >
               <div className="table-scroll">
                 <table>
+                  <caption className="sr-only">
+                    Stage-level effective duration, observed volume and SLA
+                    breach rate
+                  </caption>
                   <thead>
                     <tr>
                       <th>Workflow stage</th>
                       <th>Observed stages</th>
                       <th>Average effective minutes</th>
                       <th>SLA breaches</th>
+                      <th>Breach rate</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -515,6 +729,7 @@ export function Analytics() {
                             : s.averageMinutes.toFixed(2)}
                         </td>
                         <td>{s.breaches}</td>
+                        <td>{s.count ? percent(s.breaches / s.count) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>

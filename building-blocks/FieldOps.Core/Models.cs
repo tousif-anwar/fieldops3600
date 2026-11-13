@@ -17,6 +17,13 @@ public sealed class WorkOrder
     public string Title { get; set; } = "";
     public string CustomerName { get; set; } = "";
     public string SiteAddress { get; set; } = "";
+    // Logical references to the customer owner; snapshots preserve the original job context.
+    public Guid? CustomerId { get; set; }
+    public int? CustomerVersion { get; set; }
+    public Guid? ServiceLocationId { get; set; }
+    // Logical reference to the asset owner; validated over its API before assignment.
+    public Guid? AssetId { get; set; }
+    public string? UnregisteredCustomerReason { get; set; }
     public string ServiceCategory { get; set; } = "HVAC";
     public string Priority { get; set; } = "Normal";
     public string Status { get; set; } = "Created";

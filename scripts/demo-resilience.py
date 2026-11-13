@@ -67,7 +67,7 @@ def main():
 
     def new_order(title):
         return request("POST", "/api/work-orders", body={"title": title, "customerName": "Synthetic Demo Customer",
-                       "siteAddress": "100 Demonstration Avenue", "serviceCategory": "HVAC", "priority": "High", "teamId": "north"}, allowed=(201,))
+                       "siteAddress": "100 Demonstration Avenue", "serviceCategory": "HVAC", "priority": "High", "teamId": "north", "unregisteredCustomerReason": "Legacy synthetic test fixture without a customer registry reference."}, allowed=(201,))
 
     evidence = {"synthetic": True, "startedAtUtc": datetime.now(timezone.utc).isoformat()}
     broker_stopped = False

@@ -48,6 +48,29 @@ const Administration = lazy(() =>
 const Workspaces = lazy(() =>
   import("./pages/Workspaces").then((m) => ({ default: m.Workspaces })),
 );
+const Customers = lazy(() =>
+  import("./pages/Customers").then((m) => ({ default: m.Customers })),
+);
+const CustomerEditor = lazy(() =>
+  import("./pages/Customers").then((m) => ({ default: m.CustomerEditor })),
+);
+const CustomerDetails = lazy(() =>
+  import("./pages/Customers").then((m) => ({ default: m.CustomerDetails })),
+);
+const RegistryInsights = lazy(() =>
+  import("./pages/RegistryInsights").then((m) => ({
+    default: m.RegistryInsights,
+  })),
+);
+const Assets = lazy(() =>
+  import("./pages/Assets").then((m) => ({ default: m.Assets })),
+);
+const AssetEditor = lazy(() =>
+  import("./pages/Assets").then((m) => ({ default: m.AssetEditor })),
+);
+const AssetDetails = lazy(() =>
+  import("./pages/Assets").then((m) => ({ default: m.AssetDetails })),
+);
 
 function SessionQueries() {
   const { user } = useAuth();
@@ -127,6 +150,106 @@ function App() {
         <Route element={<Shell />}>
           <Route index element={<Home />} />
           <Route path="workspaces" element={<Workspaces />} />
+          <Route
+            path="customers"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <Customers />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="customers/new"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <CustomerEditor />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="customers/:id"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <CustomerDetails />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="customers/:id/edit"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <CustomerEditor />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="registry-insights"
+            element={
+              <RequireRole
+                roles={["Analyst", "Supervisor", "OperationsManager"]}
+              >
+                <RegistryInsights />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="assets"
+            element={
+              <RequireRole
+                roles={[
+                  "Dispatcher",
+                  "Supervisor",
+                  "OperationsManager",
+                  "Technician",
+                ]}
+              >
+                <Assets />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="assets/new"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <AssetEditor />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="assets/:id"
+            element={
+              <RequireRole
+                roles={[
+                  "Dispatcher",
+                  "Supervisor",
+                  "OperationsManager",
+                  "Technician",
+                ]}
+              >
+                <AssetDetails />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="assets/:id/edit"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <AssetEditor />
+              </RequireRole>
+            }
+          />
           <Route
             path="overview"
             element={

@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-SERVICES = {"work-orders": "work_orders", "technicians": "technicians", "scheduling": "scheduling", "workflows": "workflows", "notifications": "notifications", "reporting": "reporting"}
+SERVICES = {"customers": "customers", "assets": "assets", "work-orders": "work_orders", "technicians": "technicians", "scheduling": "scheduling", "workflows": "workflows", "notifications": "notifications", "reporting": "reporting"}
 
 
 def sql(database, role, expression):
@@ -51,7 +51,17 @@ def main():
         AND NOT has_table_privilege(current_user,'warehouse.fact_work_order','INSERT')
         AND NOT has_table_privilege(current_user,'warehouse.fact_work_order','UPDATE')
         AND NOT has_schema_privilege(current_user,'warehouse','CREATE')""")
-    print("Verified six isolated runtime identities, append-only audit grants, warehouse writer/reader boundaries, and absence of owner DSNs in business containers.")
+    sql("fieldops_customers", "fieldops_customers_app", """SELECT
+        has_table_privilege(current_user,'customer_changes','SELECT') AND has_table_privilege(current_user,'customer_changes','INSERT')
+        AND NOT has_table_privilege(current_user,'customer_changes','UPDATE') AND NOT has_table_privilege(current_user,'customer_changes','DELETE')
+        AND NOT has_table_privilege(current_user,'customer_changes','TRUNCATE')""")
+    sql("fieldops_assets", "fieldops_assets_app", """SELECT
+        has_table_privilege(current_user,'asset_changes','SELECT') AND has_table_privilege(current_user,'asset_changes','INSERT')
+        AND NOT has_table_privilege(current_user,'asset_changes','UPDATE') AND NOT has_table_privilege(current_user,'asset_changes','DELETE')
+        AND NOT has_table_privilege(current_user,'asset_changes','TRUNCATE')
+        AND NOT has_table_privilege(current_user,'asset_location_history','UPDATE')
+        AND has_table_privilege(current_user,'assets','UPDATE')""")
+    print("Verified eight isolated runtime identities, append-only customer/asset/audit history grants, warehouse writer/reader boundaries, and absence of owner DSNs in business containers.")
 
 
 if __name__ == "__main__":

@@ -70,11 +70,13 @@ public sealed class SchedulingSecurityReplayTests
     [Fact]
     public void EachDatabaseModelContainsOnlyItsOwnedBusinessData()
     {
-        foreach (var service in new[] { "work-orders", "technicians", "scheduling", "workflows", "notifications", "reporting" })
+        foreach (var service in new[] { "customers", "work-orders", "technicians", "scheduling", "workflows", "notifications", "reporting" })
         {
             var options = new DbContextOptionsBuilder<ServiceDb>().UseNpgsql("Host=localhost;Database=unused").ReplaceService<IModelCacheKeyFactory, ServiceModelKeyFactory>().Options;
             using var db = new ServiceDb(options, new(service));
             Assert.Equal(service == "work-orders", db.Model.FindEntityType(typeof(WorkOrder)) is not null);
+            Assert.Equal(service == "customers", db.Model.FindEntityType(typeof(Customer)) is not null);
+            Assert.Equal(service == "customers", db.Model.FindEntityType(typeof(ServiceLocation)) is not null);
             Assert.Equal(service == "workflows", db.Model.FindEntityType(typeof(Workflow)) is not null);
             Assert.Equal(service == "reporting", db.Model.FindEntityType(typeof(StoredEvent)) is not null);
         }

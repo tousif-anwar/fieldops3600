@@ -13,6 +13,8 @@ import re
 from pathlib import Path
 
 OPERATIONAL_SERVICES = (
+    "customers",
+    "assets",
     "work_orders",
     "technicians",
     "scheduling",
@@ -113,9 +115,13 @@ END;""")
     protected = ["fieldops_schema_migrations"]
     if service == "reporting":
         protected.extend(["audit_events", "delivery_attempts"])
+    if service == "customers":
+        protected.append("customer_changes")
+    if service == "assets":
+        protected.extend(["asset_changes", "asset_location_history"])
     protection = []
     for table in protected:
-        rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts"} else "SELECT"
+        rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts", "customer_changes", "asset_changes", "asset_location_history"} else "SELECT"
         protection.append(
             block(f"""BEGIN
  IF to_regclass('public.{table}') IS NOT NULL THEN
@@ -180,6 +186,8 @@ def reconciliation_sql(root: Path, values: dict[str, str]) -> str:
     statements = [
         "\\set ON_ERROR_STOP on",
         "-- Add application roles/permissions; never drop data or change owner passwords.",
+        customer_context_sql(values),
+        asset_context_sql(values),
         runtime_roles_sql(values),
     ]
     for service in OPERATIONAL_SERVICES:
@@ -187,3 +195,33 @@ def reconciliation_sql(root: Path, values: dict[str, str]) -> str:
         statements.extend([f"\\connect {owner}", operational_grants_sql(service)])
     statements.extend(["\\connect fieldops_warehouse", warehouse_grants_sql(root)])
     return "\n".join(statements) + "\n"
+
+
+def asset_context_sql(values: dict[str, str]) -> str:
+    """Add the asset owner/database on an existing installation, preserving all old data."""
+    password = literal(values["ASSETS_DB_PASSWORD"])
+    return block(f"""BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='fieldops_assets') THEN
+  CREATE ROLE fieldops_assets LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {password};
+ END IF;
+END;""") + "\n" + """SELECT 'CREATE DATABASE fieldops_assets OWNER fieldops_assets'
+WHERE NOT EXISTS(SELECT 1 FROM pg_database WHERE datname='fieldops_assets')
+\\gexec
+REVOKE ALL ON DATABASE fieldops_assets FROM PUBLIC;
+GRANT CONNECT ON DATABASE fieldops_assets TO fieldops_assets;
+"""
+
+
+def customer_context_sql(values: dict[str, str]) -> str:
+    """Add the new owner/database on an existing installation, preserving all old data."""
+    password = literal(values["CUSTOMERS_DB_PASSWORD"])
+    return block(f"""BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='fieldops_customers') THEN
+  CREATE ROLE fieldops_customers LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {password};
+ END IF;
+END;""") + "\n" + """SELECT 'CREATE DATABASE fieldops_customers OWNER fieldops_customers'
+WHERE NOT EXISTS(SELECT 1 FROM pg_database WHERE datname='fieldops_customers')
+\\gexec
+REVOKE ALL ON DATABASE fieldops_customers FROM PUBLIC;
+GRANT CONNECT ON DATABASE fieldops_customers TO fieldops_customers;
+"""

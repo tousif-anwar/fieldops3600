@@ -6,6 +6,8 @@ import { Login } from '../src/login';
 import { SessionRuntime } from '../src/runtime';
 import { colors, spacing, touch, typography } from '../src/ui';
 
+export const unstable_settings = { anchor: '(tabs)' };
+
 function SignOut() {
   const { logout } = useAuth();
   return (

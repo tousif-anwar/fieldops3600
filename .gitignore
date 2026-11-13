@@ -34,3 +34,9 @@ infrastructure/keycloak/realm.generated.json
 infrastructure/postgres/init.generated.sql
 infrastructure/rabbitmq/definitions.generated.json
 infrastructure/monitoring/grafana/provisioning/datasources/datasources.generated.yml
+# Supporting media is archived outside the source repository.
+demos/
+docs/presentation/
+docs/screenshots/
+docs/videos/
+docs/ui-ux/evidence/

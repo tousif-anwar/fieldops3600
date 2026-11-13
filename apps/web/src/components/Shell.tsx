@@ -23,6 +23,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
+  Package,
   Search,
   Settings2,
   ShieldCheck,
@@ -54,6 +55,23 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   {
     label: "Operations",
     items: [
+      {
+        to: "/customers",
+        label: "Customers",
+        icon: Building2,
+        roles: [
+          "Dispatcher",
+          "Supervisor",
+          "OperationsManager",
+          "Administrator",
+        ],
+      },
+      {
+        to: "/assets",
+        label: "Assets",
+        icon: Package,
+        roles: ["Dispatcher", "Supervisor", "OperationsManager"],
+      },
       {
         to: "/work-orders",
         label: "Work orders",
@@ -106,6 +124,12 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   {
     label: "Insights",
     items: [
+      {
+        to: "/registry-insights",
+        label: "Customer and asset insights",
+        icon: Building2,
+        roles: ["Analyst", "Supervisor", "OperationsManager", "Administrator"],
+      },
       {
         to: "/analytics",
         label: "Analytics",

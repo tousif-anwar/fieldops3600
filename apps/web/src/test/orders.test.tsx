@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CreateOrder } from "../pages/WorkOrders";
-import { post } from "../api";
+import { api, post } from "../api";
 
 vi.mock("../auth", () => ({
   useAuth: () => ({
@@ -12,11 +12,30 @@ vi.mock("../auth", () => ({
     can: () => true,
   }),
 }));
-vi.mock("../api", () => ({ api: vi.fn(), post: vi.fn() }));
+vi.mock("../api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../api")>();
+  return { ...actual, api: vi.fn(), post: vi.fn() };
+});
 describe("work order creation", () => {
   beforeEach(() => {
     vi.mocked(post).mockReset();
+    vi.mocked(api)
+      .mockReset()
+      .mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 });
   });
+  const useUnregisteredCustomer = async (
+    reason = "Legacy account pending registration",
+  ) => {
+    await userEvent.click(
+      screen.getByRole("checkbox", {
+        name: /unregistered customer exception/i,
+      }),
+    );
+    await userEvent.type(
+      screen.getByLabelText(/Unregistered customer reason/),
+      reason,
+    );
+  };
   const mount = () =>
     render(
       <MemoryRouter>
@@ -31,6 +50,7 @@ describe("work order creation", () => {
     );
   it("blocks invalid work orders before any API mutation", async () => {
     mount();
+    await useUnregisteredCustomer();
     await userEvent.click(
       screen.getByRole("button", { name: "Create work order" }),
     );
@@ -40,6 +60,7 @@ describe("work order creation", () => {
   it("submits validated service details with authenticated team scope", async () => {
     vi.mocked(post).mockResolvedValue({ id: "new-work-order" });
     mount();
+    await useUnregisteredCustomer();
     await userEvent.type(
       screen.getByLabelText(/Work order title/),
       "Rooftop unit not cooling",
@@ -73,6 +94,7 @@ describe("work order creation", () => {
       throw new Error("Team is not authorized.");
     });
     mount();
+    await useUnregisteredCustomer();
     await userEvent.type(
       screen.getByLabelText(/Work order title/),
       "Rooftop unit not cooling",

@@ -16,6 +16,8 @@ import {
   priorityTone, stageStatusTone,
 } from '../../src/ui/model';
 import { colors, spacing, typography } from '../../src/ui/tokens';
+import { AssetServiceInfo } from '../../src/ui/asset-service-info';
+import { CustomerServiceInfo } from '../../src/ui/customer-service-info';
 
 export default function JobDetails() {
   const parameters = useLocalSearchParams<{ id: string; submitted?: string }>();
@@ -93,13 +95,8 @@ export default function JobDetails() {
             </View>
             <Text accessibilityRole="header" style={styles.title}>{job.title}</Text>
           </View>
-          <Section
-            card
-            title={job.customerName}
-            description={`${job.serviceCategory} · ${formatStatus(job.status)}`}
-          >
-            <Text style={styles.body}>{job.siteAddress}</Text>
-          </Section>
+          <CustomerServiceInfo job={job} />
+          <AssetServiceInfo job={job} />
           <Section card title="Appointment">
             {booking ? (
               <>

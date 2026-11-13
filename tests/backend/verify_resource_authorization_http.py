@@ -45,7 +45,7 @@ class ResourceAuthorizationHttpTests(unittest.TestCase):
         status, order = self.request("POST", "/api/work-orders", role, {
             "title": "Synthetic resource authorization verification",
             "customerName": "Synthetic Customer", "siteAddress": "100 Demonstration Avenue",
-            "serviceCategory": "HVAC", "priority": "Normal", "teamId": team})
+            "serviceCategory": "HVAC", "priority": "Normal", "teamId": team, "unregisteredCustomerReason": "Legacy synthetic test fixture without a customer registry reference."})
         self.assertEqual(201, status, order)
         return order
 

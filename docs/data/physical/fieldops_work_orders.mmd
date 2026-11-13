@@ -1,0 +1,46 @@
+erDiagram
+  public_fieldops_schema_migrations {
+    text migration_id PK
+    text sha256
+    timestamp_with_time_zone applied_at_utc
+  }
+  public_idempotency_receipts {
+    text Id PK
+    text ActorId
+    text RequestHash
+    text ResponseJson
+    timestamp_with_time_zone CreatedAtUtc
+  }
+  public_inbox_messages {
+    text Id PK
+    timestamp_with_time_zone ProcessedAtUtc
+  }
+  public_outbox_messages {
+    uuid Id PK
+    jsonb Body
+    timestamp_with_time_zone CreatedAtUtc
+    timestamp_with_time_zone PublishedAtUtc
+    integer Attempts
+    timestamp_with_time_zone NextAttemptAtUtc
+    text LastError
+  }
+  public_work_orders {
+    uuid Id PK
+    text Number
+    text Title
+    text CustomerName
+    text SiteAddress
+    text ServiceCategory
+    text Priority
+    text Status
+    text TeamId
+    text TechnicianId
+    timestamp_with_time_zone CreatedAtUtc
+    timestamp_with_time_zone CompletedAtUtc
+    integer Version
+    uuid CustomerId
+    uuid ServiceLocationId
+    integer CustomerVersion
+    text UnregisteredCustomerReason
+    uuid AssetId
+  }

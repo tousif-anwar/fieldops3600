@@ -87,6 +87,18 @@ public static class SchemaMigrator
             REVOKE ALL ON audit_events,delivery_attempts FROM PUBLIC,{role};
             GRANT SELECT,INSERT ON audit_events,delivery_attempts TO {role};
             """;
+        if (service == "customers") grants += $"""
+
+            REVOKE ALL ON customer_changes FROM PUBLIC,{role};
+            GRANT SELECT,INSERT ON customer_changes TO {role};
+            """;
+        if (service == "assets") grants += $"""
+
+            REVOKE ALL ON asset_changes FROM PUBLIC,{role};
+            GRANT SELECT,INSERT ON asset_changes TO {role};
+            REVOKE UPDATE,DELETE,TRUNCATE ON asset_location_history FROM PUBLIC,{role};
+            GRANT SELECT,INSERT ON asset_location_history TO {role};
+            """;
         await using var apply = new NpgsqlCommand(grants, connection, transaction); await apply.ExecuteNonQueryAsync();
     }
 }

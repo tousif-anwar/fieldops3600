@@ -43,7 +43,7 @@ class OptimizerHttpContractTests(unittest.TestCase):
             "title": title, "customerName": "Synthetic Customer",
             "siteAddress": "100 Demonstration Avenue", "serviceCategory": "HVAC",
             "priority": "High", "teamId": "north",
-        })
+         "unregisteredCustomerReason": "Legacy synthetic test fixture without a customer registry reference."})
         self.assertEqual(201, status, order)
         try:
             start = (datetime.now(timezone.utc) + timedelta(days=1 + int(uuid4().hex[:4], 16) % 3650)).replace(hour=14, minute=0, second=0, microsecond=0)

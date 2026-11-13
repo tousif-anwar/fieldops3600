@@ -4292,3 +4292,32 @@ td {
     padding: 16px 20px;
   }
 }
+.customer-form {
+  display: grid;
+  gap: 24px;
+  max-width: 1120px;
+}
+.customer-subrecord {
+  border: 1px solid #dce4eb;
+  border-radius: 6px;
+  margin: 18px 22px;
+  padding: 16px;
+  min-width: 0;
+}
+.customer-subrecord legend {
+  padding: 0 8px;
+  font-weight: 600;
+}
+.customer-subrecord .form-body {
+  padding: 8px 0;
+}
+.customer-subrecord h3 {
+  margin: 0 0 12px;
+}
+.customer-subrecord p {
+  overflow-wrap: anywhere;
+}
+.customer-note {
+  padding: 12px 24px;
+  line-height: 1.65;
+}

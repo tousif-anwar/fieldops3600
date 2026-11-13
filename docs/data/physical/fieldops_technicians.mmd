@@ -1,0 +1,48 @@
+erDiagram
+  public_fieldops_schema_migrations {
+    text migration_id PK
+    text sha256
+    timestamp_with_time_zone applied_at_utc
+  }
+  public_idempotency_receipts {
+    text Id PK
+    text ActorId
+    text RequestHash
+    text ResponseJson
+    timestamp_with_time_zone CreatedAtUtc
+  }
+  public_inbox_messages {
+    text Id PK
+    timestamp_with_time_zone ProcessedAtUtc
+  }
+  public_outbox_messages {
+    uuid Id PK
+    jsonb Body
+    timestamp_with_time_zone CreatedAtUtc
+    timestamp_with_time_zone PublishedAtUtc
+    integer Attempts
+    timestamp_with_time_zone NextAttemptAtUtc
+    text LastError
+  }
+  public_technicians {
+    text Id PK
+    text Name
+    text TeamId
+    text SupervisorId
+    text SkillsJson
+    text CertificationsJson
+    integer WorkingStartHour
+    integer WorkingEndHour
+    text TimeZone
+    boolean Available
+    integer Version
+  }
+  public_time_off {
+    uuid Id PK
+    text TechnicianId FK
+    timestamp_with_time_zone StartUtc
+    timestamp_with_time_zone EndUtc
+    text Reason
+    integer Version
+  }
+  public_technicians |o--o{ public_time_off : "TechnicianId"

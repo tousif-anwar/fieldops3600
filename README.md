@@ -1,10 +1,9 @@
 # FieldOps 360
 
-FieldOps 360 is a local-first field-service operations platform for dispatch, guided HVAC work, SLA supervision, warehouse analytics, and incident replay. It combines six ASP.NET Core services, a React operations portal, an Expo technician app, PostgreSQL, RabbitMQ, Keycloak, and a Python intelligence service.
+FieldOps 360 is a local-first field-service operations platform for dispatch, guided HVAC work, SLA supervision, warehouse analytics, and incident replay. It combines eight ASP.NET Core services, a React operations portal, an Expo technician app, PostgreSQL, RabbitMQ, Keycloak, and a Python intelligence service.
 
-> **Status:** engineering demonstration with a verified local stack. There is no production deployment, certification, or real-customer data in this repository. All operational records and screenshots are synthetic.
+> **Status:** engineering demonstration with a verified local stack. There is no production deployment, certification, or real-customer data in this repository. Demo records are synthetic; production hosting remains pending.
 
-![Dispatcher Home showing unassigned work, technician coverage, and upcoming appointments](docs/ui-ux/evidence/after-home-dispatcher.png)
 
 ## The problem
 
@@ -22,6 +21,8 @@ FieldOps 360 keeps those answers in service-owned records. Dispatch validates av
 | Area | Working behavior |
 |---|---|
 | Role-aware Home | A separate landing view for Technician, Dispatcher, Supervisor, Operations Manager, Analyst, and Administrator, built from authorized API data. |
+| Customer registry | Team-scoped customers, contacts, consent, locations, change history and validated work-order references. |
+| Asset registry | Equipment identity, hierarchy, warranties, location history and assigned-work service history. |
 | Work orders | Search, status/priority filters, validated creation, details, optimistic version checks, and eligible cancellation. |
 | Scheduling | Scoped availability, baseline and OR-Tools recommendations, confirmed-booking overlap protection, rescheduling, and reasoned cancellation. |
 | Guided service | Eight-stage HVAC workflow with versioned server forms, conditional fields, drafts, assistance, idempotent submissions, and read-only history. |
@@ -107,29 +108,19 @@ Open **http://localhost:8088** and choose **Continue to secure sign-in**. The ge
 
 The first build can take several minutes. For prerequisites, source-development commands, tests, upgrades, monitoring, and troubleshooting, read the **[installation and operations guide](docs/INSTALLATION.md)**. The deeper runbook remains [LOCAL_DEPLOYMENT.md](docs/operations/LOCAL_DEPLOYMENT.md).
 
-## Screenshots
-
-| Role-aware Home | Warehouse analytics |
-|---|---|
-| ![Dispatcher Home](docs/ui-ux/evidence/after-home-dispatcher.png) | ![Analytics workspace](docs/ui-ux/evidence/after-analytics.png) |
-
-![Technician mobile jobs list showing synthetic assignments](docs/screenshots/mobile/after/my-jobs.png)
-
-More role, responsive, replay, and accessibility evidence is indexed in [UI/UX documentation](docs/INDEX.md#uiux-and-accessibility).
-
 ## Verification
 
 | Check | Latest local result |
 |---|---|
-| .NET backend tests (including PostgreSQL Testcontainers) | **57/57** passed |
-| Web TypeScript, unit/component tests | Typecheck passed; **49/49** tests passed |
+| .NET backend tests (including PostgreSQL Testcontainers) | **75/75** passed |
+| Web TypeScript, unit/component tests | Typecheck passed; **55/55** tests passed |
 | Web production build | Passed; no >500 kB chunk warning |
-| Expo TypeScript and tests | **23/23** tests passed |
+| Expo TypeScript and tests | **34/34** tests passed |
 | Intelligence tests and Ruff | **18/18** passed; Ruff clean |
 | Live Playwright role/deep-link suite | **16/16** passed locally after the drawer fix |
 | Accessibility | Prior axe-core run: **0 violations across 30 signed-out and authenticated views**; a fresh assistive-technology audit remains open |
 
-Commands and evidence boundaries are recorded in [testing/VERIFICATION.md](docs/testing/VERIFICATION.md) and [engineering/REFACTORING_RESULTS.md](docs/engineering/REFACTORING_RESULTS.md). Passing tests here are local evidence, not a claim of a remote CI run or production readiness.
+Commands and evidence boundaries are recorded in [testing/VERIFICATION.md](docs/testing/VERIFICATION.md) . Passing tests here are local evidence, not a claim of a remote CI run or production readiness.
 
 ## Documentation
 
@@ -140,8 +131,6 @@ Commands and evidence boundaries are recorded in [testing/VERIFICATION.md](docs/
 - [API and event contracts](docs/architecture/contracts.md)
 - [Workflow and SLA design](docs/workflows/design.md)
 - [Implementation status and open items](docs/IMPLEMENTATION_STATUS.md)
-- [UI walkthrough](docs/UI_WALKTHROUGH.md)
-- [Engineering baseline and refactoring evidence](docs/engineering/REFACTORING_BASELINE.md)
 
 ## Security and limitations
 

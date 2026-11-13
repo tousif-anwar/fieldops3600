@@ -1,69 +1,53 @@
-# Documentation index
+# FieldOps 360 documentation
 
-Start with the [repository README](../README.md) for the business and architecture overview. Use [INSTALLATION.md](INSTALLATION.md) for a fresh setup and [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for the current acceptance state.
+## Run and verify
 
-## Architecture and data
+- [Installation and development](INSTALLATION.md)
+- [Deployment and recovery](operations/LOCAL_DEPLOYMENT.md)
+- [Monitoring access and walkthrough](operations/MONITORING.md)
+- [API and database verification](operations/API_DATABASE_DEMO.md)
+- [Implementation status](IMPLEMENTATION_STATUS.md)
+- [Feature completion matrix](engineering/FULL_STACK_FEATURE_COMPLETION_MATRIX.md)
+- [Verification record](testing/VERIFICATION.md)
+- [Web client](../apps/web/README.md)
+- [Native client](../apps/technician-mobile/README.md)
 
-| Topic | Authoritative document |
-|---|---|
-| Context, containers, components, ownership | [Architecture overview](architecture/overview.md) |
-| Requirements and constraints | [Requirements](architecture/REQUIREMENTS.md) |
-| API and event conventions | [Contracts](architecture/contracts.md), [service guide](../services/README.md) |
-| Design patterns and alternatives | [Patterns](architecture/patterns.md) |
-| Deployment, service ERD, star schema, event/data flows | [Data and deployment diagrams](diagrams/data-and-deployment.md) |
-| Interaction sequences | [Sequence diagrams](diagrams/sequences.md) |
-| Architecture decisions | [Service ownership](adr/001-service-ownership.md), [browser PKCE](adr/002-browser-auth.md), [evidence and runtime grants](adr/003-evidence-and-runtime-grants.md) |
-| Warehouse grain, keys, lineage, quality | [Warehouse guide](../analytics/README.md), [star-schema migration](../analytics/migrations/001_star_schema.sql) |
-| Prediction and optimizer evaluation | [Intelligence guide](../intelligence/README.md), [measured evaluation](../intelligence/evaluation/REPORT.md) |
-| Replay evidence model | [Replay guide](../replay/event-store/README.md), [demonstration](../services/OPERATIONS_DEMONSTRATION.md) |
+## Architecture and APIs
 
-## Product and operations
+- [Architecture](architecture/overview.md)
+- [Requirements](architecture/REQUIREMENTS.md)
+- [API reference](api/REFERENCE.md)
+- [Compiled endpoint inventory](api/ENDPOINTS.md)
+- [API and event conventions](architecture/contracts.md)
+- [Service guide](../services/README.md)
+- [Patterns and alternatives](architecture/patterns.md)
+- [Workflow and SLA](workflows/design.md)
+- [Data and deployment diagrams](diagrams/data-and-deployment.md)
+- [Interaction sequences](diagrams/sequences.md)
+- [Service ownership decision](adr/001-service-ownership.md)
+- [Browser PKCE decision](adr/002-browser-auth.md)
+- [Evidence and runtime grants](adr/003-evidence-and-runtime-grants.md)
 
-| Topic | Authoritative document |
-|---|---|
-| Local installation, tests, upgrades, troubleshooting | [Installation and local operations](INSTALLATION.md) |
-| Deployment, recovery, broker outages, readiness | [Local deployment runbook](operations/LOCAL_DEPLOYMENT.md) |
-| Workflow state machine, dynamic forms, SLA | [Workflow design](workflows/design.md) |
-| Web portal behavior and auth | [Web guide](../apps/web/README.md) |
-| Native app, offline queue, conflicts | [Mobile guide](../apps/technician-mobile/README.md) |
-| UI walkthrough with current screenshots | [UI walkthrough](UI_WALKTHROUGH.md) |
-| Demo and delivery narrative | [Case study](case-study/DELIVERY_REPORT.md) |
-| Feature and acceptance status | [Implementation status](IMPLEMENTATION_STATUS.md) |
+## Data
 
-## Security and verification
+- [Domain model](data/DOMAIN_DATA_MODEL.md)
+- [Operational databases](data/OPERATIONAL_DATABASES.md)
+- [Data dictionary](data/DATA_DICTIONARY.md)
+- [Physical ER diagrams](data/ENTITY_RELATIONSHIP_DIAGRAMS.md)
+- [Migrations](data/DATABASE_MIGRATIONS.md)
+- [Warehouse model](data/WAREHOUSE_MODEL.md)
+- [Pipelines](data/DATA_PIPELINES.md)
+- [Quality](data/DATA_QUALITY.md)
+- [Consistency](data/DATA_CONSISTENCY.md)
+- [Reporting definitions](data/REPORTING_METRICS.md)
+- [Asset registry scope](data/ASSET_REGISTRY.md)
+- [Warehouse implementation](../analytics/README.md)
+- [Advisory intelligence](../intelligence/README.md)
 
-| Topic | Authoritative document |
-|---|---|
-| Threat model and role matrix | [Security architecture](security/threat-model.md) |
-| Secret handling and disclosure | [Security policy](../SECURITY.md) |
-| Tests, browser checks, scan scope, evidence boundaries | [Verification record](testing/VERIFICATION.md) |
-| Accessibility evidence | [Accessibility report](ui-ux/ACCESSIBILITY_REPORT.md) |
-| Usability evidence | [Usability results](ui-ux/USABILITY_RESULTS.md) |
+## Security and hosting
 
-## UI/UX and accessibility
+- [Threat model](security/threat-model.md)
+- [Security policy](../SECURITY.md)
+- [Hostinger requirements](deployment/HOSTINGER.md)
 
-| Topic | Authoritative document |
-|---|---|
-| Research and sources | [Research](ui-ux/RESEARCH.md) |
-| Audit findings | [UX audit](ui-ux/UX_AUDIT.md) |
-| Role journeys | [User journeys](ui-ux/USER_JOURNEYS.md) |
-| Information architecture | [Information architecture](ui-ux/INFORMATION_ARCHITECTURE.md) |
-| Role-based Home | [Role-based Home](ui-ux/ROLE_BASED_HOME.md) |
-| Design system | [Design system](ui-ux/DESIGN_SYSTEM.md) |
-| UX writing | [UX writing audit](ui-ux/UX_WRITING_AUDIT.md) |
-| Accessibility | [Accessibility report](ui-ux/ACCESSIBILITY_REPORT.md) |
-| Screenshots and browser evidence | [Evidence directory](ui-ux/evidence/) |
-
-## Engineering
-
-| Topic | Authoritative document |
-|---|---|
-| Pre-change build, test, and repository baseline | [Refactoring baseline](engineering/REFACTORING_BASELINE.md) |
-| File purpose and disposition | [File inventory](engineering/FILE_INVENTORY.md) |
-| Removed files, ignores, dependencies, and secrets check | [Repository hygiene](engineering/REPOSITORY_HYGIENE.md) |
-| Architecture and code-quality findings | [Code-quality audit](engineering/CODE_QUALITY_AUDIT.md) |
-| Measured refactoring and verification results | [Refactoring results](engineering/REFACTORING_RESULTS.md) |
-| Documentation moves and preserved sources | [Documentation consolidation](engineering/DOCUMENTATION_CONSOLIDATION.md) |
-| Skills used and limitations | [Skill usage](engineering/SKILL_USAGE.md) |
-
-Documentation describes the checked-in implementation and distinguishes local evidence from production claims. Source SQL and endpoint signatures remain authoritative for field-level details.
+This repository contains runtime source, migrations, tests, essential documentation and infrastructure. Presentations, screenshots, recordings and video-production projects are maintained outside the repository. Local verification does not establish production certification or deployment.

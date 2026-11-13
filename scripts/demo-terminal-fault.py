@@ -91,7 +91,7 @@ def main():
                 "serviceCategory": "HVAC",
                 "priority": "Normal",
                 "teamId": "north",
-            },
+             "unregisteredCustomerReason": "Legacy synthetic test fixture without a customer registry reference."},
         )
         start = (
             datetime.now(timezone.utc) + timedelta(days=10 + int(uuid4().hex[:4], 16) % 1000)

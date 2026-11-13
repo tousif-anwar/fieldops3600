@@ -1,6 +1,7 @@
 """Verify actual local Prometheus targets and a retained business-event trace."""
 import importlib.util
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 import urllib.error
@@ -23,8 +24,10 @@ def main():
     targets = read("http://localhost:9090/api/v1/targets")["data"]["activeTargets"]
     service_targets = [target for target in targets if target["labels"].get("job") == "fieldops-services"]
     healthy = [target for target in service_targets if target["health"] == "up"]
-    if len(healthy) != 6:
-        raise RuntimeError(f"Expected six healthy scrape targets, observed {len(healthy)} of {len(service_targets)}")
+    expected = set(re.findall(r"^\s+- ([a-z-]+:8080)\s*$", (ROOT / "infrastructure/monitoring/prometheus.yml").read_text(), re.MULTILINE))
+    observed = {target["labels"]["instance"] for target in healthy}
+    if not expected or observed != expected:
+        raise RuntimeError(f"Expected {len(expected)} configured healthy scrape targets, observed {len(healthy)} of {len(service_targets)}")
     token = AUTH.login(ROOT, "supervisor")
     orders = read("http://localhost:5100/api/work-orders", token)
     for order in orders:

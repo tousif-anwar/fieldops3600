@@ -10,6 +10,10 @@ export interface WorkOrder {
   number: string;
   title: string;
   customerName: string;
+  customerId?: string | null;
+  serviceLocationId?: string | null;
+  assetId?: string | null;
+  unregisteredCustomerReason?: string | null;
   siteAddress: string;
   serviceCategory: string;
   priority: string;
@@ -120,6 +124,7 @@ export interface Reports {
     supervisors: number;
   }[];
   metricDefinitions?: Record<string, string>;
+  dataSource?: string;
   refreshedAtUtc: string | null;
   volumeTrend: { date: string; total: number; completed: number }[];
   stageMetrics: {

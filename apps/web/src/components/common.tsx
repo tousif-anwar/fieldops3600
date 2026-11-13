@@ -121,12 +121,14 @@ export function Metric({
   note,
   icon,
   tone = "blue",
+  indicator,
 }: {
   label: string;
   value: ReactNode;
   note: string;
   icon: ReactNode;
   tone?: string;
+  indicator?: { label: string; tone?: "green" | "amber" | "red" | "neutral" };
 }) {
   return (
     <article className="metric">
@@ -135,7 +137,14 @@ export function Metric({
         <span className={`metric-icon ${tone}`}>{icon}</span>
       </div>
       <strong className="metric-value">{value}</strong>
-      <div className="metric-note">{note}</div>
+      <div className="metric-note">
+        <span>{note}</span>
+        {indicator && (
+          <span className={`metric-indicator ${indicator.tone ?? "neutral"}`}>
+            {indicator.label}
+          </span>
+        )}
+      </div>
     </article>
   );
 }

@@ -77,6 +77,9 @@ public static class Bootstrap
             builder.Services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
         }
         var app = builder.Build();
+        // Observe the final mapped response, including expected 400/404/409
+        // domain failures, rather than logging them as unhandled HTTP 500s.
+        app.UseSerilogRequestLogging(); app.UseHttpMetrics();
         app.Use(async (http, next) =>
         {
             var supplied = http.Request.Headers["X-Correlation-ID"].ToString();
@@ -85,12 +88,12 @@ public static class Bootstrap
             http.Response.Headers["X-Content-Type-Options"] = "nosniff";
             http.Response.Headers["Cache-Control"] = "no-store";
             try { await next(); }
+            catch (BadHttpRequestException ex) { await Results.Problem(statusCode: ex.StatusCode is >= 400 and < 500 ? ex.StatusCode : 400, title: "Invalid request", detail: "A request field could not be read. Check identifiers, query values, and the JSON body.").ExecuteAsync(http); }
             catch (DomainException ex) { await Results.Problem(statusCode: ex.Status, title: "Request could not be completed", detail: ex.Message).ExecuteAsync(http); }
             catch (DbUpdateConcurrencyException) { await Results.Problem(statusCode: 409, title: "Concurrent update", detail: "This resource changed. Refresh it and try again.").ExecuteAsync(http); }
             catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pg && pg.SqlState is "23P01" or "23505") { await Results.Problem(statusCode: 409, title: "Conflicting operation", detail: "The booking overlaps existing work, the work order is already booked, or this request was already processed. Refresh before retrying.").ExecuteAsync(http); }
             catch (Exception ex) when (ex is not OperationCanceledException) { app.Logger.LogError(ex, "Request {CorrelationId} failed", correlation); await Results.Problem(statusCode: 500, title: "Service error", detail: $"The request could not be completed. Reference: {correlation}").ExecuteAsync(http); }
         });
-        app.UseSerilogRequestLogging(); app.UseHttpMetrics();
         app.UseAuthentication(); app.UseAuthorization();
         app.MapGet("/health/live", () => Results.Ok(new { service, status = "live" }));
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = x => x.Tags.Contains("ready") });
@@ -99,6 +102,25 @@ public static class Bootstrap
         OperationsApi.Map(app, service);
         if (service == "notifications") { ReportingApi.Map(app); app.MapHub<NotificationHub>("/hubs/notifications"); }
         if (service == "reporting") ReportingApi.MapReporting(app);
+        if (args.Contains("--describe-endpoints", StringComparer.Ordinal))
+        {
+            // Read the framework's actual route and authorization metadata.
+            // No host, broker consumer or database migration is started.
+            var routes = ((Microsoft.AspNetCore.Routing.IEndpointRouteBuilder)app).DataSources
+                .SelectMany(source => source.Endpoints)
+                .OfType<Microsoft.AspNetCore.Routing.RouteEndpoint>()
+                .Select(endpoint => new
+                {
+                    service,
+                    path = endpoint.RoutePattern.RawText,
+                    methods = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()?.HttpMethods ?? ["ANY"],
+                    anonymous = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAllowAnonymous>() is not null,
+                    policies = endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+                        .Select(data => data.Policy).Where(value => value is not null).Distinct().ToArray()
+                }).OrderBy(route => route.path).ToArray();
+            Console.WriteLine(Json.Write(routes));
+            return;
+        }
         await DatabaseBootstrap.Initialize(app);
         if (args.Contains("--migrate-only", StringComparer.Ordinal)) return;
         await app.RunAsync();
