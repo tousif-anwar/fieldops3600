@@ -1,2 +1,4 @@
+# Historical API documentation examples: synthetic idempotency keys, not credentials.
+# Keep exclusions scoped to these exact commit/path/rule/line fingerprints.
 8b1987a82ae60648974ef31b2a136968db976291:docs/presentation/API_REFERENCE.md:generic-api-key:145
 d1874a6262d941361d1ad63bc4b6670088562f6d:docs/API_REFERENCE.md:generic-api-key:142
