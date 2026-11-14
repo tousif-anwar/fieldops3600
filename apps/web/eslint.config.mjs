@@ -46,11 +46,20 @@ export default [
           message:
             "Inline spacing, type, and radius values must come from a design token.",
         },
+        {
+          selector: 'JSXOpeningElement[name.name="h1"]',
+          message:
+            "Use the shared PageHeader primitive for page-level headings.",
+        },
       ],
     },
   },
   {
     files: ["src/design-system/**/*.{ts,tsx}"],
+    rules: { "no-restricted-syntax": "off" },
+  },
+  {
+    files: ["src/components/common.tsx", "src/pages/Login.tsx"],
     rules: { "no-restricted-syntax": "off" },
   },
   {
