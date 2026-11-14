@@ -1392,6 +1392,7 @@ tbody tr:hover {
 }
 .chart {
   padding: var(--space-16) var(--space-16) var(--space-12);
+  contain: paint;
 }
 .chart-key {
   display: flex;
@@ -5013,7 +5014,7 @@ td small,
     padding: var(--space-16);
   }
 }
-@media (min-width: 761px) {
+@media (min-width: 901px) {
   .sidebar {
     width: var(--navigation-width);
     flex-basis: var(--navigation-width);
@@ -5037,7 +5038,7 @@ td small,
     height: var(--topbar-height);
   }
 }
-@media (pointer: coarse), (max-width: 760px) {
+@media (pointer: coarse), (max-width: 900px) {
   .fui-Button,
   .button-link,
   .icon-button,

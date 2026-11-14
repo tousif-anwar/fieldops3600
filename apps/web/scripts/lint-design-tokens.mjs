@@ -42,22 +42,32 @@ for (const file of files) {
       ":" +
       source.slice(0, match.index).split("\n").length;
     if (rawColor.test(value)) {
-      failures.push(`${line}: raw color or gradient in ${property}; use a semantic token`);
+      failures.push(
+        `${line}: raw color or gradient in ${property}; use a semantic token`,
+      );
     }
     if (spacingProperty.test(property) && rawLength.test(value)) {
-      failures.push(`${line}: raw length in ${property}; use a spacing or type token`);
+      failures.push(
+        `${line}: raw length in ${property}; use a spacing or type token`,
+      );
     }
     if (property === "border-radius" && !allowedRadius.test(value.trim())) {
-      failures.push(`${line}: radius must be zero, inherited, or a --radius-* token`);
+      failures.push(
+        `${line}: radius must be zero, inherited, or a --radius-* token`,
+      );
     }
     if (
       /^(?:margin|padding|gap|row-gap|column-gap)$/.test(property) &&
       !value.includes("calc(") &&
       !value
         .split(/\s+/)
-        .every((part) => part === "0" || part === "auto" || part.startsWith("var("))
+        .every(
+          (part) => part === "0" || part === "auto" || part.startsWith("var("),
+        )
     ) {
-      failures.push(`${line}: spacing must be zero, auto, a spacing token, or calc()`);
+      failures.push(
+        `${line}: spacing must be zero, auto, a spacing token, or calc()`,
+      );
     }
   }
 }
@@ -67,4 +77,6 @@ if (failures.length) {
   for (const failure of failures) console.error("  - " + failure);
   process.exit(1);
 }
-console.log(`Design-token CSS check passed: ${files.length} stylesheet(s), ${files.length - 1} token-free component sheet(s).`);
+console.log(
+  `Design-token CSS check passed: ${files.length} stylesheet(s), ${files.length - 1} token-free component sheet(s).`,
+);

@@ -8,7 +8,7 @@ export default function NavigationDrawer({
   children,
 }: {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean, reason: string) => void;
   children: ReactNode;
 }) {
   return (
@@ -16,7 +16,7 @@ export default function NavigationDrawer({
       className="navigation-drawer"
       position="start"
       open={open}
-      onOpenChange={(_, data) => onOpenChange(data.open)}
+      onOpenChange={(_, data) => onOpenChange(data.open, data.type)}
     >
       {children}
     </OverlayDrawer>

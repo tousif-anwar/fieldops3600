@@ -334,7 +334,10 @@ export function WorkflowPage() {
         actions={
           <>
             {f.status === "Completed" && (
-              <Button {...restoreFocusTarget} onClick={() => setReportOpen(true)}>
+              <Button
+                {...restoreFocusTarget}
+                onClick={() => setReportOpen(true)}
+              >
                 View service report
               </Button>
             )}
@@ -620,66 +623,66 @@ export function WorkflowPage() {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
       />
-        <Dialog
-          open={interventionOpen}
-          onOpenChange={(_, data) => {
-            if (!data.open) setInterventionOpen(false);
-          }}
-        >
-          <DialogSurface className="modal" aria-labelledby="action-title">
-            <h2 id="action-title">
-              {action === "assistance"
-                ? "Request assistance"
-                : action === "pause"
-                  ? "Approve a stage pause"
-                  : action === "resume"
-                    ? "Resume the stage"
-                    : "Override the current stage"}
-            </h2>
-            <p>
-              {action === "assistance"
-                ? "Tell your supervisor what support you need. Keep the current answers accurate."
-                : "This changes the authoritative workflow state and will be visible in operational replay."}
-            </p>
-            <Field label="Reason" required>
-              <Input
-                name="reason"
-                autoComplete="off"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Describe why this action is needed"
-              />
-            </Field>
-            {action === "override" && (
-              <Field label="Target stage">
-                <Select
-                  name="target-stage"
-                  value={targetStage}
-                  onChange={(e) => setTargetStage(e.target.value)}
-                >
-                  {f.stages.map((s) => (
-                    <option key={s.id} value={s.index}>
-                      {s.index + 1}. {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            )}
-            {intervention.isError && (
-              <InlineMessage>{intervention.error.message}</InlineMessage>
-            )}
-            <div className="form-actions">
-              <Button onClick={() => setInterventionOpen(false)}>Cancel</Button>
-              <Button
-                appearance="primary"
-                disabled={reason.trim().length < 5 || intervention.isPending}
-                onClick={() => intervention.mutate()}
+      <Dialog
+        open={interventionOpen}
+        onOpenChange={(_, data) => {
+          if (!data.open) setInterventionOpen(false);
+        }}
+      >
+        <DialogSurface className="modal" aria-labelledby="action-title">
+          <h2 id="action-title">
+            {action === "assistance"
+              ? "Request assistance"
+              : action === "pause"
+                ? "Approve a stage pause"
+                : action === "resume"
+                  ? "Resume the stage"
+                  : "Override the current stage"}
+          </h2>
+          <p>
+            {action === "assistance"
+              ? "Tell your supervisor what support you need. Keep the current answers accurate."
+              : "This changes the authoritative workflow state and will be visible in operational replay."}
+          </p>
+          <Field label="Reason" required>
+            <Input
+              name="reason"
+              autoComplete="off"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Describe why this action is needed"
+            />
+          </Field>
+          {action === "override" && (
+            <Field label="Target stage">
+              <Select
+                name="target-stage"
+                value={targetStage}
+                onChange={(e) => setTargetStage(e.target.value)}
               >
-                {intervention.isPending ? "Recording…" : "Confirm action"}
-              </Button>
-            </div>
-          </DialogSurface>
-        </Dialog>
+                {f.stages.map((s) => (
+                  <option key={s.id} value={s.index}>
+                    {s.index + 1}. {s.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          {intervention.isError && (
+            <InlineMessage>{intervention.error.message}</InlineMessage>
+          )}
+          <div className="form-actions">
+            <Button onClick={() => setInterventionOpen(false)}>Cancel</Button>
+            <Button
+              appearance="primary"
+              disabled={reason.trim().length < 5 || intervention.isPending}
+              onClick={() => intervention.mutate()}
+            >
+              {intervention.isPending ? "Recording…" : "Confirm action"}
+            </Button>
+          </div>
+        </DialogSurface>
+      </Dialog>
     </>
   );
 }

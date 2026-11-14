@@ -13,16 +13,30 @@ import { dateTime } from "../format";
 import { InlineMessage } from "./common";
 import type { Booking } from "../types";
 
-export function BookingEditor({ booking, action, open, onClose }: {
+export function BookingEditor({
+  booking,
+  action,
+  open,
+  onClose,
+}: {
   booking: Booking;
   action: "reschedule" | "cancel";
   open: boolean;
   onClose: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={(_, data) => { if (!data.open) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(_, data) => {
+        if (!data.open) onClose();
+      }}
+    >
       <DialogSurface className="modal" aria-labelledby="booking-edit-title">
-        <BookingEditorForm booking={booking} action={action} onClose={onClose} />
+        <BookingEditorForm
+          booking={booking}
+          action={action}
+          onClose={onClose}
+        />
       </DialogSurface>
     </Dialog>
   );
@@ -78,83 +92,83 @@ function BookingEditorForm({
   });
   return (
     <>
-        <h2 id="booking-edit-title">
-          {action === "cancel"
-            ? "Cancel this booking?"
-            : "Reschedule appointment"}
-        </h2>
-        <p>
-          {booking.technicianId} · Currently {dateTime(booking.startUtc)}.{" "}
-          {action === "cancel"
-            ? "The cancellation is recorded in operational history."
-            : "Qualifications, working hours, and overlapping appointments are checked again."}
-        </p>
-        <form
-          className="editor-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            update.mutate();
-          }}
-        >
-          {action === "reschedule" && (
-            <>
-              <Field label="New start (your local time)" required>
-                <Input
-                  name="new-start-your-local-time"
-                  autoComplete="off"
-                  required
-                  type="datetime-local"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                />
-              </Field>
-              <Field label="Duration">
-                <Select
-                  name="duration"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
-                  {[30, 60, 90, 120, 180, 240].map((v) => (
-                    <option key={v} value={v}>
-                      {v} minutes
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </>
-          )}
-          <Field label="Reason" required>
-            <Input
-              name="reason"
-              autoComplete="off"
-              required
-              minLength={3}
-              maxLength={240}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Explain this dispatch change"
-            />
-          </Field>
-          {update.isError && (
-            <InlineMessage>{update.error.message}</InlineMessage>
-          )}
-          <div className="form-actions">
-            <Button type="button" onClick={onClose}>
-              Keep appointment
-            </Button>
-            <Button
-              appearance="primary"
-              type="submit"
-              disabled={update.isPending}
-            >
-              {update.isPending
-                ? "Saving…"
-                : action === "cancel"
-                  ? "Confirm cancellation"
-                  : "Confirm new time"}
-            </Button>
-          </div>
-        </form>
+      <h2 id="booking-edit-title">
+        {action === "cancel"
+          ? "Cancel this booking?"
+          : "Reschedule appointment"}
+      </h2>
+      <p>
+        {booking.technicianId} · Currently {dateTime(booking.startUtc)}.{" "}
+        {action === "cancel"
+          ? "The cancellation is recorded in operational history."
+          : "Qualifications, working hours, and overlapping appointments are checked again."}
+      </p>
+      <form
+        className="editor-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          update.mutate();
+        }}
+      >
+        {action === "reschedule" && (
+          <>
+            <Field label="New start (your local time)" required>
+              <Input
+                name="new-start-your-local-time"
+                autoComplete="off"
+                required
+                type="datetime-local"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
+            </Field>
+            <Field label="Duration">
+              <Select
+                name="duration"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              >
+                {[30, 60, 90, 120, 180, 240].map((v) => (
+                  <option key={v} value={v}>
+                    {v} minutes
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
+        )}
+        <Field label="Reason" required>
+          <Input
+            name="reason"
+            autoComplete="off"
+            required
+            minLength={3}
+            maxLength={240}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Explain this dispatch change"
+          />
+        </Field>
+        {update.isError && (
+          <InlineMessage>{update.error.message}</InlineMessage>
+        )}
+        <div className="form-actions">
+          <Button type="button" onClick={onClose}>
+            Keep appointment
+          </Button>
+          <Button
+            appearance="primary"
+            type="submit"
+            disabled={update.isPending}
+          >
+            {update.isPending
+              ? "Saving…"
+              : action === "cancel"
+                ? "Confirm cancellation"
+                : "Confirm new time"}
+          </Button>
+        </div>
+      </form>
     </>
   );
 }

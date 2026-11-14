@@ -293,7 +293,7 @@ test("supervisor registry insights match the actual persisted reporting response
       new URL(response.url()).pathname === "/api/reports/assets" &&
       response.request().method() === "GET",
   );
-  await navigate(page, "Customer and asset insights");
+  await navigate(page, "Registry insights");
   const [customerHttp, assetHttp] = await Promise.all([
     customerResponse,
     assetResponse,

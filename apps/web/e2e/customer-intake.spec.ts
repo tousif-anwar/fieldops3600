@@ -105,7 +105,7 @@ test("customer intake is isolated, qualified by dispatch, and offered without a 
     expect(request.workOrderId).toBeNull();
     await expect(
       customer.getByText(
-        "Request submitted for review. Your appointment will appear when confirmed.",
+        "Service request received for review. Your appointment will appear here once scheduling is confirmed.",
       ),
     ).toBeVisible();
 

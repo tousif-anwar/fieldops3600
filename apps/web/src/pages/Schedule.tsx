@@ -32,10 +32,12 @@ import {
 import type { Booking, Recommendation, Technician, WorkOrder } from "../types";
 import { BookingEditor } from "../components/BookingEditor";
 import { AssignmentOffers } from "../components/AssignmentOffers";
+import { ListPagination, pageSlice } from "../components/ListPagination";
 import type { AssignmentOffer } from "../assignment-contracts";
 
 export function Schedule() {
   const [editorOpen, setEditorOpen] = useState(false);
+  const [bookingPage, setBookingPage] = useState(1);
   const restoreFocusTarget = useRestoreFocusTarget();
   const [editing, setEditing] = useState<{
     booking: Booking;
@@ -152,6 +154,11 @@ export function Schedule() {
     setReason("");
     offerCommand.current = null;
   };
+  const sortedBookings = [...(bookings.data ?? [])].sort(
+    (a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc),
+  );
+  const appointments = pageSlice(sortedBookings, bookingPage);
+
   const refreshDispatch = () => {
     void orders.refetch();
     void bookings.refetch();
@@ -498,10 +505,9 @@ export function Schedule() {
               description="Confirm a booking to add an appointment."
             />
           ) : (
-            <div className="booking-list">
-              {[...bookings.data]
-                .sort((a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc))
-                .map((b) => (
+            <>
+              <div className="booking-list">
+                {appointments.items.map((b) => (
                   <article className="booking-card" key={b.id}>
                     <div className="booking-time">
                       <CalendarDays aria-hidden="true" size={18} />
@@ -541,7 +547,13 @@ export function Schedule() {
                             <Button
                               size="small"
                               {...restoreFocusTarget}
-                              onClick={() => {setEditing({ booking: b, action: "reschedule" }); setEditorOpen(true);}}
+                              onClick={() => {
+                                setEditing({
+                                  booking: b,
+                                  action: "reschedule",
+                                });
+                                setEditorOpen(true);
+                              }}
                             >
                               Reschedule
                             </Button>
@@ -549,7 +561,10 @@ export function Schedule() {
                               size="small"
                               appearance="subtle"
                               {...restoreFocusTarget}
-                              onClick={() => {setEditing({ booking: b, action: "cancel" }); setEditorOpen(true);}}
+                              onClick={() => {
+                                setEditing({ booking: b, action: "cancel" });
+                                setEditorOpen(true);
+                              }}
                             >
                               Cancel booking
                             </Button>
@@ -558,7 +573,14 @@ export function Schedule() {
                     </div>
                   </article>
                 ))}
-            </div>
+              </div>
+              <ListPagination
+                page={appointments.page}
+                total={sortedBookings.length}
+                onChange={setBookingPage}
+                label="Appointments"
+              />
+            </>
           )}
         </Panel>
       </div>

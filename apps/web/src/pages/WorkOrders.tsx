@@ -674,7 +674,15 @@ export function OrderDetails() {
           <>
             <Status value={w.status} />
             {auth.can("Dispatcher", "OperationsManager") && (
-              <Button {...restoreFocusTarget} onClick={() => {setEditingOrder(w); setEditing(true);}}>Edit request</Button>
+              <Button
+                {...restoreFocusTarget}
+                onClick={() => {
+                  setEditingOrder(w);
+                  setEditing(true);
+                }}
+              >
+                Edit request
+              </Button>
             )}
           </>
         }
@@ -793,7 +801,11 @@ export function OrderDetails() {
         error={linkedAsset.error}
         retry={() => void linkedAsset.refetch()}
       />
-      <OrderEditor order={editingOrder ?? w} open={editing} onClose={() => setEditing(false)} />
+      <OrderEditor
+        order={editingOrder ?? w}
+        open={editing}
+        onClose={() => setEditing(false)}
+      />
     </>
   );
 }

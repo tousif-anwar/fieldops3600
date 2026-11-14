@@ -2,6 +2,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -188,13 +189,13 @@ const extraRoutes: { match: RegExp; label: string; to?: string }[] = [
 ];
 
 function subscribeCompactNavigation(listener: () => void) {
-  const query = window.matchMedia("(max-width: 760px)");
+  const query = window.matchMedia("(max-width: 900px)");
   query.addEventListener("change", listener);
   return () => query.removeEventListener("change", listener);
 }
 
 function compactNavigationSnapshot() {
-  return window.matchMedia("(max-width: 760px)").matches;
+  return window.matchMedia("(max-width: 900px)").matches;
 }
 
 export function Shell() {
@@ -203,6 +204,7 @@ export function Shell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const compact = useSyncExternalStore(
     subscribeCompactNavigation,
     compactNavigationSnapshot,
@@ -383,6 +385,15 @@ export function Shell() {
     setCollapsed((value) => !value);
   }
 
+  function restoreMenuFocus() {
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  function closeNavigation() {
+    setOpen(false);
+    restoreMenuFocus();
+  }
+
   const navigation = (
     <nav
       id="primary-navigation"
@@ -406,7 +417,7 @@ export function Shell() {
         <button
           className="mobile-close icon-button"
           aria-label="Close navigation"
-          onClick={() => setOpen(false)}
+          onClick={closeNavigation}
         >
           <X size={20} aria-hidden="true" />
         </button>
@@ -486,7 +497,18 @@ export function Shell() {
       </a>
       {compact ? (
         <Suspense fallback={null}>
-          <NavigationDrawer open={open} onOpenChange={setOpen}>
+          <NavigationDrawer
+            open={open}
+            onOpenChange={(next, reason) => {
+              setOpen(next);
+              if (
+                !next &&
+                (reason === "escapeKeyDown" || reason === "backdropClick")
+              ) {
+                restoreMenuFocus();
+              }
+            }}
+          >
             {navigation}
           </NavigationDrawer>
         </Suspense>
@@ -497,6 +519,7 @@ export function Shell() {
         <header className="topbar">
           <div className="topbar-left">
             <button
+              ref={menuButtonRef}
               className="mobile-menu icon-button"
               aria-label="Open navigation"
               aria-expanded={open}
