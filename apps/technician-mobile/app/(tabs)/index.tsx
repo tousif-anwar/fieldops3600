@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View, type SectionListData } from 'react-native';
 import { requestApi } from '../../src/api';
 import { useAuth } from '../../src/auth';
-import type { Notification } from '../../src/contracts';
+import type { AssignmentOffer, Notification, WorkOrder } from '../../src/contracts';
 import { dailyItinerary, nextStop } from '../../src/itinerary';
 import { useRuntime } from '../../src/runtime';
 import { useActivity } from '../../src/use-activity';
@@ -14,14 +14,17 @@ import { useOffers } from '../../src/use-offers';
 import { useWorkOrders } from '../../src/use-work-orders';
 import {
   Button, EmptyState, ErrorState, JobListItem, LoadingState, Screen, ScreenHeader,
-  InlineNotice, Section, SLAIndicator, StatusBadge,
+  InlineNotice, Section, SLAIndicator, TextButton, listStyles,
 } from '../../src/ui';
 import {
-  appointmentForJob, formatStatus, greetingFor, sortJobs, stageStatusTone,
+  appointmentForJob, sortJobs,
 } from '../../src/ui/model';
 import { colors, spacing, typography } from '../../src/ui/tokens';
 import { DirectionsButton } from '../../src/ui/directions';
-import { OfferInbox } from '../../src/ui/offer-inbox';
+import { OfferRow } from '../../src/ui/offer-row';
+import { pendingOffers } from '../../src/offers';
+
+type HomeItem = { kind: 'job'; job: WorkOrder } | { kind: 'offer'; offer: AssignmentOffer };
 
 export default function TechnicianHome() {
   const { session, getAccessToken } = useAuth();
@@ -67,117 +70,45 @@ export default function TechnicianHome() {
   const firstName = (session?.displayName ?? 'Technician').trim().split(/\s+/)[0];
   const unread = (notifications.data ?? []).filter(item => !item.acknowledgedAtUtc).length;
 
-  return (
-    <Screen topInset>
-      <ScreenHeader
-        title={`${greetingFor()}, ${firstName}.`}
-        meta={`${date} Â· ${jobs.length} open job${jobs.length === 1 ? '' : 's'}`}
-        description="Your next destination, confirmed appointments, and actions for today."
-      />
-      <Section card title="Today at a glance" description="Confirmed appointments Â· device-local date">
-        <View style={styles.summary}>
-          <View style={styles.metric}><Text style={styles.metricValue}>{bookings.data ? itinerary.length : 'â€”'}</Text><Text style={styles.small}>Appointments</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>{bookings.data ? itinerary.filter(stop => stop.completed).length : 'â€”'}</Text><Text style={styles.small}>Completed stops</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>{pending}</Text><Text style={styles.small}>Waiting to sync</Text></View>
-        </View>
-        <Text style={styles.small}>Appointment times describe your bookings. Shift check-in is managed by dispatch outside this application.</Text>
-        <Button title="View daily itinerary" variant="secondary" onPress={() => router.push('/schedule')} />
-      </Section>
-      {bookings.error ? <InlineNotice tone="warning" title="Schedule needs refreshing">{bookings.data ? 'Showing your last synchronized appointments.' : 'Connect to load confirmed appointments.'}</InlineNotice> : null}
-      <OfferInbox offers={offers.data ?? []} now={now} />
-      {offers.error ? <InlineNotice tone="warning" title="Offers could not be checked">New offers require a connection. Your confirmed work remains below.</InlineNotice> : null}
-      {query.isPending && !query.data ? <LoadingState label="Loading your workâ€¦" /> : null}
-      {query.error && !query.data ? (
-        <ErrorState error={query.error} retry={() => { void query.refetch(); }} />
-      ) : null}
-      {query.data && jobs.length === 0 ? (
-        <EmptyState
-          title="No open jobs assigned"
-          description="New work appears here when dispatch assigns it. Your alerts and sync status remain available."
-        />
-      ) : null}
-      {featured ? (
-        <Section title={active ? 'Current job' : 'Next destination'} description={active ? 'Continue where you left off.' : 'Your next confirmed stop today.'}>
-          <JobListItem
-            job={featured}
-            booking={appointmentForJob(bookings.data ?? [], featured.id)}
-            featured
-          />
-          <DirectionsButton address={featured.siteAddress} />
-          {next?.windowPassed && next.job?.id === featured.id ? (
-            <InlineNotice tone="warning" title="Appointment window passed">Review the job and contact dispatch about the delay. This does not change your confirmed appointment.</InlineNotice>
-          ) : null}
-        </Section>
-      ) : null}
-      {active && stage ? (
-        <Section
-          card
-          title="Current stage"
-          description={`${stage.name} Â· ${completed} of ${service.workflow!.stages.length} stages complete`}
-        >
-          <View style={styles.stageRow}>
-            <Text style={styles.body}>{active.number}</Text>
-            <StatusBadge label={formatStatus(stage.status)} tone={stageStatusTone(stage.status)} />
-          </View>
-          <SLAIndicator stage={stage} now={now} online={online} />
-          <Button
-            title="Continue current job"
-            onPress={() => router.push({ pathname: '/job/[id]', params: { id: active.id } })}
-            hint="Opens the current job and its guided service stage"
-          />
-        </Section>
-      ) : null}
-      {active && service.workflows.isPending && !stage ? (
-        <LoadingState label="Checking the current service stageâ€¦" />
-      ) : null}
-      {unread > 0 ? (
-        <Section
-          card
-          title="Assistance and alerts"
-          description={`${unread} unread notice${unread === 1 ? '' : 's'} for your work.`}
-        >
-          <Text style={styles.body}>
-            Review supervisor notices and SLA warnings before you continue to the site.
-          </Text>
-          <Button
-            variant="secondary"
-            title={`Review ${unread === 1 ? 'alert' : 'alerts'}`}
-            onPress={() => router.push('/notifications')}
-          />
-        </Section>
-      ) : null}
-      {otherJobs.length ? (
-        <Section
-          title={featured ? 'Other assigned work' : 'Assigned work'}
-          description="Open a job to review its appointment, site, and current service step."
-        >
-          <View style={styles.list}>
-            {otherJobs.map(job => (
-              <JobListItem
-                key={job.id}
-                job={job}
-                booking={appointmentForJob(bookings.data ?? [], job.id)}
-              />
-            ))}
-          </View>
-        </Section>
-      ) : null}
-      {!active && jobs.length > 1 ? (
-        <Text style={styles.footnote}>
-          Your next appointment is listed first. Priority breaks ties between jobs at the same time.
-        </Text>
-      ) : null}
-    </Screen>
-  );
+  const sections: SectionListData<HomeItem>[] = [
+    { title: 'Assignment offers', data: pendingOffers(offers.data ?? [], now).map(offer => ({ kind: 'offer' as const, offer })) },
+    { title: featured ? 'Other assigned work' : 'Assigned work', data: otherJobs.map(job => ({ kind: 'job' as const, job })) },
+  ].filter(section => section.data.length > 0);
+  const header = <View style={listStyles.header}>
+    <ScreenHeader title="Today" meta={`${date} · ${firstName}`} />
+    <View style={styles.summary}>
+      <Text style={styles.small}>{bookings.data ? itinerary.length : '—'} appointments · {bookings.data ? itinerary.filter(stop => stop.completed).length : '—'} complete{pending ? ` · ${pending} queued` : ''}</Text>
+      <TextButton title="Itinerary" onPress={() => router.push('/schedule')} />
+    </View>
+    {featured ? <Section title={active ? 'Current job' : 'Next destination'}>
+      <JobListItem job={featured} booking={appointmentForJob(bookings.data ?? [], featured.id)} featured />
+      <DirectionsButton address={featured.siteAddress} />
+      {next?.windowPassed && next.job?.id === featured.id ? <InlineNotice tone="warning" title="Appointment window passed">Contact dispatch about the delay.</InlineNotice> : null}
+    </Section> : null}
+    {active && stage ? <Section title={stage.name} description={`${completed} of ${service.workflow!.stages.length} stages complete`}>
+      <SLAIndicator stage={stage} now={now} online={online} />
+      <Button title="Continue current job" onPress={() => router.push({ pathname: '/job/[id]', params: { id: active.id } })} />
+    </Section> : null}
+    {active && service.workflows.isPending && !stage ? <LoadingState label="Loading current stage…" /> : null}
+    {unread > 0 ? <TextButton title={`${unread} unread alerts`} onPress={() => router.push('/notifications')} /> : null}
+    {bookings.error ? <InlineNotice tone="warning" title="Schedule not refreshed">{bookings.data ? 'Showing cached appointments.' : 'Connect to load confirmed appointments.'}</InlineNotice> : null}
+    {offers.error && online ? <InlineNotice tone="warning" title="Offers unavailable">Try again when the server is reachable.</InlineNotice> : null}
+    {query.isPending && !query.data ? <LoadingState label="Loading assigned work…" /> : null}
+    {query.error && !query.data ? <ErrorState error={query.error} retry={() => { void query.refetch(); }} /> : null}
+    {query.data && jobs.length === 0 ? <EmptyState title="No open jobs assigned" description="New assignments appear here." /> : null}
+  </View>;
+  return <Screen topInset scrollable={false}>
+    <SectionList sections={sections} stickySectionHeadersEnabled={false}
+      contentContainerStyle={listStyles.content} ListHeaderComponent={header}
+      keyExtractor={item => item.kind === 'job' ? `job-${item.job.id}` : `offer-${item.offer.id}`}
+      renderSectionHeader={({ section }) => <Text accessibilityRole="header" style={listStyles.section}>{section.title}</Text>}
+      renderItem={({ item }) => item.kind === 'job'
+        ? <JobListItem job={item.job} booking={appointmentForJob(bookings.data ?? [], item.job.id)} />
+        : <OfferRow offer={item.offer} />} />
+  </Screen>;
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.md },
-  summary: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  metric: { flex: 1, minWidth: 80, gap: spacing.xs },
-  metricValue: { ...typography.title, color: colors.ink, fontVariant: ['tabular-nums'] },
-  small: { ...typography.small, color: colors.muted },
-  stageRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  body: { ...typography.body, color: colors.ink },
-  footnote: { ...typography.small, color: colors.subtle, marginTop: spacing.xs },
+  summary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  small: { ...typography.small, color: colors.muted, flexShrink: 1 },
 });

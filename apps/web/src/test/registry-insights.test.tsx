@@ -85,7 +85,7 @@ describe("customer and asset warehouse registry reporting", () => {
     expect(screen.getByText(/Awaiting customer events/)).toBeVisible();
     expect(screen.getByText(/Awaiting asset events/)).toBeVisible();
     expect(
-      screen.getByText(/Consent measures count contacts, not customers/),
+      screen.getByText(/Consent counts refer to contacts, not customers/),
     ).toBeVisible();
     expect(screen.getByText(/Customer-only orders are excluded/)).toBeVisible();
   });

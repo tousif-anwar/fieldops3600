@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@fluentui/react-components";
 import { Bell, Check } from "lucide-react";
@@ -12,15 +13,18 @@ import {
   Panel,
   Status,
 } from "../components/common";
+import { ListPagination, pageSlice } from "../components/ListPagination";
 import type { Notification } from "../types";
 
 export function Notifications() {
   const qc = useQueryClient();
+  const [page, setPage] = useState(1);
   const result = useQuery({
     queryKey: ["notifications"],
     queryFn: () => api<Notification[]>("/api/notifications"),
     refetchInterval: 30000,
   });
+  const rows = pageSlice(result.data ?? [], page);
   const acknowledge = useMutation({
     mutationFn: (id: string) =>
       post(`/api/notifications/${id}/acknowledge`, {}),
@@ -30,15 +34,8 @@ export function Notifications() {
   });
   return (
     <>
-      <PageHeader
-        eyebrow="TEAM COMMUNICATION"
-        title="Notifications"
-        description="SLA warnings, escalations, and service updates for your authorized work."
-      />
-      <Panel
-        title="Notifications"
-        description="Acknowledgments are recorded in the operational history."
-      >
+      <PageHeader title="Notifications" />
+      <Panel>
         {result.isPending ? (
           <Loading />
         ) : result.isError ? (
@@ -48,18 +45,18 @@ export function Notifications() {
           />
         ) : !result.data?.length ? (
           <Empty
-            title="You’re all caught up"
-            description="New stage warnings and supervisor alerts will appear here."
+            title="No notifications"
+            description="Assignment and service alerts will appear here."
           />
         ) : (
           <div className="notification-list">
-            {result.data.map((n) => (
+            {rows.items.map((n) => (
               <article
                 key={n.id}
                 className={n.acknowledgedAtUtc ? "acknowledged" : ""}
               >
                 <span className="notification-icon">
-                  <Bell size={20} />
+                  <Bell aria-hidden="true" size={20} />
                 </span>
                 <div>
                   <strong>
@@ -72,7 +69,7 @@ export function Notifications() {
                   <Status value="Acknowledged" />
                 ) : (
                   <Button
-                    icon={<Check size={16} />}
+                    icon={<Check aria-hidden="true" size={16} />}
                     disabled={acknowledge.isPending}
                     onClick={() => acknowledge.mutate(n.id)}
                   >
@@ -82,6 +79,14 @@ export function Notifications() {
               </article>
             ))}
           </div>
+        )}
+        {result.isSuccess && (
+          <ListPagination
+            page={rows.page}
+            total={result.data.length}
+            onChange={setPage}
+            label="Notifications"
+          />
         )}
         {acknowledge.isError && (
           <InlineMessage>{acknowledge.error.message}</InlineMessage>

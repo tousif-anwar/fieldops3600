@@ -1,4 +1,5 @@
-import { Link } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Link, useRouter } from 'expo-router';
 import { Children, type ReactNode } from 'react';
 import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
@@ -8,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Booking, WorkOrder, WorkflowStage } from '../contracts';
 import { useRuntime } from '../runtime';
 import {
-  colors, radii, spacing, touch, typography,
+  borders, colors, dimensions, radii, spacing, touch, typography,
 } from './tokens';
 import {
   appointmentForJob, formatAppointment, formatStatus, jobStatusTone, priorityTone,
@@ -16,18 +17,19 @@ import {
 } from './model';
 
 export function Screen({
-  children, footer, topInset = false,
+  children, footer, topInset = false, scrollable = true,
 }: {
   children: ReactNode;
   footer?: ReactNode;
   topInset?: boolean;
+  scrollable?: boolean;
 }) {
   return (
     <SafeAreaView
       edges={topInset ? ['top', 'left', 'right', 'bottom'] : ['left', 'right', 'bottom']}
       style={styles.page}
     >
-      <ScrollView
+      {scrollable ? <ScrollView
         style={styles.page}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -35,7 +37,7 @@ export function Screen({
       >
         <OfflineBanner />
         {children}
-      </ScrollView>
+      </ScrollView> : <><OfflineBanner />{children}</>}
       {footer ? <View style={styles.footer}>{footer}</View> : null}
     </SafeAreaView>
   );
@@ -49,16 +51,14 @@ export function ScreenHeader({
   meta?: string;
   action?: ReactNode;
 }) {
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerCopy}>
+  const copy = <>
         {meta ? <Text style={styles.headerMeta}>{meta}</Text> : null}
         <Text accessibilityRole="header" style={styles.headerTitle}>{title}</Text>
         {description ? <Text style={styles.headerDescription}>{description}</Text> : null}
-      </View>
-      {action}
-    </View>
-  );
+  </>;
+  return <View style={action ? styles.headerRow : styles.header}>
+    {action ? <View style={styles.headerCopy}>{copy}</View> : copy}{action}
+  </View>;
 }
 
 export function Section({
@@ -73,15 +73,15 @@ export function Section({
 }) {
   return (
     <View style={[styles.section, card && styles.card, style]}>
-      {title || description || action ? (
-        <View style={styles.sectionHeading}>
-          <View style={styles.sectionCopy}>
+      {action ? (
+        <View style={styles.sectionHeading}><View style={styles.sectionCopy}>
             {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
             {description ? <Text style={styles.small}>{description}</Text> : null}
-          </View>
-          {action}
-        </View>
-      ) : null}
+        </View>{action}</View>
+      ) : description ? <View style={styles.sectionCopy}>
+        {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+        <Text style={styles.small}>{description}</Text>
+      </View> : title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
       {children}
     </View>
   );
@@ -103,7 +103,7 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const blocked = disabled || loading;
-  const textColor = variant === 'primary' || variant === 'danger'
+  const textColor = blocked ? colors.disabled : variant === 'primary' || variant === 'danger'
     ? colors.onPrimary
     : colors.primary;
   return (
@@ -121,7 +121,7 @@ export function Button({
         variant === 'quiet' && styles.buttonQuiet,
         variant === 'danger' && styles.buttonDanger,
         blocked && styles.disabled,
-        pressed && !blocked && styles.pressed,
+        pressed && !blocked && (variant === 'primary' ? styles.primaryPressed : variant === 'danger' ? styles.dangerPressed : styles.pressed),
         style,
       ]}
     >
@@ -151,7 +151,7 @@ export function TextButton({
       onPress={onPress}
       style={({ pressed }) => [styles.textButton, disabled && styles.disabled, pressed && styles.pressed]}
     >
-      <Text style={[styles.textButtonLabel, danger && { color: colors.danger }]}>{title}</Text>
+      <Text style={[styles.textButtonLabel, danger && styles.destructiveText, disabled && styles.disabledText]}>{title}</Text>
     </Pressable>
   );
 }
@@ -164,7 +164,6 @@ export function StatusBadge({ label, tone = 'neutral' }: { label: string; tone?:
       accessibilityLabel={label}
       style={[styles.status, { backgroundColor: palette.background }]}
     >
-      <View style={[styles.statusDot, { backgroundColor: palette.foreground }]} />
       <Text style={[styles.statusText, { color: palette.foreground }]}>{label}</Text>
     </View>
   );
@@ -235,7 +234,6 @@ export function EmptyState({
 }) {
   return (
     <View style={styles.empty}>
-      <View style={styles.emptyMark}><Text style={styles.emptyMarkText}>—</Text></View>
       <Text style={styles.sectionTitle}>{title}</Text>
       <Text style={[styles.small, styles.centerText]}>{description}</Text>
       {action}
@@ -249,16 +247,18 @@ export function ErrorState({
   error: unknown;
   retry?(): void;
 }) {
+  const router = useRouter();
   const status = typeof error === 'object' && error !== null && 'status' in error
     ? Number((error as { status?: unknown }).status)
     : undefined;
-  const title = status === 403 ? 'Access is restricted'
-    : status === 401 ? 'Your session needs attention'
+  const sessionExpired = status === 401 || (error instanceof Error && /refresh token|authorization grant|token is not active|session expired/i.test(error.message));
+  const title = status === 403 ? 'Access restricted'
+    : sessionExpired ? 'Sign in again'
       : 'We couldn’t load this';
   const message = status === 403
     ? 'Your account does not have access to this job. Contact your supervisor if you need it.'
-    : status === 401
-      ? 'Sign in again to restore this view. Your local drafts remain on this device.'
+    : sessionExpired
+      ? 'Your session expired. Sign out from Account, then sign in again. Your drafts remain on this device.'
       : error instanceof Error && error.message
         ? error.message
         : 'Check your connection and try again.';
@@ -266,7 +266,8 @@ export function ErrorState({
     <View accessibilityRole="alert" style={styles.errorState}>
       <Text style={styles.errorTitle}>{title}</Text>
       <Text style={styles.errorText}>{message}</Text>
-      {retry ? <Button title="Try again" variant="secondary" onPress={retry} /> : null}
+      {sessionExpired ? <Button title="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+        : retry ? <Button title="Try again" variant="secondary" onPress={retry} /> : null}
     </View>
   );
 }
@@ -285,7 +286,6 @@ export function OfflineBanner() {
       accessibilityLiveRegion="polite"
       style={[styles.banner, !online && styles.bannerOffline]}
     >
-      <View style={[styles.bannerDot, { backgroundColor: online ? colors.warning : colors.offline }]} />
       <Text style={styles.bannerText}>{message}</Text>
       <Link href="/sync" asChild>
         <Pressable accessibilityRole="link" accessibilityLabel="Review synchronization" style={styles.bannerAction}>
@@ -324,9 +324,7 @@ export function JobListItem({
           pressed && styles.pressed,
         ]}
       >
-        <View style={[styles.jobRail, { backgroundColor: rail }]} />
         <View style={styles.jobContent}>
-          {featured ? <Text style={styles.featuredLabel}>Current job</Text> : null}
           <View style={styles.jobTop}>
             <Text style={styles.jobNumber}>{job.number}</Text>
             <View style={styles.badgeRow}>
@@ -336,15 +334,9 @@ export function JobListItem({
           </View>
           <Text style={styles.jobTitle} numberOfLines={2}>{job.title}</Text>
           <Text style={styles.jobAddress} numberOfLines={2}>{job.siteAddress}</Text>
-          <View style={styles.jobMetaRow}>
-            <Text style={styles.jobMeta}>{job.serviceCategory}</Text>
-            {appointment ? <Text style={styles.jobMeta}>· {appointment}</Text> : null}
-          </View>
-          <View style={styles.jobFooter}>
-            <Text style={styles.linkText}>{job.status === 'InProgress' ? 'Continue job' : 'Open job'}</Text>
-            <Text style={styles.chevron}>›</Text>
-          </View>
+          <Text style={styles.jobMeta}>{job.serviceCategory}{appointment ? ` · ${appointment}` : ''}</Text>
         </View>
+        <Ionicons name="chevron-forward" size={spacing.xl} color={rail} accessibilityElementsHidden importantForAccessibility="no" />
       </Pressable>
     </Link>
   );
@@ -403,10 +395,7 @@ export function SLAIndicator({
       accessibilityLabel={`Stage deadline. ${presentation.label}. ${presentation.detail}`}
       style={[styles.sla, { borderLeftColor: color }]}
     >
-      <View style={styles.slaHeading}>
         <Text style={styles.label}>Stage deadline</Text>
-        <View style={[styles.slaDot, { backgroundColor: color }]} />
-      </View>
       <Text style={[styles.slaValue, { color }]}>{presentation.label}</Text>
       <Text style={styles.small}>{presentation.detail}</Text>
     </View>
@@ -419,128 +408,79 @@ export function appointmentFor(job: WorkOrder, bookings: Booking[]): Booking | u
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.canvas },
-  content: {
-    width: '100%', maxWidth: 760, alignSelf: 'center',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xxxl,
-    gap: spacing.lg,
-  },
-  footer: {
-    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  header: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    gap: spacing.md, paddingBottom: spacing.xs,
-  },
+  content: { width: '100%', maxWidth: dimensions.contentMax, alignSelf: 'center',
+    padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.lg },
+  footer: { borderTopWidth: borders.thin, borderTopColor: colors.border, backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
+  header: { gap: spacing.xs, paddingBottom: spacing.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   headerCopy: { flex: 1, gap: spacing.xs },
-  headerMeta: { ...typography.label, color: colors.subtle },
+  headerMeta: { ...typography.small, color: colors.subtle },
   headerTitle: { ...typography.screenTitle, color: colors.ink },
-  headerDescription: { ...typography.body, color: colors.muted, maxWidth: 560 },
+  headerDescription: { ...typography.small, color: colors.muted, maxWidth: dimensions.readableMax },
   section: { gap: spacing.md },
-  card: {
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.lg, padding: spacing.lg,
-  },
-  sectionHeading: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    gap: spacing.md,
-  },
+  card: { backgroundColor: colors.surface, borderWidth: borders.thin, borderColor: colors.border,
+    borderRadius: radii.lg, borderCurve: 'continuous', padding: spacing.lg },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   sectionCopy: { flex: 1, gap: spacing.xs },
   sectionTitle: { ...typography.section, color: colors.ink },
-  divider: { height: 1, backgroundColor: colors.border, width: '100%' },
-  button: {
-    minHeight: touch.primary, borderRadius: radii.md, borderWidth: 1,
-    borderColor: 'transparent', paddingHorizontal: spacing.lg,
-    alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch',
-  },
+  divider: { height: borders.thin, backgroundColor: colors.border, width: '100%' },
+  button: { minHeight: touch.primary, borderRadius: radii.md, borderCurve: 'continuous',
+    borderWidth: borders.thin, borderColor: 'transparent', paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
   buttonPrimary: { backgroundColor: colors.primary },
-  buttonSecondary: { backgroundColor: colors.surface, borderColor: colors.primary },
+  buttonSecondary: { backgroundColor: colors.surface, borderColor: colors.borderStrong },
   buttonQuiet: { backgroundColor: 'transparent' },
   buttonDanger: { backgroundColor: colors.danger },
-  buttonText: { ...typography.button },
-  textButton: {
-    minHeight: touch.minimum, paddingHorizontal: spacing.xs,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  textButtonLabel: { ...typography.button, color: colors.primary },
-  disabled: { opacity: 0.42 },
-  pressed: { opacity: 0.76 },
-  status: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: 5,
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { ...typography.label, fontSize: 12, lineHeight: 16 },
-  notice: {
-    borderWidth: 1, borderRadius: radii.md, padding: spacing.md,
-    gap: spacing.xs,
-  },
+  buttonText: { ...typography.button, textAlign: 'center', flexShrink: 1 },
+  textButton: { minHeight: touch.minimum, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    justifyContent: 'center', alignItems: 'center', borderRadius: radii.sm, borderCurve: 'continuous' },
+  textButtonLabel: { ...typography.button, color: colors.primary, textAlign: 'center' },
+  destructiveText: { color: colors.danger },
+  disabledText: { color: colors.disabled },
+  disabled: { backgroundColor: colors.disabledSurface, borderColor: colors.border },
+  pressed: { backgroundColor: colors.hover },
+  primaryPressed: { backgroundColor: colors.primaryPressed },
+  dangerPressed: { backgroundColor: colors.dangerPressed },
+  status: { alignSelf: 'flex-start', borderRadius: radii.sm, borderCurve: 'continuous',
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  statusText: { ...typography.caption, fontWeight: typography.label.fontWeight },
+  notice: { borderWidth: borders.thin, borderRadius: radii.md, borderCurve: 'continuous',
+    padding: spacing.md, gap: spacing.xs },
   noticeTitle: { ...typography.label },
   noticeText: { ...typography.small },
   noticeBody: { gap: spacing.xs },
-  loading: {
-    minHeight: 88, alignItems: 'center', justifyContent: 'center',
-    gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radii.lg,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
-  },
-  empty: {
-    alignItems: 'center', gap: spacing.sm, padding: spacing.xxl,
-    backgroundColor: colors.surface, borderRadius: radii.lg,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  emptyMark: {
-    width: 40, height: 40, borderRadius: 20, alignItems: 'center',
-    justifyContent: 'center', backgroundColor: colors.surfaceMuted,
-  },
-  emptyMarkText: { ...typography.title, color: colors.muted },
-  centerText: { textAlign: 'center' },
-  errorState: {
-    gap: spacing.sm, padding: spacing.lg, backgroundColor: colors.dangerWash,
-    borderWidth: 1, borderColor: colors.danger, borderRadius: radii.lg,
-  },
-  errorTitle: { ...typography.section, color: colors.danger },
+  loading: { minHeight: touch.minimum, flexDirection: 'row', alignItems: 'center',
+    gap: spacing.sm, paddingVertical: spacing.md },
+  empty: { gap: spacing.sm, paddingVertical: spacing.lg },
+  centerText: { textAlign: 'left' },
+  errorState: { gap: spacing.sm, padding: spacing.md, backgroundColor: colors.dangerWash,
+    borderWidth: borders.thin, borderColor: colors.danger, borderRadius: radii.md, borderCurve: 'continuous' },
+  errorTitle: { ...typography.label, color: colors.danger },
   errorText: { ...typography.small, color: colors.ink },
-  banner: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    borderWidth: 1, borderColor: colors.warning, backgroundColor: colors.warningWash,
-    borderRadius: radii.md, paddingHorizontal: spacing.md, minHeight: touch.minimum,
-  },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    borderWidth: borders.thin, borderColor: colors.warning, backgroundColor: colors.warningWash,
+    borderRadius: radii.md, borderCurve: 'continuous', paddingHorizontal: spacing.md, minHeight: touch.minimum },
   bannerOffline: { borderColor: colors.offline, backgroundColor: colors.offlineWash },
-  bannerDot: { width: 8, height: 8, borderRadius: 4 },
   bannerText: { ...typography.small, color: colors.ink, flex: 1 },
-  bannerAction: { minHeight: touch.minimum, justifyContent: 'center', paddingLeft: spacing.sm },
+  bannerAction: { minHeight: touch.minimum, justifyContent: 'center', paddingHorizontal: spacing.sm },
   bannerLink: { ...typography.label, color: colors.primary },
-  jobRow: {
-    flexDirection: 'row', overflow: 'hidden', backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg,
-    minHeight: 164,
-  },
-  jobFeatured: { borderColor: colors.primary, backgroundColor: colors.primaryWash },
-  jobRail: { width: 4 },
-  jobContent: { flex: 1, padding: spacing.lg, gap: 6 },
-  featuredLabel: { ...typography.label, color: colors.primary },
-  jobTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  jobRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    padding: spacing.md, borderBottomWidth: borders.thin, borderBottomColor: colors.border },
+  jobFeatured: { backgroundColor: colors.primaryWash, borderRadius: radii.md, borderCurve: 'continuous' },
+  jobContent: { flex: 1, gap: spacing.xs },
+  jobTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   jobNumber: { ...typography.identifier, color: colors.primary, flexShrink: 1 },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 },
-  jobTitle: { ...typography.title, fontSize: 18, lineHeight: 23, color: colors.ink },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  jobTitle: { ...typography.strong, color: colors.ink },
   jobAddress: { ...typography.small, color: colors.muted },
-  jobMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  jobMeta: { ...typography.label, color: colors.subtle, fontWeight: '400' },
-  jobFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 'auto' },
-  linkText: { ...typography.label, color: colors.primary },
-  chevron: { ...typography.title, color: colors.primary, lineHeight: 20 },
+  jobMeta: { ...typography.small, color: colors.subtle },
   progress: { gap: spacing.sm },
   stageRailRow: { flexDirection: 'row', gap: spacing.xs },
-  segment: { flex: 1, height: 6, borderRadius: 3 },
+  segment: { flex: 1, height: dimensions.progress, borderRadius: radii.pill, borderCurve: 'continuous' },
   small: { ...typography.small, color: colors.muted },
   label: { ...typography.label, color: colors.subtle },
-  sla: {
-    borderWidth: 1, borderLeftWidth: 4, borderColor: colors.border,
-    borderRadius: radii.md, backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: 4,
-  },
-  slaHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  slaDot: { width: 8, height: 8, borderRadius: 4 },
-  slaValue: { ...typography.timer },
+  sla: { borderLeftWidth: borders.accent, borderLeftColor: colors.borderStrong,
+    backgroundColor: colors.surface, padding: spacing.md, gap: spacing.xs },
+  slaValue: { ...typography.timer, flexShrink: 1 },
 });

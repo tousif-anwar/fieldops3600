@@ -61,7 +61,7 @@ test("dispatcher creates a real request and confirms a feasible booking through 
     .click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await page
-    .getByRole("button", { name: "Schedule service", exact: true })
+    .getByRole("link", { name: "Schedule service", exact: true })
     .click();
   const next = new Date();
   next.setUTCDate(next.getUTCDate() + 1);
@@ -179,7 +179,7 @@ test("supervisor reviews completed dropdown history and replays evidence without
       commands.push(request.url());
   });
   await page
-    .getByRole("button", { name: "View operational replay", exact: true })
+    .getByRole("link", { name: "View operational replay", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Event timeline", exact: true }),

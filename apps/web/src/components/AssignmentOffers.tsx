@@ -11,6 +11,7 @@ import {
 import { Clock3, MapPin, RefreshCw, Users } from "lucide-react";
 import { api, post } from "../api";
 import { offerStatus, type AssignmentOffer } from "../assignment-contracts";
+import { ListPagination, pageSlice } from "./ListPagination";
 import { dateTime } from "../format";
 import type { Technician } from "../types";
 import {
@@ -31,6 +32,7 @@ export function AssignmentOffers({
 }) {
   const [revoking, setRevoking] = useState<AssignmentOffer | null>(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const [showHistory, setShowHistory] = useState(false);
   const [now, setNow] = useState(Date.now());
   const offers = useQuery({
@@ -46,6 +48,15 @@ export function AssignmentOffers({
     (offer) => offerStatus(offer, now) === "Pending",
   );
   const visible = showHistory ? (offers.data ?? []) : pending;
+  const rows = pageSlice(
+    [...visible].sort(
+      (a, b) => Date.parse(b.createdAtUtc) - Date.parse(a.createdAtUtc),
+    ),
+    page,
+  );
+  const technicianById = new Map(
+    technicians.map((technician) => [technician.id, technician]),
+  );
   return (
     <>
       <Panel
@@ -55,7 +66,7 @@ export function AssignmentOffers({
           <Button
             size="small"
             appearance="subtle"
-            icon={<RefreshCw size={15} />}
+            icon={<RefreshCw aria-hidden="true" size={15} />}
             disabled={offers.isFetching}
             onClick={() => void offers.refetch()}
           >
@@ -68,7 +79,10 @@ export function AssignmentOffers({
           <Button
             size="small"
             appearance="subtle"
-            onClick={() => setShowHistory(!showHistory)}
+            onClick={() => {
+              setShowHistory(!showHistory);
+              setPage(1);
+            }}
           >
             {showHistory ? "Show pending only" : "Show offer history"}
           </Button>
@@ -88,82 +102,83 @@ export function AssignmentOffers({
           />
         ) : (
           <div className="booking-list">
-            {[...visible]
-              .sort(
-                (a, b) =>
-                  Date.parse(b.createdAtUtc) - Date.parse(a.createdAtUtc),
-              )
-              .map((offer) => {
-                const status = offerStatus(offer, now);
-                return (
-                  <article className="booking-card offer-card" key={offer.id}>
-                    <div className="booking-content">
-                      <div>
-                        <Link to={`/work-orders/${offer.workOrderId}`}>
-                          <strong>
-                            {offer.workOrderNumber} · {offer.title}
-                          </strong>
-                        </Link>
-                        <Status value={status} />
-                      </div>
-                      <p>
-                        <Users size={14} />
-                        {technicians.find((t) => t.id === offer.technicianId)
-                          ?.name ?? offer.technicianId}
-                        {" · "}
-                        {offer.serviceCategory}
-                        {" · "}
-                        {offer.priority}
-                      </p>
-                      <p>
-                        <MapPin size={14} />
-                        {offer.siteAddress}
-                      </p>
-                      <p>
-                        <Clock3 size={14} />
-                        {dateTime(offer.startUtc)} – {dateTime(offer.endUtc)}
-                      </p>
-                      <small>
-                        {status === "Pending"
-                          ? "Accept before"
-                          : "Offer expiry"}{" "}
-                        {dateTime(offer.expiresAtUtc)}
-                        {offer.respondedAtUtc &&
-                          ` · Responded ${dateTime(offer.respondedAtUtc)}`}
-                      </small>
-                      {offer.reason && (
-                        <p className="offer-reason">Reason: {offer.reason}</p>
-                      )}
-                      {status === "Accepted" && (
-                        <p>Booking confirmed on acceptance.</p>
-                      )}
-                      {status === "Declined" && (
-                        <p>Ready for a new offer or direct assignment.</p>
-                      )}
-                      {status === "Expired" && (
-                        <p>
-                          Acceptance closed. Review availability before sending
-                          a new offer.
-                        </p>
-                      )}
-                      {status === "Pending" && canManage && (
-                        <div className="booking-actions">
-                          <Button
-                            size="small"
-                            onClick={() => {
-                              setRevoking(offer);
-                              setRevokeOpen(true);
-                            }}
-                          >
-                            Revoke offer
-                          </Button>
-                        </div>
-                      )}
+            {rows.items.map((offer) => {
+              const status = offerStatus(offer, now);
+              return (
+                <article className="booking-card offer-card" key={offer.id}>
+                  <div className="booking-content">
+                    <div>
+                      <Link to={`/work-orders/${offer.workOrderId}`}>
+                        <strong>
+                          {offer.workOrderNumber} · {offer.title}
+                        </strong>
+                      </Link>
+                      <Status value={status} />
                     </div>
-                  </article>
-                );
-              })}
+                    <p>
+                      <Users aria-hidden="true" size={14} />
+                      {technicianById.get(offer.technicianId)?.name ??
+                        offer.technicianId}
+                      {" · "}
+                      {offer.serviceCategory}
+                      {" · "}
+                      {offer.priority}
+                    </p>
+                    <p>
+                      <MapPin aria-hidden="true" size={14} />
+                      {offer.siteAddress}
+                    </p>
+                    <p>
+                      <Clock3 aria-hidden="true" size={14} />
+                      {dateTime(offer.startUtc)} – {dateTime(offer.endUtc)}
+                    </p>
+                    <small>
+                      {status === "Pending" ? "Accept before" : "Offer expiry"}{" "}
+                      {dateTime(offer.expiresAtUtc)}
+                      {offer.respondedAtUtc &&
+                        ` · Responded ${dateTime(offer.respondedAtUtc)}`}
+                    </small>
+                    {offer.reason && (
+                      <p className="offer-reason">Reason: {offer.reason}</p>
+                    )}
+                    {status === "Accepted" && (
+                      <p>Booking confirmed on acceptance.</p>
+                    )}
+                    {status === "Declined" && (
+                      <p>Ready for a new offer or direct assignment.</p>
+                    )}
+                    {status === "Expired" && (
+                      <p>
+                        Acceptance closed. Review availability before sending a
+                        new offer.
+                      </p>
+                    )}
+                    {status === "Pending" && canManage && (
+                      <div className="booking-actions">
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setRevoking(offer);
+                            setRevokeOpen(true);
+                          }}
+                        >
+                          Revoke offer
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
+        )}
+        {offers.isSuccess && (
+          <ListPagination
+            page={rows.page}
+            total={visible.length}
+            onChange={setPage}
+            label="Assignment offers"
+          />
         )}
       </Panel>
       {revoking && (
@@ -213,7 +228,6 @@ function RevokeOffer({
       }}
     >
       <DialogSurface className="modal" aria-labelledby="revoke-offer-title">
-        <span className="eyebrow">AUDITED DISPATCH CHANGE</span>
         <h2 id="revoke-offer-title">Revoke assignment offer</h2>
         <p>
           {offer.workOrderNumber} · {offer.technicianId}. The technician will no
@@ -228,6 +242,8 @@ function RevokeOffer({
         >
           <Field label="Reason for revoking" required>
             <Input
+              name="reason-for-revoking"
+              autoComplete="off"
               required
               minLength={3}
               maxLength={500}

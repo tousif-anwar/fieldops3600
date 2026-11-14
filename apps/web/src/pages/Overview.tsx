@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@fluentui/react-components";
@@ -97,13 +98,10 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
         actions={
           <>
             {auth.can("Dispatcher", "OperationsManager") && (
-              <Button
-                appearance="primary"
-                icon={<Plus size={17} />}
-                onClick={() => navigate("/work-orders/new")}
-              >
+              <Link to={"/work-orders/new"} className="button-link primary">
+                <Plus aria-hidden="true" size={17} />
                 Create work order
-              </Button>
+              </Link>
             )}
           </>
         }
@@ -111,22 +109,31 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
       <div className="metrics-grid">
         <Metric
           label="Active jobs"
-          value={report.data?.activeJobs ?? active.length}
+          value={
+            report.data?.activeJobs ??
+            (workflows.isSuccess ? active.length : "�")
+          }
           note="Work currently in progress"
-          icon={<ClipboardList size={20} />}
+          icon={<ClipboardList aria-hidden="true" size={20} />}
         />
         <Metric
           label="At-risk stages"
-          value={report.data?.atRiskStages ?? risk.length}
+          value={
+            report.data?.atRiskStages ??
+            (workflows.isSuccess ? risk.length : "�")
+          }
           note="Approaching their SLA deadline"
-          icon={<Clock3 size={20} />}
+          icon={<Clock3 aria-hidden="true" size={20} />}
           tone="amber"
         />
         <Metric
           label="Overdue stages"
-          value={report.data?.overdueStages ?? overdue.length}
+          value={
+            report.data?.overdueStages ??
+            (workflows.isSuccess ? overdue.length : "�")
+          }
           note="Supervisor attention required"
-          icon={<TriangleAlert size={20} />}
+          icon={<TriangleAlert aria-hidden="true" size={20} />}
           tone="red"
         />
         <Metric
@@ -142,7 +149,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
             ).length
           }
           note="Completions since midnight UTC"
-          icon={<CheckCheck size={20} />}
+          icon={<CheckCheck aria-hidden="true" size={20} />}
           tone="green"
         />
       </div>
@@ -152,12 +159,14 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
       <div className="overview-grid">
         <Panel
           title={supervisor ? "Jobs requiring attention" : "Live operations"}
-          description="Prioritized by stage SLA status. All times are based on the server."
+          description="Sorted by recorded SLA status."
           action={
             <Freshness
               value={
                 report.data?.refreshedAtUtc ??
-                new Date(workflows.dataUpdatedAt || Date.now()).toISOString()
+                (workflows.dataUpdatedAt
+                  ? new Date(workflows.dataUpdatedAt).toISOString()
+                  : null)
               }
             />
           }
@@ -171,27 +180,32 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
             />
           ) : attention.length === 0 ? (
             <Empty
-              title="Your workspace is ready"
-              description="Create an order, confirm a booking, and start a workflow to see live service activity here."
+              title="No active workflows"
+              description="Confirm a booking and start a workflow to track service."
               action={
                 auth.can("Dispatcher") ? (
-                  <Button onClick={() => navigate("/work-orders/new")}>
+                  <Link to={"/work-orders/new"} className="button-link">
                     Create your first order
-                  </Button>
+                  </Link>
                 ) : undefined
               }
             />
           ) : (
-            <div className="table-scroll">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Active service workflows"
+              className="table-scroll"
+            >
               <table>
                 <thead>
                   <tr>
-                    <th>Work order</th>
-                    <th>Technician</th>
-                    <th>Current stage</th>
-                    <th>SLA status</th>
-                    <th>Deadline</th>
-                    <th>
+                    <th scope="col">Work order</th>
+                    <th scope="col">Technician</th>
+                    <th scope="col">Current stage</th>
+                    <th scope="col">SLA status</th>
+                    <th scope="col">Deadline</th>
+                    <th scope="col">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
@@ -203,14 +217,12 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
                     return (
                       <tr key={f.id}>
                         <td>
-                          <button
+                          <Link
+                            to={`/work-orders/${f.workOrderId}`}
                             className="table-main-link"
-                            onClick={() =>
-                              navigate(`/work-orders/${f.workOrderId}`)
-                            }
                           >
                             {order?.number ?? f.workOrderId.slice(0, 8)}
-                          </button>
+                          </Link>
                           <small className="table-subline">
                             {order?.title ?? "Assigned service"}
                           </small>
@@ -251,7 +263,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
                           <Button
                             appearance="subtle"
                             aria-label={`Open workflow for ${order?.number ?? f.workOrderId}`}
-                            icon={<ArrowRight size={16} />}
+                            icon={<ArrowRight aria-hidden="true" size={16} />}
                             onClick={() => navigate(`/workflow/${f.id}`)}
                           />
                         </td>
@@ -264,83 +276,52 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
           )}
         </Panel>
         <div className="overview-side">
-          <Panel
-            title="The next right action"
-            description="Useful shortcuts for a connected service day."
-          >
+          <Panel title="Actions">
             <div className="quick-actions">
-              <button onClick={() => navigate("/schedule")}>
+              <Link to={"/schedule"}>
                 <span className="quick-icon">
-                  <Users size={20} />
+                  <Users aria-hidden="true" size={20} />
                 </span>
                 <span>
                   <strong>Plan the day</strong>
                   <small>Find qualified, available technicians</small>
                 </span>
-                <ArrowRight size={16} />
-              </button>
-              <button onClick={() => navigate("/my-jobs")}>
+                <ArrowRight aria-hidden="true" size={16} />
+              </Link>
+              <Link to={"/my-jobs"}>
                 <span className="quick-icon green">
-                  <Activity size={20} />
+                  <Activity aria-hidden="true" size={20} />
                 </span>
                 <span>
                   <strong>Continue field work</strong>
                   <small>Follow the guided service pipeline</small>
                 </span>
-                <ArrowRight size={16} />
-              </button>
+                <ArrowRight aria-hidden="true" size={16} />
+              </Link>
               {auth.can("Supervisor", "OperationsManager") && (
-                <button onClick={() => navigate("/replay")}>
+                <Link to={"/replay"}>
                   <span className="quick-icon purple">
-                    <History size={20} />
+                    <History aria-hidden="true" size={20} />
                   </span>
                   <span>
                     <strong>Understand an incident</strong>
                     <small>Replay the complete recorded history</small>
                   </span>
-                  <ArrowRight size={16} />
-                </button>
+                  <ArrowRight aria-hidden="true" size={16} />
+                </Link>
               )}
             </div>
           </Panel>
-          <div className="sla-guide">
-            <span className="eyebrow">A SHARED SERVICE STANDARD</span>
-            <h3>
-              30 minutes.
-              <br />
-              Clear signals at every step.
-            </h3>
-            <div className="sla-scale">
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-            <div className="sla-labels">
-              <span>On time</span>
-              <span>20m</span>
-              <span>25m</span>
-              <span>30m</span>
-            </div>
-            <p>
-              Early warnings help your team act. Approved pauses are excluded
-              from elapsed SLA time.
-            </p>
-          </div>
         </div>
       </div>
       <Panel
         title="Recent work orders"
-        description="The latest service requests across your authorized team."
+
         action={
-          <Button
-            appearance="subtle"
-            iconPosition="after"
-            icon={<ArrowRight size={15} />}
-            onClick={() => navigate("/work-orders")}
-          >
+          <Link to={"/work-orders"} className="button-link">
+            <ArrowRight aria-hidden="true" size={15} />
             All work orders
-          </Button>
+          </Link>
         }
       >
         {orders.isPending ? (
@@ -348,7 +329,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
         ) : all.length === 0 ? (
           <Empty
             title="No work orders yet"
-            description="New service requests will appear here as they are created."
+            description="Create a work order to get started."
           />
         ) : (
           <div className="recent-cards">
@@ -359,10 +340,10 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
               )
               .slice(0, 4)
               .map((w) => (
-                <button
-                  key={w.id}
+                <Link
+                  to={`/work-orders/${w.id}`}
                   className="recent-order"
-                  onClick={() => navigate(`/work-orders/${w.id}`)}
+                  key={w.id}
                 >
                   <div>
                     <span className="order-number">{w.number}</span>
@@ -376,7 +357,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
                     <Status value={w.status} />
                     <small>{dateTime(w.createdAtUtc)}</small>
                   </footer>
-                </button>
+                </Link>
               ))}
           </div>
         )}
@@ -388,24 +369,16 @@ function AnalystWelcome() {
   const navigate = useNavigate();
   return (
     <>
-      <PageHeader
-        eyebrow="ANALYST WORKSPACE"
-        title="Turn service history into insight."
-        description="Explore validated operational metrics, trace their definitions, and export the evidence."
-      />
+      <PageHeader title="Reports" />
       <Panel
         title="Your reporting workspace"
-        description="Analysts access masked warehouse data within their authorized scope."
+        description="Reports contain masked warehouse data."
       >
         <div className="padded">
-          <Button
-            appearance="primary"
-            onClick={() => navigate("/analytics")}
-            icon={<ArrowRight size={17} />}
-            iconPosition="after"
-          >
+          <Link to={"/analytics"} className="button-link primary">
+            <ArrowRight aria-hidden="true" size={17} />
             Open analytics
-          </Button>
+          </Link>
         </div>
       </Panel>
     </>

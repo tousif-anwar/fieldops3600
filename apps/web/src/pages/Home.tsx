@@ -5,17 +5,20 @@ import { Button } from "@fluentui/react-components";
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { ErrorState, Loading, Status } from "../components/common";
+import {
+  ErrorState,
+  Loading,
+  PageHeader,
+  Panel,
+  Status,
+} from "../components/common";
 import { dateTime, humanize, percent, time } from "../format";
 import {
   additionalRoles,
   homeDestination,
   currentStage,
-  greetingFor,
-  profileName,
   primaryRole,
   riskWorkflows,
-  roleDescription,
   roleLabel,
   teamLabel,
 } from "../home";
@@ -33,33 +36,6 @@ import type {
   Workflow,
   WorkOrder,
 } from "../types";
-
-function Panel({
-  title,
-  description,
-  action,
-  className = "",
-  children,
-}: {
-  title: string;
-  description?: string;
-  action?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`home-panel ${className}`}>
-      <header className="home-panel-heading">
-        <div>
-          <h2>{title}</h2>
-          {description && <p>{description}</p>}
-        </div>
-        {action}
-      </header>
-      {children}
-    </section>
-  );
-}
 
 function Snapshot({ figures }: { figures: Figure[] }) {
   return (
@@ -190,17 +166,8 @@ export function Home() {
   const teamId = String(
     auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
   );
-  const name = profileName(
-    (auth.user?.profile ?? {}) as Record<string, unknown>,
-  );
   const otherRoles = role ? additionalRoles(auth.roles, role) : [];
   const now = new Date();
-  const today = new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).format(now);
-
   const workRole =
     role === "Technician" ||
     role === "Dispatcher" ||
@@ -254,27 +221,13 @@ export function Home() {
   if (!role) {
     return (
       <div className="home-page">
-        <header className="home-header">
-          <div className="home-intro">
-            <p className="home-context">Access not configured</p>
-            <h1 className="home-greeting">
-              {greetingFor(now)}, {name}.
-            </h1>
-            <p className="home-summary">{roleDescription(role, teamId)}</p>
-          </div>
-        </header>
+        <PageHeader title="Home" description="Access not configured" />
         <Panel title="Ask for access">
           <div className="home-empty">
             <ShieldCheck size={22} aria-hidden="true" />
             <div>
-              <strong>
-                Your identity is valid, but no FieldOps 360 role is assigned.
-              </strong>
-              <p>
-                Contact your administrator to add the role that matches your
-                work. This page does not infer access from another directory
-                group.
-              </p>
+              <strong>No application role is assigned.</strong>
+              <p>Contact your administrator to request access.</p>
             </div>
           </div>
           <div className="home-empty-actions">
@@ -343,9 +296,12 @@ export function Home() {
     );
   const report = reportQuery.data;
   const primaryError =
-    (ordersQuery.error as Error | null) ??
-    (flowsQuery.error as Error | null) ??
-    (reportQuery.error as Error | null) ??
+    ordersQuery.error ??
+    flowsQuery.error ??
+    reportQuery.error ??
+    bookingsQuery.error ??
+    techniciansQuery.error ??
+    notificationsQuery.error ??
     null;
   const anyLoading =
     (workRole && ordersQuery.isPending) ||
@@ -371,36 +327,31 @@ export function Home() {
     overdueCount: overdue.length,
     unreadCount: unread.length,
     report,
-  });
+  }).map((figure) =>
+    primaryError
+      ? {
+          ...figure,
+          value: "�",
+          detail: "Refresh to load this information.",
+          tone: "default" as const,
+        }
+      : figure,
+  );
   const quickActions = quickActionsFor(role);
 
   return (
     <div className="home-page">
-      <header className="home-header">
-        <div className="home-intro">
-          <p className="home-context">
-            <span className="home-role-dot" aria-hidden="true" />
-            {roleLabel(role)} <span aria-hidden="true">·</span>{" "}
-            {teamLabel(teamId)}
-          </p>
-          <h1 className="home-greeting">
-            {greetingFor(now)}, {name}.
-          </h1>
-          <p className="home-summary">{roleDescription(role, teamId)}</p>
-          {otherRoles.length > 0 && (
-            <p className="home-additional-roles">
-              Also authorized: {otherRoles.map(roleLabel).join(", ")}
-            </p>
-          )}
-        </div>
-        <div className="home-today">
-          <span>Today</span>
-          <strong>{today}</strong>
-          <small>Times follow your device locale</small>
-        </div>
-      </header>
+      <PageHeader
+        title="Home"
+        description={`${roleLabel(role)} � ${teamLabel(teamId)}`}
+      />
+      {otherRoles.length > 0 && (
+        <p className="home-additional-roles">
+          Additional roles: {otherRoles.map(roleLabel).join(", ")}
+        </p>
+      )}
 
-      <Snapshot figures={figures} />
+      {role !== "Administrator" && <Snapshot figures={figures} />}
 
       {primaryError && (
         <ErrorState
@@ -409,6 +360,9 @@ export function Home() {
             void ordersQuery.refetch();
             void flowsQuery.refetch();
             void reportQuery.refetch();
+            void bookingsQuery.refetch();
+            void techniciansQuery.refetch();
+            void notificationsQuery.refetch();
           }}
         />
       )}
@@ -442,7 +396,11 @@ export function Home() {
           }
           className="home-attention"
         >
-          {anyLoading && role !== "Administrator" ? (
+          {primaryError ? (
+            <p className="customer-note">
+              Service data is unavailable. Refresh to try again.
+            </p>
+          ) : anyLoading && role !== "Administrator" ? (
             <Loading label="Loading your priority work…" />
           ) : role === "Technician" ? (
             <div className="home-attention-list">

@@ -70,36 +70,33 @@ export function Customers() {
   return (
     <>
       <PageHeader
-        eyebrow="CUSTOMER MANAGEMENT"
         title="Customers"
-        description="Manage customers, consent and service locations within your authorized team."
         actions={
           canWrite && (
             <Link className="button-link primary" to="/customers/new">
-              <Plus size={16} />
+              <Plus aria-hidden="true" size={16} />
               Create customer
             </Link>
           )
         }
       />
-      <Panel
-        title="Customer registry"
-        description="Names and contact details remain on authorized operational paths."
-      >
+      <Panel title="Customer registry">
         <div className="filter-bar">
-          <div className="search-field">
-            <Search size={17} />
-            <input
-              aria-label="Search customers"
-              placeholder="Search customer name…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
+          <Input
+            name="search-customers"
+            autoComplete="off"
+            className="search-field"
+            contentBefore={<Search size={17} aria-hidden="true" />}
+            aria-label="Search customers"
+            placeholder="Search customer name…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
           <Select
+            name="customer-status"
             aria-label="Customer status"
             value={status}
             onChange={(e) => {
@@ -112,6 +109,7 @@ export function Customers() {
             <option>Archived</option>
           </Select>
           <Select
+            name="sort-customers"
             aria-label="Sort customers"
             value={sort}
             onChange={(e) => {
@@ -135,7 +133,12 @@ export function Customers() {
           />
         ) : (
           <>
-            <div className="table-scroll">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Customer registry"
+              className="table-scroll"
+            >
               <table className="data-table">
                 <thead>
                   <tr>
@@ -323,26 +326,24 @@ function CustomerForm({
         className="back-link"
         to={initial ? `/customers/${initial.id}` : "/customers"}
       >
-        <ArrowLeft size={15} />
+        <ArrowLeft aria-hidden="true" size={15} />
         {initial ? "Customer details" : "Customers"}
       </Link>
-      <PageHeader
-        eyebrow="CUSTOMER RECORD"
-        title={initial ? "Edit customer" : "Create customer"}
-        description="Save the customer, its service locations and contact preferences as one versioned change."
-      />
+      <PageHeader title={initial ? "Edit customer" : "Create customer"} />
       <form onSubmit={submit} className="customer-form">
         <Panel
           title="Customer details"
           description={
             initial
-              ? `Editing version ${initial.version}. Concurrent changes require a fresh review.`
-              : "Create a persistent customer before raising a registered service request."
+              ? `Version ${initial.version}. Refresh if another user changes this record.`
+              : "Register the customer before creating a work order."
           }
         >
           <div className="form-body">
             <Field label="Customer name" required>
               <Input
+                name="customer-name"
+                autoComplete="off"
                 required
                 minLength={2}
                 maxLength={100}
@@ -353,6 +354,7 @@ function CustomerForm({
             <div className="form-two">
               <Field label="Customer type">
                 <Select
+                  name="customer-type"
                   value={value.customerType}
                   onChange={(e) =>
                     field(
@@ -366,12 +368,18 @@ function CustomerForm({
                 </Select>
               </Field>
               <Field label="Team">
-                <Input readOnly value={value.teamId} />
+                <Input
+                  name="team"
+                  autoComplete="off"
+                  readOnly
+                  value={value.teamId}
+                />
               </Field>
             </div>
             <div className="form-two">
               <Field label="Preferred communication">
                 <Select
+                  name="preferred-communication"
                   value={value.preferredChannel}
                   onChange={(e) =>
                     field(
@@ -390,6 +398,7 @@ function CustomerForm({
                 hint="Archiving prevents new work orders; historical references remain."
               >
                 <Select
+                  name="customer-status"
                   value={value.status}
                   onChange={(e) =>
                     field("status", e.target.value as CustomerInput["status"])
@@ -404,7 +413,7 @@ function CustomerForm({
         </Panel>
         <Panel
           title="Service locations"
-          description="Existing locations retain their identity. Archive a closed site to preserve its service history."
+          description="Archive closed locations to retain service history."
         >
           {value.locations.map((l, i) => (
             <fieldset className="customer-subrecord" key={l.id ?? `new-${i}`}>
@@ -413,6 +422,7 @@ function CustomerForm({
                 <div className="form-two">
                   <Field label={`Location ${i + 1} name`} required>
                     <Input
+                      autoComplete="off"
                       required
                       minLength={2}
                       maxLength={100}
@@ -436,6 +446,7 @@ function CustomerForm({
                 </div>
                 <Field label={`Location ${i + 1} address line 1`} required>
                   <Input
+                    autoComplete="off"
                     required
                     minLength={3}
                     maxLength={200}
@@ -445,6 +456,7 @@ function CustomerForm({
                 </Field>
                 <Field label={`Location ${i + 1} address line 2`}>
                   <Input
+                    autoComplete="off"
                     maxLength={100}
                     value={l.addressLine2 ?? ""}
                     onChange={(_, d) => location(i, { addressLine2: d.value })}
@@ -453,6 +465,7 @@ function CustomerForm({
                 <div className="form-two">
                   <Field label={`Location ${i + 1} city`} required>
                     <Input
+                      autoComplete="off"
                       required
                       minLength={2}
                       maxLength={100}
@@ -462,6 +475,7 @@ function CustomerForm({
                   </Field>
                   <Field label={`Location ${i + 1} region`}>
                     <Input
+                      autoComplete="off"
                       maxLength={100}
                       value={l.region ?? ""}
                       onChange={(_, d) => location(i, { region: d.value })}
@@ -471,6 +485,7 @@ function CustomerForm({
                 <div className="form-two">
                   <Field label={`Location ${i + 1} postal code`} required>
                     <Input
+                      autoComplete="off"
                       required
                       maxLength={20}
                       value={l.postalCode}
@@ -479,6 +494,7 @@ function CustomerForm({
                   </Field>
                   <Field label={`Location ${i + 1} country code`} required>
                     <Input
+                      autoComplete="off"
                       required
                       minLength={2}
                       maxLength={2}
@@ -492,6 +508,7 @@ function CustomerForm({
                 </div>
                 <Field label={`Location ${i + 1} access notes`}>
                   <Textarea
+                    autoComplete="off"
                     maxLength={1000}
                     value={l.accessNotes ?? ""}
                     onChange={(_, d) => location(i, { accessNotes: d.value })}
@@ -515,7 +532,7 @@ function CustomerForm({
           <div className="form-actions">
             <Button
               disabled={value.locations.length >= 100}
-              icon={<Plus size={15} />}
+              icon={<Plus aria-hidden="true" size={15} />}
               onClick={() =>
                 field("locations", [...value.locations, blankLocation()])
               }
@@ -526,13 +543,10 @@ function CustomerForm({
         </Panel>
         <Panel
           title="Contacts and communication consent"
-          description="Record consent only when obtained. Saving a preference does not send a message."
+          description="Record consent only when obtained. Preferences do not send messages."
         >
           {value.contacts.length === 0 && (
-            <p className="customer-note">
-              No contacts recorded. A customer may have no preferred
-              communication channel.
-            </p>
+            <p className="customer-note">No contacts recorded.</p>
           )}
           {value.contacts.map((c, i) => (
             <fieldset className="customer-subrecord" key={c.id ?? `new-${i}`}>
@@ -540,6 +554,7 @@ function CustomerForm({
               <div className="form-body">
                 <Field label={`Contact ${i + 1} name`} required>
                   <Input
+                    autoComplete="off"
                     required
                     minLength={2}
                     maxLength={100}
@@ -550,6 +565,7 @@ function CustomerForm({
                 <div className="form-two">
                   <Field label={`Contact ${i + 1} email`}>
                     <Input
+                      autoComplete="off"
                       type="email"
                       maxLength={254}
                       value={c.email ?? ""}
@@ -563,6 +579,7 @@ function CustomerForm({
                   </Field>
                   <Field label={`Contact ${i + 1} phone`}>
                     <Input
+                      autoComplete="off"
                       type="tel"
                       maxLength={40}
                       value={c.phone ?? ""}
@@ -614,7 +631,7 @@ function CustomerForm({
           <div className="form-actions">
             <Button
               disabled={value.contacts.length >= 25}
-              icon={<Plus size={15} />}
+              icon={<Plus aria-hidden="true" size={15} />}
               onClick={() =>
                 field("contacts", [...value.contacts, blankContact()])
               }
@@ -681,11 +698,10 @@ export function CustomerDetails() {
   return (
     <>
       <Link className="back-link" to="/customers">
-        <ArrowLeft size={15} />
+        <ArrowLeft aria-hidden="true" size={15} />
         Customers
       </Link>
       <PageHeader
-        eyebrow="CUSTOMER RECORD"
         title={c.displayName}
         description={`${c.customerType} customer in team ${c.teamId}. Version ${c.version}.`}
         actions={
@@ -767,7 +783,12 @@ export function CustomerDetails() {
           <p className="customer-note">No linked work orders.</p>
         ) : (
           <>
-            <div className="table-scroll">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Service history"
+              className="table-scroll"
+            >
               <table className="data-table">
                 <thead>
                   <tr>
@@ -826,7 +847,12 @@ export function CustomerDetails() {
             retry={() => void changes.refetch()}
           />
         ) : (
-          <div className="table-scroll">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Change history"
+            className="table-scroll"
+          >
             <table className="data-table">
               <thead>
                 <tr>

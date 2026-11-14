@@ -156,12 +156,10 @@ export function Schedule() {
   return (
     <>
       <PageHeader
-        eyebrow="DISPATCH & CAPACITY"
         title="Dispatch board"
-        description="Assign qualified technicians, review availability, and prevent overlapping bookings."
         actions={
           <Button
-            icon={<RefreshCw size={16} />}
+            icon={<RefreshCw aria-hidden="true" size={16} />}
             disabled={busy}
             onClick={refreshDispatch}
           >
@@ -179,13 +177,11 @@ export function Schedule() {
         className={`schedule-grid ${auth.can("Dispatcher", "OperationsManager") ? "" : "schedule-review"}`}
       >
         {auth.can("Dispatcher", "OperationsManager") && (
-          <Panel
-            title="Plan an appointment"
-            description="Recommendations explain why a technician is a suitable match."
-          >
+          <Panel title="Plan an appointment">
             <div className="form-body">
               <Field label="Work order" required>
                 <Select
+                  name="work-order"
                   value={workOrderId}
                   disabled={busy}
                   onChange={(e) => {
@@ -212,6 +208,8 @@ export function Schedule() {
               </Field>
               <Field label="Appointment start (your local time)" required>
                 <Input
+                  name="appointment-start-your-local-time"
+                  autoComplete="off"
                   type="datetime-local"
                   value={start}
                   disabled={busy}
@@ -224,6 +222,7 @@ export function Schedule() {
               <div className="form-two">
                 <Field label="Duration">
                   <Select
+                    name="duration"
                     value={duration}
                     disabled={busy}
                     onChange={(e) => {
@@ -240,6 +239,7 @@ export function Schedule() {
                 </Field>
                 <Field label="Dispatch strategy">
                   <Select
+                    name="dispatch-strategy"
                     value={strategy}
                     disabled={busy}
                     onChange={(e) => {
@@ -256,7 +256,7 @@ export function Schedule() {
               </div>
               <Button
                 appearance="primary"
-                icon={<Sparkles size={16} />}
+                icon={<Sparkles aria-hidden="true" size={16} />}
                 disabled={
                   !workOrderId ||
                   !startUtc ||
@@ -296,6 +296,7 @@ export function Schedule() {
                         className={`recommendation ${selected === r.technicianId ? "selected" : ""}`}
                       >
                         <input
+                          autoComplete="off"
                           type="radio"
                           name="technician"
                           checked={selected === r.technicianId}
@@ -339,6 +340,7 @@ export function Schedule() {
                   )}
                   <Field label="Assignment method">
                     <Select
+                      name="assignment-method"
                       value={assignmentMode}
                       disabled={busy}
                       onChange={(e) => {
@@ -361,6 +363,7 @@ export function Schedule() {
                         hint="The offer expires at the appointment start if it comes sooner."
                       >
                         <Select
+                          name="offer-response-time"
                           value={offerMinutes}
                           disabled={busy}
                           onChange={(e) => {
@@ -377,9 +380,8 @@ export function Schedule() {
                         </Select>
                       </Field>
                       <p className="muted">
-                        Sending an offer leaves the job unassigned.
-                        Qualifications and capacity are checked again on
-                        acceptance.
+                        Offers do not reserve capacity. Eligibility is checked
+                        on acceptance.
                       </p>
                     </>
                   )}
@@ -393,6 +395,8 @@ export function Schedule() {
                       hint="A reason is required when choosing a different recommendation."
                     >
                       <Input
+                        name="override-or-dispatch-reason"
+                        autoComplete="off"
                         value={reason}
                         disabled={busy}
                         maxLength={500}
@@ -406,8 +410,8 @@ export function Schedule() {
                   )}
                   {assignmentMode === "direct" && (
                     <p className="muted">
-                      Confirming a booking replaces any pending offer for this
-                      work order.
+                      A confirmed booking revokes any pending offer for this
+                      order.
                     </p>
                   )}
                   <Button
@@ -419,7 +423,7 @@ export function Schedule() {
                         selected !== recommendations.data?.[0]?.technicianId &&
                         reason.trim().length < 3)
                     }
-                    icon={<Check size={16} />}
+                    icon={<Check aria-hidden="true" size={16} />}
                     onClick={() =>
                       assignmentMode === "offer"
                         ? sendOffer.mutate()
@@ -463,8 +467,8 @@ export function Schedule() {
           </Panel>
         )}
         <Panel
-          title="Confirmed appointments"
-          description="Overlapping confirmed bookings are rejected by the database."
+          title="Appointments"
+
           action={
             <span className="count-pill">
               {bookings.data?.filter((b) => b.status === "Confirmed").length ??
@@ -482,8 +486,8 @@ export function Schedule() {
             />
           ) : !bookings.data?.length ? (
             <Empty
-              title="Space to plan your day"
-              description="Confirmed appointments will appear here with their assigned technician."
+              title="No appointments"
+              description="Confirm a booking to add an appointment."
             />
           ) : (
             <div className="booking-list">
@@ -492,7 +496,7 @@ export function Schedule() {
                 .map((b) => (
                   <article className="booking-card" key={b.id}>
                     <div className="booking-time">
-                      <CalendarDays size={18} />
+                      <CalendarDays aria-hidden="true" size={18} />
                       <strong>{time(b.startUtc)}</strong>
                       <small>{time(b.endUtc)}</small>
                     </div>
@@ -505,17 +509,17 @@ export function Schedule() {
                         <Status value={b.status} />
                       </div>
                       <p>
-                        <Users size={14} />
+                        <Users aria-hidden="true" size={14} />
                         {techs.data?.find((t) => t.id === b.technicianId)
                           ?.name ?? b.technicianId}
                       </p>
                       <p>
-                        <MapPin size={14} />
+                        <MapPin aria-hidden="true" size={14} />
                         {orders.data?.find((w) => w.id === b.workOrderId)
                           ?.siteAddress ?? "Authorized service location"}
                       </p>
                       <small>
-                        <Clock3 size={12} />
+                        <Clock3 aria-hidden="true" size={12} />
                         {dateTime(b.startUtc)} ·{" "}
                         {Math.round(
                           (Date.parse(b.endUtc) - Date.parse(b.startUtc)) /
@@ -552,12 +556,10 @@ export function Schedule() {
           )}
         </Panel>
       </div>
-      <div className="dispatch-offers-section">
-        <AssignmentOffers
-          technicians={techs.data ?? []}
-          canManage={auth.can("Dispatcher", "OperationsManager")}
-        />
-      </div>
+      <AssignmentOffers
+        technicians={techs.data ?? []}
+        canManage={auth.can("Dispatcher", "OperationsManager")}
+      />
       {editing && (
         <BookingEditor
           booking={editing.booking}

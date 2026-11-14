@@ -4,7 +4,6 @@ import {
   AlertCircle,
   ArrowUpRight,
   CheckCircle2,
-  Circle,
   Clock3,
   RefreshCw,
 } from "lucide-react";
@@ -19,16 +18,16 @@ export function PageHeader({
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   actions?: ReactNode;
 }) {
   return (
     <header className="page-heading">
-      <div>
-        <div className="eyebrow">{eyebrow ?? "WORKSPACE"}</div>
+      <hgroup>
+        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
-        <p>{description}</p>
-      </div>
+        {description ? <p>{description}</p> : null}
+      </hgroup>
       {actions && <div className="page-actions">{actions}</div>}
     </header>
   );
@@ -43,17 +42,17 @@ export function ErrorState({
   const forbidden = error instanceof ApiError && error.status === 403;
   return (
     <div className="error-state" role="alert">
-      <AlertCircle size={22} />
+      <AlertCircle size={22} aria-hidden="true" />
       <div>
         <strong>
           {forbidden
             ? "Access is restricted"
-            : "We couldn’t load this information"}
+            : "Couldn’t load this information"}
         </strong>
         <p>
           {error instanceof Error
             ? error.message
-            : "Please check your connection and try again."}
+            : "Check your connection and try again."}
         </p>
         {retry && (
           <Button icon={<RefreshCw size={15} />} onClick={retry}>
@@ -65,7 +64,7 @@ export function ErrorState({
   );
 }
 export function Loading({
-  label = "Loading your workspace…",
+  label = "Loading…",
 }: {
   label?: string;
 }) {
@@ -81,16 +80,13 @@ export function Empty({
   action,
 }: {
   title: string;
-  description: string;
+  description?: string;
   action?: ReactNode;
 }) {
   return (
     <div className="empty-state">
-      <div className="empty-icon">
-        <Circle size={25} />
-      </div>
-      <h3>{title}</h3>
-      <p>{description}</p>
+      <h2>{title}</h2>
+      {description ? <p>{description}</p> : null}
       {action}
     </div>
   );
@@ -110,7 +106,7 @@ export function Status({ value }: { value: string }) {
         : "neutral";
   return (
     <span className={`status status-${tone}`}>
-      <span className="status-dot" />
+      <span className="status-dot" aria-hidden="true" />
       {humanize(value)}
     </span>
   );
@@ -125,8 +121,8 @@ export function Metric({
 }: {
   label: string;
   value: ReactNode;
-  note: string;
-  icon: ReactNode;
+  note?: string;
+  icon?: ReactNode;
   tone?: string;
   indicator?: { label: string; tone?: "green" | "amber" | "red" | "neutral" };
 }) {
@@ -134,17 +130,17 @@ export function Metric({
     <article className="metric">
       <div className="metric-top">
         <span>{label}</span>
-        <span className={`metric-icon ${tone}`}>{icon}</span>
+        {icon ? <span className={`metric-icon ${tone}`} aria-hidden="true">{icon}</span> : null}
       </div>
       <strong className="metric-value">{value}</strong>
-      <div className="metric-note">
+      {(note || indicator) ? <div className="metric-note">
         <span>{note}</span>
         {indicator && (
           <span className={`metric-indicator ${indicator.tone ?? "neutral"}`}>
             {indicator.label}
           </span>
         )}
-      </div>
+      </div> : null}
     </article>
   );
 }
@@ -155,7 +151,7 @@ export function Panel({
   action,
   className = "",
 }: {
-  title: string;
+  title?: string;
   description?: string;
   children: ReactNode;
   action?: ReactNode;
@@ -163,13 +159,11 @@ export function Panel({
 }) {
   return (
     <section className={`panel ${className}`}>
-      <div className="panel-heading">
-        <div>
-          <h2>{title}</h2>
+      {(title || description || action) ? <header className="panel-heading">
+          {title ? <h2>{title}</h2> : null}
           {description && <p>{description}</p>}
-        </div>
         {action}
-      </div>
+      </header> : null}
       {children}
     </section>
   );
@@ -186,7 +180,7 @@ export function InlineMessage({
       className={`inline-message ${success ? "positive" : ""}`}
       role={success ? "status" : "alert"}
     >
-      {success ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
+      {success ? <CheckCircle2 size={17} aria-hidden="true" /> : <AlertCircle size={17} aria-hidden="true" />}
       <span>{children}</span>
     </div>
   );
@@ -201,14 +195,14 @@ export function TextLink({
   return (
     <button className="text-link" onClick={onClick}>
       {children}
-      <ArrowUpRight size={14} />
+      <ArrowUpRight size={14} aria-hidden="true" />
     </button>
   );
 }
 export function Freshness({ value }: { value?: string | null }) {
   return (
     <span className="freshness">
-      <Clock3 size={13} />
+      <Clock3 size={13} aria-hidden="true" />
       {value
         ? `Updated ${new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
         : "Awaiting ingestion"}

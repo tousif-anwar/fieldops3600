@@ -22,21 +22,15 @@ export function CustomerServiceDetails({ order }: { order: WorkOrder }) {
   });
   if (!order.customerId)
     return (
-      <Panel
-        title="Customer reference"
-        description="This order uses its recorded customer and address snapshot."
-      >
+      <Panel title="Customer reference">
         <p className="customer-note">
           {order.unregisteredCustomerReason ??
-            "Legacy order created before the customer registry. No identity has been inferred."}
+            "Legacy order without a customer registry reference."}
         </p>
       </Panel>
     );
   return (
-    <Panel
-      title="Customer and service location"
-      description="Current registry details are scoped to this work order. The original order snapshot remains above."
-    >
+    <Panel title="Customer and service location">
       {query.isPending ? (
         <Loading />
       ) : query.isError ? (
@@ -82,7 +76,7 @@ export function CustomerServiceDetails({ order }: { order: WorkOrder }) {
           ))}
           <p>
             Preferred communication: {query.data.preferredChannel}. Contact
-            details alone do not establish communication consent.
+            requires recorded consent.
           </p>
         </div>
       )}

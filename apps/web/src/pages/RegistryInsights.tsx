@@ -57,9 +57,7 @@ export function RegistryInsights() {
   return (
     <>
       <PageHeader
-        eyebrow="WAREHOUSE REPORTING"
         title="Customer and asset insights"
-        description="Current registry counts from persisted, team-scoped analytical projections. No names, contact values, addresses, serial numbers or QR identities enter these reports."
         actions={
           <Button
             onClick={() => {
@@ -74,7 +72,7 @@ export function RegistryInsights() {
       <div className="detail-grid">
         <Panel
           title="Customer registry"
-          description="One current record per registered customer. Consent measures count contacts, not customers."
+          description="Consent counts refer to contacts, not customers."
         >
           {customers.isPending ? (
             <Loading />
@@ -124,7 +122,7 @@ export function RegistryInsights() {
         </Panel>
         <Panel
           title="Equipment registry"
-          description="One current record per registered asset. Warranty dates are recorded values, not warranty claim approvals."
+          description="Warranty dates do not confirm claim coverage."
         >
           {assets.isPending ? (
             <Loading />
@@ -168,19 +166,10 @@ export function RegistryInsights() {
           )}
         </Panel>
       </div>
-      <Panel
-        title="Data and history boundaries"
-        description="Operational events feed the warehouse asynchronously."
-      >
-        <p className="customer-note">
-          Counts may lag an accepted operational command. Customer
-          source-version snapshots preserve the attributes used by linked
-          orders; the customer registry is not described as SCD Type 2. Existing
-          technician SCD Type 2 remains a separate tested dimension. Legacy
-          orders retain an unresolved customer reference rather than a guessed
-          identity.
-        </p>
-      </Panel>
+      <p className="customer-note">
+        Counts may lag operational changes. Unlinked legacy orders retain
+        unresolved references.
+      </p>
     </>
   );
 }

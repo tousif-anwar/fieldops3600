@@ -33,10 +33,13 @@ import {
   Panel,
   Status,
 } from "../components/common";
+import { ListPagination, pageSlice } from "../components/ListPagination";
 import { ServiceReport } from "../components/ServiceReport";
 
 export function CustomerPortal() {
   const qc = useQueryClient();
+  const [requestPage, setRequestPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
   const account = useQuery({
     queryKey: ["portal-account"],
     queryFn: () => api<PortalAccount>("/api/customer-portal/account"),
@@ -110,6 +113,14 @@ export function CustomerPortal() {
         asset.serviceLocationId === serviceLocationId &&
         asset.status === "Active",
     ) ?? [];
+  const requestRows = pageSlice(requests.data ?? [], requestPage);
+  const historyRows = pageSlice(orders.data ?? [], historyPage);
+  const orderById = new Map(
+    (orders.data ?? []).map((order) => [order.id, order]),
+  );
+  const locationById = new Map(
+    (account.data?.locations ?? []).map((location) => [location.id, location]),
+  );
   const confirmed = (bookings.data ?? [])
     .filter((booking) => booking.status === "Confirmed")
     .sort((a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc));
@@ -122,11 +133,12 @@ export function CustomerPortal() {
   return (
     <>
       <PageHeader
-        eyebrow="CUSTOMER SERVICE"
         title={account.data?.displayName ?? "Customer portal"}
-        description="Request service and follow your confirmed appointments and service history."
         actions={
-          <Button icon={<RefreshCw size={16} />} onClick={refresh}>
+          <Button
+            icon={<RefreshCw aria-hidden="true" size={16} />}
+            onClick={refresh}
+          >
             Refresh your service
           </Button>
         }
@@ -134,7 +146,7 @@ export function CustomerPortal() {
       <div className="portal-layout">
         <Panel
           title="Request service"
-          description="Dispatch reviews your request before scheduling. Submitting does not reserve an appointment."
+          description="Requests require review. Submission does not reserve an appointment."
         >
           <form
             className="form-body"
@@ -145,6 +157,7 @@ export function CustomerPortal() {
           >
             <Field label="Service location" required>
               <Select
+                name="service-location"
                 required
                 value={serviceLocationId}
                 disabled={submit.isPending || account.data?.status !== "Active"}
@@ -173,6 +186,7 @@ export function CustomerPortal() {
               hint="Choose registered equipment, or describe the unit in your request."
             >
               <Select
+                name="equipment"
                 value={assetId}
                 disabled={
                   !serviceLocationId ||
@@ -204,6 +218,7 @@ export function CustomerPortal() {
             <div className="form-two">
               <Field label="Service type">
                 <Select
+                  name="service-type"
                   value={serviceType}
                   disabled={submit.isPending}
                   onChange={(event) => {
@@ -229,6 +244,7 @@ export function CustomerPortal() {
               </Field>
               <Field label="Urgency">
                 <Select
+                  name="urgency"
                   value={urgency}
                   disabled={submit.isPending}
                   onChange={(event) => {
@@ -253,6 +269,8 @@ export function CustomerPortal() {
             )}
             <Field label="Request title" required>
               <Input
+                name="request-title"
+                autoComplete="off"
                 required
                 minLength={5}
                 maxLength={160}
@@ -271,6 +289,8 @@ export function CustomerPortal() {
               hint="Include symptoms, access requirements, and when the issue started."
             >
               <Textarea
+                name="describe-the-problem"
+                autoComplete="off"
                 required
                 minLength={10}
                 maxLength={4000}
@@ -298,7 +318,7 @@ export function CustomerPortal() {
             <Button
               appearance="primary"
               type="submit"
-              icon={<ClipboardList size={16} />}
+              icon={<ClipboardList aria-hidden="true" size={16} />}
               disabled={
                 submit.isPending ||
                 !serviceLocationId ||
@@ -328,23 +348,22 @@ export function CustomerPortal() {
             ) : confirmed.length === 0 ? (
               <Empty
                 title="No confirmed appointment"
-                description="A request or assignment offer becomes an appointment only when scheduling is committed."
+                description="Dispatch will confirm your appointment after review."
               />
             ) : (
               <div className="portal-records">
                 {confirmed.map((booking) => {
-                  const order = orders.data?.find(
-                    (item) => item.id === booking.workOrderId,
-                  );
+                  const order = orderById.get(booking.workOrderId);
                   return (
                     <article className="portal-record" key={booking.id}>
                       <strong>
-                        <CalendarDays size={16} /> {dateTime(booking.startUtc)}
+                        <CalendarDays aria-hidden="true" size={16} />{" "}
+                        {dateTime(booking.startUtc)}
                       </strong>
                       <p>Until {dateTime(booking.endUtc)}</p>
                       <h3>{order?.title ?? "Service appointment"}</h3>
                       <p>
-                        <MapPin size={14} />{" "}
+                        <MapPin aria-hidden="true" size={14} />{" "}
                         {order?.siteAddress ??
                           "Your registered service location"}
                       </p>
@@ -361,10 +380,7 @@ export function CustomerPortal() {
               </div>
             )}
           </Panel>
-          <Panel
-            title="Registered equipment"
-            description="Equipment registered to your authorized service account."
-          >
+          <Panel title="Registered equipment">
             {equipment.isPending ? (
               <Loading />
             ) : equipment.isError ? (
@@ -375,23 +391,22 @@ export function CustomerPortal() {
             ) : !equipment.data?.length ? (
               <Empty
                 title="No equipment registered"
-                description="You can still request service and describe your equipment."
+                description="Describe your equipment when requesting service."
               />
             ) : (
               <div className="portal-records">
                 {equipment.data.map((asset) => (
                   <article className="portal-record" key={asset.id}>
                     <strong>
-                      <Wrench size={16} /> {asset.name}
+                      <Wrench aria-hidden="true" size={16} /> {asset.name}
                     </strong>
                     <p>
                       {asset.manufacturer} · {asset.model}
                     </p>
                     <small>Serial {asset.serialNumber}</small>
                     <p>
-                      {account.data?.locations.find(
-                        (location) => location.id === asset.serviceLocationId,
-                      )?.name ?? "Registered location"}
+                      {locationById.get(asset.serviceLocationId)?.name ??
+                        "Registered location"}
                     </p>
                     <Status value={asset.status} />
                   </article>
@@ -403,7 +418,7 @@ export function CustomerPortal() {
       </div>
       <Panel
         title="Your service requests"
-        description="Request decisions and linked work order progress refresh every 15 seconds."
+        description="Updated every 15 seconds."
       >
         {requests.isPending ? (
           <Loading />
@@ -415,14 +430,12 @@ export function CustomerPortal() {
         ) : !requests.data?.length ? (
           <Empty
             title="No service request yet"
-            description="Submit your first request using the form above."
+            description="Use the service request form to get started."
           />
         ) : (
           <div className="portal-records portal-record-grid">
-            {requests.data.map((request) => {
-              const order = orders.data?.find(
-                (item) => item.id === request.workOrderId,
-              );
+            {requestRows.items.map((request) => {
+              const order = orderById.get(request.workOrderId ?? "");
               return (
                 <article className="portal-record" key={request.id}>
                   <div className="portal-record-heading">
@@ -454,55 +467,66 @@ export function CustomerPortal() {
             })}
           </div>
         )}
+        {requests.isSuccess && (
+          <ListPagination
+            page={requestRows.page}
+            total={requests.data.length}
+            onChange={setRequestPage}
+            label="Customer requests"
+          />
+        )}
       </Panel>
-      <div className="dispatch-offers-section">
-        <Panel
-          title="Service history"
-          description="Work orders and completed service reports for your account."
-        >
-          {orders.isPending ? (
-            <Loading />
-          ) : orders.isError ? (
-            <ErrorState
-              error={orders.error}
-              retry={() => void orders.refetch()}
-            />
-          ) : !orders.data?.length ? (
-            <Empty
-              title="No service history"
-              description="A work order appears after your request is qualified."
-            />
-          ) : (
-            <div className="portal-records portal-record-grid">
-              {orders.data.map((order) => (
-                <article key={order.id} className="portal-record">
-                  <div className="portal-record-heading">
-                    <strong>{order.number}</strong>
-                    <Status value={order.status} />
-                  </div>
-                  <h3>{order.title}</h3>
-                  <p>{order.siteAddress}</p>
-                  <p>
-                    {order.completedAtUtc
-                      ? `Completed ${dateTime(order.completedAtUtc)}`
-                      : `Created ${dateTime(order.createdAtUtc)}`}
-                  </p>
-                  {order.status === "Completed" && (
-                    <Button
-                      onClick={() => {
-                        setReportOrderId(order.id);
-                        setReportOpen(true);
-                      }}
-                    >
-                      View service report
-                    </Button>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </Panel>
-      </div>
+      <Panel title="Service history">
+        {orders.isPending ? (
+          <Loading />
+        ) : orders.isError ? (
+          <ErrorState
+            error={orders.error}
+            retry={() => void orders.refetch()}
+          />
+        ) : !orders.data?.length ? (
+          <Empty
+            title="No service history"
+            description="A work order appears after your request is qualified."
+          />
+        ) : (
+          <div className="portal-records portal-record-grid">
+            {historyRows.items.map((order) => (
+              <article key={order.id} className="portal-record">
+                <div className="portal-record-heading">
+                  <strong>{order.number}</strong>
+                  <Status value={order.status} />
+                </div>
+                <h3>{order.title}</h3>
+                <p>{order.siteAddress}</p>
+                <p>
+                  {order.completedAtUtc
+                    ? `Completed ${dateTime(order.completedAtUtc)}`
+                    : `Created ${dateTime(order.createdAtUtc)}`}
+                </p>
+                {order.status === "Completed" && (
+                  <Button
+                    onClick={() => {
+                      setReportOrderId(order.id);
+                      setReportOpen(true);
+                    }}
+                  >
+                    View service report
+                  </Button>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+        {orders.isSuccess && (
+          <ListPagination
+            page={historyRows.page}
+            total={orders.data.length}
+            onChange={setHistoryPage}
+            label="Service history"
+          />
+        )}
+      </Panel>
       {reportOrderId && (
         <ServiceReport
           workOrderId={reportOrderId}

@@ -65,7 +65,7 @@ export function TraceEvidence({
               target="_blank"
               rel="noreferrer"
             >
-              Open trace in Jaeger <ArrowUpRight size={14} />
+              Open trace in Jaeger <ArrowUpRight aria-hidden="true" size={14} />
             </a>
           ) : (
             <Button

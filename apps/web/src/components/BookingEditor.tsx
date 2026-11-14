@@ -69,7 +69,6 @@ export function BookingEditor({
       }}
     >
       <DialogSurface className="modal" aria-labelledby="booking-edit-title">
-        <span className="eyebrow">AUDITED DISPATCH CHANGE</span>
         <h2 id="booking-edit-title">
           {action === "cancel"
             ? "Cancel this booking?"
@@ -92,6 +91,8 @@ export function BookingEditor({
             <>
               <Field label="New start (your local time)" required>
                 <Input
+                  name="new-start-your-local-time"
+                  autoComplete="off"
                   required
                   type="datetime-local"
                   value={start}
@@ -100,6 +101,7 @@ export function BookingEditor({
               </Field>
               <Field label="Duration">
                 <Select
+                  name="duration"
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                 >
@@ -114,6 +116,8 @@ export function BookingEditor({
           )}
           <Field label="Reason" required>
             <Input
+              name="reason"
+              autoComplete="off"
               required
               minLength={3}
               maxLength={240}

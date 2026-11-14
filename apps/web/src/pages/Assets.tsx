@@ -65,16 +65,14 @@ export function Assets() {
   return (
     <>
       <PageHeader
-        eyebrow="EQUIPMENT REGISTRY"
         title="Assets"
-        description="Registered equipment, hierarchy, warranty and installation history within your authorized team."
         actions={
           canWrite && (
             <Link
               className="button-link primary"
               to={`/assets/new${customerId ? `?customerId=${customerId}` : ""}`}
             >
-              <Plus size={16} />
+              <Plus aria-hidden="true" size={16} />
               Register asset
             </Link>
           )
@@ -85,19 +83,21 @@ export function Assets() {
         description="Serial numbers and QR identities stay on authorized operational paths."
       >
         <div className="filter-bar">
-          <div className="search-field">
-            <Search size={17} />
-            <input
-              aria-label="Search assets"
-              placeholder="Search name, serial, manufacturer or model…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
+          <Input
+            name="search-assets"
+            autoComplete="off"
+            className="search-field"
+            contentBefore={<Search size={17} aria-hidden="true" />}
+            aria-label="Search assets"
+            placeholder="Search name, serial, manufacturer or model…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
           <Select
+            name="asset-status"
             aria-label="Asset status"
             value={status}
             onChange={(e) => {
@@ -111,6 +111,7 @@ export function Assets() {
             <option>Retired</option>
           </Select>
           <Select
+            name="asset-type"
             aria-label="Asset type"
             value={assetType}
             onChange={(e) => {
@@ -124,6 +125,7 @@ export function Assets() {
             ))}
           </Select>
           <Select
+            name="sort-assets"
             aria-label="Sort assets"
             value={sort}
             onChange={(e) => {
@@ -148,7 +150,12 @@ export function Assets() {
           />
         ) : (
           <>
-            <div className="table-scroll">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Registered equipment"
+              className="table-scroll"
+            >
               <table className="data-table">
                 <thead>
                   <tr>
@@ -339,14 +346,10 @@ function AssetForm({
         className="back-link"
         to={initial ? `/assets/${initial.id}` : "/assets"}
       >
-        <ArrowLeft size={15} />
+        <ArrowLeft aria-hidden="true" size={15} />
         {initial ? "Asset details" : "Assets"}
       </Link>
-      <PageHeader
-        eyebrow="EQUIPMENT RECORD"
-        title={initial ? "Edit asset" : "Register asset"}
-        description="Save classification, installation, warranty and customer location as one versioned change."
-      />
+      <PageHeader title={initial ? "Edit asset" : "Register asset"} />
       <form onSubmit={submit}>
         <Panel
           title="Equipment identity"
@@ -355,6 +358,8 @@ function AssetForm({
           <div className="form-body">
             <Field label="Asset name" required>
               <Input
+                name="asset-name"
+                autoComplete="off"
                 required
                 minLength={2}
                 maxLength={100}
@@ -365,6 +370,7 @@ function AssetForm({
             <div className="form-two">
               <Field label="Asset type">
                 <Select
+                  name="asset-type"
                   value={value.assetType}
                   onChange={(e) =>
                     field("assetType", e.target.value as AssetType)
@@ -377,6 +383,7 @@ function AssetForm({
               </Field>
               <Field label="Criticality">
                 <Select
+                  name="criticality"
                   value={value.criticality}
                   onChange={(e) =>
                     field("criticality", e.target.value as AssetCriticality)
@@ -391,6 +398,8 @@ function AssetForm({
             <div className="form-two">
               <Field label="Manufacturer" required>
                 <Input
+                  name="manufacturer"
+                  autoComplete="off"
                   required
                   minLength={2}
                   maxLength={100}
@@ -400,6 +409,8 @@ function AssetForm({
               </Field>
               <Field label="Model" required>
                 <Input
+                  name="model"
+                  autoComplete="off"
                   required
                   maxLength={100}
                   value={value.model}
@@ -410,6 +421,8 @@ function AssetForm({
             <div className="form-two">
               <Field label="Serial number" required>
                 <Input
+                  name="serial-number"
+                  autoComplete="off"
                   required
                   minLength={2}
                   maxLength={64}
@@ -420,6 +433,8 @@ function AssetForm({
               </Field>
               <Field label="QR identity">
                 <Input
+                  name="qr-identity"
+                  autoComplete="off"
                   maxLength={128}
                   value={value.qrCode ?? ""}
                   onChange={(_, d) => field("qrCode", d.value)}
@@ -429,6 +444,8 @@ function AssetForm({
             <div className="form-two">
               <Field label="Installed on" required>
                 <Input
+                  name="installed-on"
+                  autoComplete="off"
                   type="date"
                   required
                   value={localDate(value.installedAtUtc)}
@@ -437,6 +454,8 @@ function AssetForm({
               </Field>
               <Field label="Warranty ends">
                 <Input
+                  name="warranty-ends"
+                  autoComplete="off"
                   type="date"
                   value={
                     value.warrantyEndUtc ? localDate(value.warrantyEndUtc) : ""
@@ -456,6 +475,7 @@ function AssetForm({
           <div className="form-body">
             <Field label="Customer" required>
               <Select
+                name="customer"
                 required
                 value={value.customerId}
                 onChange={(e) => chooseCustomer(e.target.value)}
@@ -470,6 +490,7 @@ function AssetForm({
             </Field>
             <Field label="Service location" required>
               <Select
+                name="service-location"
                 required
                 value={value.serviceLocationId}
                 onChange={(e) => field("serviceLocationId", e.target.value)}
@@ -489,6 +510,7 @@ function AssetForm({
               hint="The parent must belong to the same customer; hierarchies are limited to five levels."
             >
               <Select
+                name="parent-equipment"
                 value={value.parentAssetId ?? ""}
                 onChange={(e) => field("parentAssetId", e.target.value || null)}
               >
@@ -508,6 +530,7 @@ function AssetForm({
                 hint="Retiring equipment is terminal and requires no active child equipment."
               >
                 <Select
+                  name="asset-status"
                   value={value.status}
                   onChange={(e) =>
                     field("status", e.target.value as AssetInput["status"])
@@ -575,11 +598,10 @@ export function AssetDetails() {
   return (
     <>
       <Link className="back-link" to="/assets">
-        <ArrowLeft size={15} />
+        <ArrowLeft aria-hidden="true" size={15} />
         Assets
       </Link>
       <PageHeader
-        eyebrow="EQUIPMENT RECORD"
         title={a.name}
         description={assetIdentity(a)}
         actions={
@@ -616,11 +638,13 @@ export function AssetDetails() {
             </p>
           )}
         </Panel>
-        <Panel
-          title="Installation history"
-          description="Append-only location changes preserve where equipment was serviced."
-        >
-          <div className="table-scroll">
+        <Panel title="Installation history">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Installation history"
+            className="table-scroll"
+          >
             <table className="data-table">
               <thead>
                 <tr>
@@ -642,10 +666,7 @@ export function AssetDetails() {
           </div>
         </Panel>
       </div>
-      <Panel
-        title="Equipment service history"
-        description="Work orders explicitly linked to this registered asset."
-      >
+      <Panel title="Equipment service history">
         {orders.isPending ? (
           <Loading />
         ) : orders.isError ? (
@@ -655,11 +676,16 @@ export function AssetDetails() {
           />
         ) : orders.data.items.length === 0 ? (
           <p className="customer-note">
-            No work orders are linked to this equipment yet. Link an asset when
-            creating or editing a work order.
+            No linked work orders. Link this asset when creating or editing an
+            order.
           </p>
         ) : (
-          <div className="table-scroll">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Equipment service history"
+            className="table-scroll"
+          >
             <table className="data-table">
               <thead>
                 <tr>
@@ -687,10 +713,7 @@ export function AssetDetails() {
           </div>
         )}
       </Panel>
-      <Panel
-        title="Change history"
-        description="Recorded actor, version and changed fields for equipment changes."
-      >
+      <Panel title="Change history">
         {changes.isPending ? (
           <Loading />
         ) : changes.isError ? (
@@ -699,7 +722,12 @@ export function AssetDetails() {
             retry={() => void changes.refetch()}
           />
         ) : (
-          <div className="table-scroll">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Change history"
+            className="table-scroll"
+          >
             <table className="data-table">
               <thead>
                 <tr>

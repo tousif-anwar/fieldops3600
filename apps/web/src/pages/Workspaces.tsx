@@ -8,11 +8,11 @@ import {
   History,
   LayoutGrid,
   Settings2,
-  ShieldCheck,
   TriangleAlert,
   Wrench,
 } from "lucide-react";
 import { useAuth } from "../auth";
+import { PageHeader } from "../components/common";
 import type { Role } from "../types";
 import { primaryRole, roleLabel, teamLabel } from "../home";
 
@@ -32,7 +32,7 @@ const workspaces: Workspace[] = [
     description: "Qualify customer intake into an actionable work order.",
     group: "Operations",
     roles: ["Dispatcher", "Supervisor", "OperationsManager", "Administrator"],
-    icon: <ClipboardList size={22} />,
+    icon: <ClipboardList aria-hidden="true" size={22} />,
   },
   {
     to: "/customers",
@@ -41,7 +41,7 @@ const workspaces: Workspace[] = [
       "Manage customers, service locations, contacts and consent history.",
     group: "Operations",
     roles: ["Dispatcher", "Supervisor", "OperationsManager", "Administrator"],
-    icon: <Building2 size={22} />,
+    icon: <Building2 aria-hidden="true" size={22} />,
   },
   {
     to: "/work-orders",
@@ -56,7 +56,7 @@ const workspaces: Workspace[] = [
       "OperationsManager",
       "Administrator",
     ],
-    icon: <ClipboardList size={22} />,
+    icon: <ClipboardList aria-hidden="true" size={22} />,
   },
   {
     to: "/schedule",
@@ -64,7 +64,7 @@ const workspaces: Workspace[] = [
     description: "Plan appointments and match qualified technicians to work.",
     group: "Operations",
     roles: ["Technician", "Dispatcher", "Supervisor", "OperationsManager"],
-    icon: <CalendarDays size={22} />,
+    icon: <CalendarDays aria-hidden="true" size={22} />,
   },
   {
     to: "/my-jobs",
@@ -72,7 +72,7 @@ const workspaces: Workspace[] = [
     description: "Open assigned jobs and complete the guided service stages.",
     group: "Operations",
     roles: ["Technician"],
-    icon: <Wrench size={22} />,
+    icon: <Wrench aria-hidden="true" size={22} />,
   },
   {
     to: "/my-jobs",
@@ -81,7 +81,7 @@ const workspaces: Workspace[] = [
       "Review assigned service workflows and completed stage history.",
     group: "Monitoring",
     roles: ["Supervisor", "OperationsManager"],
-    icon: <History size={22} />,
+    icon: <History aria-hidden="true" size={22} />,
   },
   {
     to: "/supervisor",
@@ -90,7 +90,7 @@ const workspaces: Workspace[] = [
       "Review at-risk work, overdue stages, and recorded interventions.",
     group: "Monitoring",
     roles: ["Supervisor", "OperationsManager"],
-    icon: <TriangleAlert size={22} />,
+    icon: <TriangleAlert aria-hidden="true" size={22} />,
   },
   {
     to: "/replay",
@@ -99,7 +99,7 @@ const workspaces: Workspace[] = [
       "Investigate the recorded event history without changing operations.",
     group: "Monitoring",
     roles: ["Supervisor", "OperationsManager", "Administrator"],
-    icon: <History size={22} />,
+    icon: <History aria-hidden="true" size={22} />,
   },
   {
     to: "/analytics",
@@ -108,7 +108,7 @@ const workspaces: Workspace[] = [
       "Explore validated service performance, capacity, and exports.",
     group: "Insights",
     roles: ["Analyst", "Supervisor", "OperationsManager", "Administrator"],
-    icon: <BarChart3 size={22} />,
+    icon: <BarChart3 aria-hidden="true" size={22} />,
   },
   {
     to: "/administration",
@@ -117,7 +117,7 @@ const workspaces: Workspace[] = [
       "Review identity access, workflow standards, and audit boundaries.",
     group: "Administration",
     roles: ["Administrator"],
-    icon: <Settings2 size={22} />,
+    icon: <Settings2 aria-hidden="true" size={22} />,
   },
 ];
 
@@ -130,24 +130,10 @@ export function Workspaces() {
   const groups = [...new Set(visible.map((workspace) => workspace.group))];
   return (
     <div className="workspaces-page">
-      <header className="page-heading workspaces-heading">
-        <div>
-          <h1>Workspaces</h1>
-          <p>
-            The areas available to {roleLabel(role).toLowerCase()} in{" "}
-            {teamLabel(
-              String(
-                auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
-              ),
-            )}
-            .
-          </p>
-        </div>
-        <span className="workspace-scope">
-          <ShieldCheck size={16} aria-hidden="true" />
-          Access follows your signed-in role
-        </span>
-      </header>
+      <PageHeader
+        title="Workspaces"
+        description={`${roleLabel(role)} � ${teamLabel(String(auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? ""))}`}
+      />
       {groups.map((group) => (
         <section
           className="workspace-group"

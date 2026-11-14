@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { OverlayDrawer } from "@fluentui/react-components";
 import {
   Link,
   NavLink,
@@ -26,7 +27,6 @@ import {
   Package,
   Search,
   Settings2,
-  ShieldCheck,
   TriangleAlert,
   Wifi,
   WifiOff,
@@ -180,12 +180,23 @@ const extraRoutes: { match: RegExp; label: string; to?: string }[] = [
   { match: /^\/auth\//, label: "Sign in" },
 ];
 
+function subscribeCompactNavigation(listener: () => void) {
+  const query = window.matchMedia("(max-width: 760px)");
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+
+function compactNavigationSnapshot() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
 export function Shell() {
   const auth = useAuth();
   const customerSurface = auth.roles.includes("Customer");
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const compact = useSyncExternalStore(subscribeCompactNavigation, compactNavigationSnapshot, () => false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem("fieldops.navigation.collapsed") === "1";
@@ -267,14 +278,6 @@ export function Shell() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
-  useEffect(() => setOpen(false), [location.pathname]);
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
   useEffect(() => {
     try {
@@ -369,34 +372,24 @@ export function Shell() {
     setCollapsed((value) => !value);
   }
 
-  return (
-    <div className={`app-layout ${collapsed ? "sidebar-collapsed" : ""}`}>
-      <a className="skip-link" href="#main">
-        Skip to main content
-      </a>
-      {open && (
-        <div
-          className="nav-scrim"
-          aria-hidden="true"
-          onClick={() => setOpen(false)}
-        />
-      )}
+  const navigation = (
       <nav
+        id="primary-navigation"
         aria-label="Main navigation"
-        className={`sidebar ${open ? "sidebar-open" : ""}`}
+        className="sidebar"
       >
         <div className="sidebar-brand-row">
           <Link
             to={customerSurface ? "/portal" : "/"}
             className="brand"
             aria-label="FieldOps 360 home"
+            onClick={() => setOpen(false)}
           >
             <span className="brand-symbol">
               <Compass size={23} aria-hidden="true" />
             </span>
             <span className="brand-copy">
               FieldOps <b>360</b>
-              <small>Service operations</small>
             </span>
           </Link>
           <button
@@ -404,21 +397,16 @@ export function Shell() {
             aria-label="Close navigation"
             onClick={() => setOpen(false)}
           >
-            <X size={20} />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
         <div
           className="workspace-switch"
           title={`${teamLabel(teamId)} workspace`}
         >
-          <span className="workspace-avatar">
-            <Building2 size={18} aria-hidden="true" />
-          </span>
+          <Building2 size={18} aria-hidden="true" />
           <span className="workspace-switch-copy">
             {customerSurface ? "Your service account" : teamLabel(teamId)}
-            <small>
-              {customerSurface ? "Customer service" : "Service operations"}
-            </small>
           </span>
         </div>
         <div className="primary-navigation">
@@ -431,6 +419,8 @@ export function Shell() {
                   to={to}
                   end={end}
                   title={collapsed ? label : undefined}
+                  aria-label={collapsed && !compact ? label : undefined}
+                  onClick={() => setOpen(false)}
                   className={({ isActive }) =>
                     `nav-item ${isActive ? "active" : ""}`
                   }
@@ -450,6 +440,8 @@ export function Shell() {
                   `nav-item ${isActive ? "active" : ""}`
                 }
                 title={collapsed ? "All workspaces" : undefined}
+                aria-label={collapsed && !compact ? "All workspaces" : undefined}
+                onClick={() => setOpen(false)}
               >
                 <LayoutGrid size={19} aria-hidden="true" />
                 <span>All workspaces</span>
@@ -464,24 +456,36 @@ export function Shell() {
             aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
             title={collapsed ? "Expand navigation" : "Collapse navigation"}
           >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            {collapsed ? <ChevronRight size={18} aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
             <span>{collapsed ? "Expand" : "Collapse navigation"}</span>
           </button>
-          <span className="sidebar-security">
-            <ShieldCheck size={15} aria-hidden="true" />
-            <span>Server-authorized access</span>
-          </span>
         </div>
       </nav>
+  );
+  return (
+    <div className={`app-layout ${collapsed && !compact ? "sidebar-collapsed" : ""}`}>
+      <a className="skip-link" href="#main">Skip to main content</a>
+      {compact ? (
+        <OverlayDrawer
+          className="navigation-drawer"
+          position="start"
+          open={open}
+          onOpenChange={(_, data) => setOpen(data.open)}
+        >
+          {navigation}
+        </OverlayDrawer>
+      ) : navigation}
       <div className="workspace-main">
         <header className="topbar">
           <div className="topbar-left">
             <button
               className="mobile-menu icon-button"
               aria-label="Open navigation"
+              aria-expanded={open}
+              aria-controls="primary-navigation"
               onClick={() => setOpen(true)}
             >
-              <Menu size={21} />
+              <Menu size={21} aria-hidden="true" />
             </button>
             <nav className="breadcrumb" aria-label="Breadcrumb">
               {crumbs.map((crumb, index) => {
@@ -518,15 +522,13 @@ export function Shell() {
                 <Search size={16} aria-hidden="true" />
                 <input
                   value={query}
+                  name="work-order-search"
+                  autoComplete="off"
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search work orders"
+                  placeholder="Search work orders…"
                   aria-label="Search work orders"
                 />
-                <kbd>Enter</kbd>
               </form>
-            )}
-            {import.meta.env.DEV && (
-              <span className="environment-badge">Local</span>
             )}
             <span
               className={`connection ${!online ? "offline" : ""}`}
@@ -538,8 +540,8 @@ export function Shell() {
                   : "Offline"
               }
             >
-              {online ? <Wifi size={14} /> : <WifiOff size={14} />}
-              <span>{online ? (live ? "Live" : "Polling") : "Offline"}</span>
+              {online ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}
+              <span>{online ? (live ? "Live" : "Online") : "Offline"}</span>
             </span>
             {notificationsAllowed && (
               <NavLink
@@ -547,7 +549,7 @@ export function Shell() {
                 className="notification-button icon-button"
                 aria-label={`Notifications, ${unread} unread`}
               >
-                <Bell size={20} />
+                <Bell size={20} aria-hidden="true" />
                 {unread > 0 && <span>{unread > 9 ? "9+" : unread}</span>}
               </NavLink>
             )}
@@ -598,21 +600,13 @@ export function Shell() {
         </header>
         {!online && (
           <div className="offline-banner" role="status">
-            <WifiOff size={16} />
-            You’re offline. Saved drafts remain on this device. Reconnect before
-            submitting.
+            <WifiOff size={16} aria-hidden="true" />
+            Offline. Drafts are saved on this device. Reconnect to submit.
           </div>
         )}
-        <main id="main" className="page-content">
+        <main id="main" className="page-content" tabIndex={-1}>
           <Outlet />
         </main>
-        <footer className="workspace-footer">
-          <span>FieldOps 360 · Service operations</span>
-          <span>
-            Server-authorized workflows{" "}
-            <ShieldCheck size={13} aria-hidden="true" />
-          </span>
-        </footer>
       </div>
     </div>
   );

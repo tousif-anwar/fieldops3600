@@ -4,12 +4,10 @@ import { useSearchParams } from "react-router-dom";
 import { Button, Field, Input, Select } from "@fluentui/react-components";
 import {
   ArrowDownToLine,
-  ArrowUpRight,
   Braces,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock3,
   Filter,
   History,
   Pause,
@@ -39,7 +37,7 @@ import {
   reconstruct,
   type ReplayFilters,
 } from "../replay";
-import type { Replay, ReplayEvent, WorkOrder } from "../types";
+import type { Replay, WorkOrder } from "../types";
 import { TraceEvidence } from "../components/TraceEvidence";
 import { DeliveryEvidence } from "../components/DeliveryEvidence";
 
@@ -126,25 +124,21 @@ export function ReplayPage() {
   return (
     <>
       <PageHeader
-        eyebrow="INVESTIGATION WORKSPACE"
         title="Operational replay"
-        description="Reconstruct recorded history and follow an incident across services without changing operations."
         actions={
           <span className="read-only-tag">
-            <ShieldCheck size={15} />
+            <ShieldCheck aria-hidden="true" size={15} />
             Read-only historical playback
           </span>
         }
       />
       <div className="replay-search">
         <span className="replay-search-icon">
-          <History size={25} />
+          <History aria-hidden="true" size={25} />
         </span>
         <div>
-          <strong>Find the operational story</strong>
-          <small>
-            Choose a work order to inspect its complete event history.
-          </small>
+          <strong>Work order history</strong>
+          <small>Select a work order.</small>
         </div>
         <form
           onSubmit={(e) => {
@@ -153,6 +147,7 @@ export function ReplayPage() {
           }}
         >
           <Select
+            name="select-work-order-for-investigation"
             aria-label="Select work order for investigation"
             value={draftId}
             onChange={(e) => setDraftId(e.target.value)}
@@ -168,54 +163,17 @@ export function ReplayPage() {
             appearance="primary"
             type="submit"
             disabled={!draftId}
-            icon={<Search size={16} />}
+            icon={<Search aria-hidden="true" size={16} />}
           >
             Investigate
           </Button>
         </form>
       </div>
       {!workOrderId ? (
-        <Panel title="A complete history. A clearer answer.">
-          <div className="replay-intro">
-            <div className="replay-intro-line">
-              <span>Created</span>
-              <i />
-              <span>Assigned</span>
-              <i />
-              <span>Service</span>
-              <i />
-              <span>Intervention</span>
-              <i />
-              <span>Completed</span>
-            </div>
-            <p>
-              Select a work order to see business events, SLA milestones,
-              delivery attempts, and supervisor actions in one connected
-              timeline.
-            </p>
-            <div className="replay-principles">
-              <span>
-                <Clock3 size={19} />
-                <strong>Time with context</strong>
-                <small>
-                  Occurrence, arrival, and processing stay distinct.
-                </small>
-              </span>
-              <span>
-                <ShieldCheck size={19} />
-                <strong>Evidence preserved</strong>
-                <small>
-                  Playback reads history without changing operations.
-                </small>
-              </span>
-              <span>
-                <Braces size={19} />
-                <strong>Trace the details</strong>
-                <small>Correlate events with service and trace metadata.</small>
-              </span>
-            </div>
-          </div>
-        </Panel>
+        <Empty
+          title="Select a work order"
+          description="View its event history and SLA records."
+        />
       ) : replay.isPending ? (
         <Loading label="Reconstructing the recorded history…" />
       ) : replay.isError ? (
@@ -248,13 +206,13 @@ export function ReplayPage() {
             </div>
             <div className="export-actions">
               <Button
-                icon={<ArrowDownToLine size={15} />}
+                icon={<ArrowDownToLine aria-hidden="true" size={15} />}
                 onClick={() => void exportFile("csv")}
               >
                 CSV
               </Button>
               <Button
-                icon={<ArrowDownToLine size={15} />}
+                icon={<ArrowDownToLine aria-hidden="true" size={15} />}
                 onClick={() => void exportFile("pdf")}
               >
                 Incident PDF
@@ -283,7 +241,7 @@ export function ReplayPage() {
                 <div className="playback-controls">
                   <Button
                     appearance="subtle"
-                    icon={<SkipBack size={17} />}
+                    icon={<SkipBack aria-hidden="true" size={17} />}
                     aria-label="Jump to first event"
                     onClick={() => {
                       setIndex(0);
@@ -292,7 +250,7 @@ export function ReplayPage() {
                   />
                   <Button
                     appearance="subtle"
-                    icon={<ChevronLeft size={18} />}
+                    icon={<ChevronLeft aria-hidden="true" size={18} />}
                     aria-label="Previous event"
                     disabled={index <= 0}
                     onClick={() => {
@@ -302,7 +260,13 @@ export function ReplayPage() {
                   />
                   <Button
                     appearance="primary"
-                    icon={playing ? <Pause size={17} /> : <Play size={17} />}
+                    icon={
+                      playing ? (
+                        <Pause aria-hidden="true" size={17} />
+                      ) : (
+                        <Play aria-hidden="true" size={17} />
+                      )
+                    }
                     onClick={() => {
                       if (index >= events.length - 1) setIndex(0);
                       setPlaying((p) => !p);
@@ -312,7 +276,7 @@ export function ReplayPage() {
                   </Button>
                   <Button
                     appearance="subtle"
-                    icon={<ChevronRight size={18} />}
+                    icon={<ChevronRight aria-hidden="true" size={18} />}
                     aria-label="Next event"
                     disabled={index >= events.length - 1}
                     onClick={() => {
@@ -321,6 +285,7 @@ export function ReplayPage() {
                     }}
                   />
                   <Select
+                    name="playback-speed"
                     aria-label="Playback speed"
                     value={speed}
                     onChange={(e) => setSpeed(e.target.value)}
@@ -336,7 +301,7 @@ export function ReplayPage() {
                   <div className="playback-jumps">
                     <Button
                       size="small"
-                      icon={<TriangleAlert size={14} />}
+                      icon={<TriangleAlert aria-hidden="true" size={14} />}
                       disabled={!events.some((e) => /Breach/.test(e.eventType))}
                       onClick={() => jump(/Breach/)}
                     >
@@ -356,6 +321,8 @@ export function ReplayPage() {
                   </div>
                 </div>
                 <input
+                  name="historical-event-position"
+                  autoComplete="off"
                   className="playback-range"
                   type="range"
                   min={0}
@@ -378,7 +345,7 @@ export function ReplayPage() {
                 aria-label="Reconstructed state at selected event"
               >
                 <span className="historical-label">
-                  <History size={16} />
+                  <History aria-hidden="true" size={16} />
                   STATE AT THIS MOMENT
                 </span>
                 <div>
@@ -405,7 +372,7 @@ export function ReplayPage() {
                   action={
                     <Button
                       size="small"
-                      icon={<Filter size={15} />}
+                      icon={<Filter aria-hidden="true" size={15} />}
                       onClick={() => setShowFilters((v) => !v)}
                       aria-expanded={showFilters}
                     >
@@ -417,6 +384,7 @@ export function ReplayPage() {
                     <div className="replay-filters">
                       <Field label="Event type">
                         <Select
+                          name="event-type"
                           value={filters.type}
                           onChange={(e) => changeFilter("type", e.target.value)}
                         >
@@ -432,6 +400,7 @@ export function ReplayPage() {
                       </Field>
                       <Field label="Service">
                         <Select
+                          name="service"
                           value={filters.service}
                           onChange={(e) =>
                             changeFilter("service", e.target.value)
@@ -447,6 +416,7 @@ export function ReplayPage() {
                       </Field>
                       <Field label="Actor">
                         <Select
+                          name="actor"
                           value={filters.actor}
                           onChange={(e) =>
                             changeFilter("actor", e.target.value)
@@ -462,6 +432,8 @@ export function ReplayPage() {
                       </Field>
                       <Field label="From (local time)">
                         <Input
+                          name="from-local-time"
+                          autoComplete="off"
                           type="datetime-local"
                           value={filters.from}
                           onChange={(e) => changeFilter("from", e.target.value)}
@@ -469,6 +441,8 @@ export function ReplayPage() {
                       </Field>
                       <Field label="To (local time)">
                         <Input
+                          name="to-local-time"
+                          autoComplete="off"
                           type="datetime-local"
                           value={filters.to}
                           onChange={(e) => changeFilter("to", e.target.value)}
@@ -476,6 +450,8 @@ export function ReplayPage() {
                       </Field>
                       <Field label="Correlation ID">
                         <Input
+                          name="correlation-id"
+                          autoComplete="off"
                           value={filters.correlation}
                           onChange={(e) =>
                             changeFilter("correlation", e.target.value)
@@ -485,6 +461,8 @@ export function ReplayPage() {
                       </Field>
                       <Field label="Trace ID">
                         <Input
+                          name="trace-id"
+                          autoComplete="off"
                           value={filters.trace}
                           onChange={(e) =>
                             changeFilter("trace", e.target.value)
@@ -494,7 +472,7 @@ export function ReplayPage() {
                       </Field>
                       <Button
                         appearance="subtle"
-                        icon={<RotateCcw size={14} />}
+                        icon={<RotateCcw aria-hidden="true" size={14} />}
                         onClick={() => setFilters(initialFilters)}
                       >
                         Clear filters
@@ -503,6 +481,8 @@ export function ReplayPage() {
                   )}
                   <div className="jump-time">
                     <Input
+                      name="jump-to-timestamp"
+                      autoComplete="off"
                       aria-label="Jump to timestamp"
                       type="datetime-local"
                       value={jumpTime}
@@ -511,7 +491,7 @@ export function ReplayPage() {
                     <Button
                       size="small"
                       disabled={!jumpTime}
-                      icon={<StepForward size={14} />}
+                      icon={<StepForward aria-hidden="true" size={14} />}
                       onClick={() => {
                         const target = events.findIndex(
                           (e) =>
@@ -551,7 +531,7 @@ export function ReplayPage() {
                             >
                               <span className="timeline-dot">
                                 {/Breach/.test(e.eventType) ? (
-                                  <TriangleAlert size={13} />
+                                  <TriangleAlert aria-hidden="true" size={13} />
                                 ) : null}
                               </span>
                               <div className="timeline-event-body">
@@ -610,7 +590,7 @@ export function ReplayPage() {
                                   )}
                                 </div>
                               </div>
-                              <ChevronRight size={15} />
+                              <ChevronRight aria-hidden="true" size={15} />
                             </button>
                           </li>
                         );
@@ -695,9 +675,9 @@ export function ReplayPage() {
                           onClick={() => setTechnical((v) => !v)}
                           aria-expanded={technical}
                         >
-                          <Braces size={15} />
+                          <Braces aria-hidden="true" size={15} />
                           Technical evidence
-                          <ChevronDown size={15} />
+                          <ChevronDown aria-hidden="true" size={15} />
                         </button>
                         {technical && (
                           <pre className="technical-json">

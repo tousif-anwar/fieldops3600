@@ -94,7 +94,7 @@ describe("warehouse metric availability", () => {
     expect(screen.getByText("Awaiting ingestion")).toBeVisible();
     expect(screen.queryByText("0.0%", { exact: true })).not.toBeInTheDocument();
     expect(
-      screen.getByText(/unknown durations or capacity display unavailable/),
+      screen.getByText(/Unknown durations or capacity display no value/),
     ).toBeVisible();
   });
 

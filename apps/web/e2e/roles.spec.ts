@@ -39,7 +39,9 @@ async function signIn(page: Page, username: string) {
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
   ).toBeVisible({ timeout: 45000 });
-  await expect(page.locator("h1.home-greeting")).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: "Home", exact: true }),
+  ).toBeVisible({
     timeout: 30000,
   });
 }
@@ -122,7 +124,7 @@ for (const role of roles) {
     });
     await signIn(page, role.username);
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".home-context")).toContainText(role.context);
+    await expect(page.locator(".page-heading p")).toContainText(role.context);
     await expect(
       page.getByRole("navigation", { name: "Breadcrumb" }),
     ).toContainText("Home");

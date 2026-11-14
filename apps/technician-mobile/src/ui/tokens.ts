@@ -18,22 +18,23 @@ export const spacing = {
   xxl: 24,
   xxxl: 32,
   huge: 40,
+  massive: 48,
 } as const;
 
 export const radii = {
   sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  sheet: 24,
+  md: 6,
+  lg: 8,
+  xl: 8,
+  sheet: 12,
   pill: 999,
 } as const;
 
 export const touch = {
   minimum: 48,
-  primary: 56,
+  primary: 48,
   row: 64,
-  option: 56,
+  option: 48,
 } as const;
 
 export const fontFamily = {
@@ -44,17 +45,15 @@ export const fontFamily = {
 export const typography = {
   screenTitle: {
     fontFamily: fontFamily.system,
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  title: {
-    fontFamily: fontFamily.system,
     fontSize: 24,
     lineHeight: 30,
     fontWeight: '700',
-    letterSpacing: -0.25,
+  },
+  title: {
+    fontFamily: fontFamily.system,
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '700',
   },
   section: {
     fontFamily: fontFamily.system,
@@ -76,14 +75,26 @@ export const typography = {
   },
   label: {
     fontFamily: fontFamily.system,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
   },
   button: {
     fontFamily: fontFamily.system,
     fontSize: 16,
     lineHeight: 22,
+    fontWeight: '600',
+  },
+  caption: {
+    fontFamily: fontFamily.system,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '400',
+  },
+  strong: {
+    fontFamily: fontFamily.system,
+    fontSize: 16,
+    lineHeight: 24,
     fontWeight: '600',
   },
   identifier: {
@@ -94,19 +105,24 @@ export const typography = {
   },
   timer: {
     fontFamily: fontFamily.system,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 20,
+    lineHeight: 28,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
 } satisfies Record<string, TextStyle>;
 
-export const elevation = {
-  sheet: {
-    shadowColor: '#11231f',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 12,
-  },
+export const borders = { thin: 1, focus: 2, accent: 3 } as const;
+
+// Structural dimensions, not extra steps on the spacing or typography scales.
+export const dimensions = {
+  contentMax: 760,
+  readableMax: 560,
+  timeColumn: 72,
+  stageMarker: 28,
+  progress: 6,
+  multiline: 112,
+  compactMultiline: 96,
+  fieldLabelMin: 120,
+  sheetMaxHeight: '88%',
 } as const;

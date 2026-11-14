@@ -4,7 +4,7 @@ test("protected routes show secure sign-in before rendering operational data", a
 }) => {
   await page.goto("/replay?workOrderId=private-record");
   await expect(
-    page.getByRole("heading", { name: "Welcome back." }),
+    page.getByRole("heading", { name: "Sign in", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Continue to secure sign-in" }),

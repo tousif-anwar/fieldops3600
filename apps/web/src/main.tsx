@@ -1,7 +1,8 @@
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { FluentProvider, webLightTheme } from "@fluentui/react-components";
+import { FluentProvider } from "@fluentui/react-components";
+import { fieldOpsTheme } from "./design-system/theme";
 import { AuthProvider, useAuth } from "./auth";
 import { Shell } from "./components/Shell";
 import { ErrorState, Loading } from "./components/common";
@@ -10,7 +11,7 @@ import { Home } from "./pages/Home";
 import { lazy, Suspense, useMemo, type ReactNode } from "react";
 import type { Role } from "./types";
 import "./styles.css";
-import "./enterprise.css";
+import "./design-system/tokens.css";
 
 const Overview = lazy(() =>
   import("./pages/Overview").then((m) => ({ default: m.Overview })),
@@ -108,26 +109,6 @@ function SessionQueries() {
     </QueryClientProvider>
   );
 }
-const theme = {
-  ...webLightTheme,
-  colorBrandBackground: "#1f5aa6",
-  colorBrandBackgroundHover: "#194b8c",
-  colorBrandBackgroundPressed: "#143c70",
-  colorBrandForeground1: "#1f5aa6",
-  borderRadiusMedium: "6px",
-  borderRadiusLarge: "8px",
-  fontFamilyBase:
-    '"Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif',
-  fontSizeBase100: "12px",
-  fontSizeBase200: "13px",
-  fontSizeBase300: "14px",
-  fontSizeBase400: "16px",
-  fontSizeBase500: "20px",
-  fontSizeBase600: "24px",
-  lineHeightBase300: "20px",
-  lineHeightBase400: "24px",
-  lineHeightBase500: "28px",
-};
 function RequireRole({
   roles,
   children,
@@ -427,7 +408,7 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <FluentProvider theme={theme}>
+  <FluentProvider theme={fieldOpsTheme}>
     <BrowserRouter>
       <AuthProvider>
         <SessionQueries />

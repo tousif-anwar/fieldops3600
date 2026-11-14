@@ -40,46 +40,6 @@ import {
 import type { Reports } from "../types";
 import { WarehousePatterns } from "../components/WarehousePatterns";
 
-type Indicator = {
-  label: string;
-  tone: "green" | "amber" | "red" | "neutral";
-};
-
-type Highlight = {
-  key: string;
-  title: string;
-  text: string;
-  tone: Indicator["tone"];
-};
-
-function higherRateIndicator(
-  value: number | null,
-  target: number,
-  watchFloor: number,
-): Indicator {
-  if (value == null) return { label: "No data", tone: "neutral" };
-  if (value >= target) return { label: "On target", tone: "green" };
-  if (value >= watchFloor) return { label: "Watch", tone: "amber" };
-  return { label: "At risk", tone: "red" };
-}
-
-function lowerRateIndicator(
-  value: number | null,
-  target: number,
-  watchCeiling: number,
-): Indicator {
-  if (value == null) return { label: "No data", tone: "neutral" };
-  if (value <= target) return { label: "On target", tone: "green" };
-  if (value <= watchCeiling) return { label: "Watch", tone: "amber" };
-  return { label: "At risk", tone: "red" };
-}
-
-function countIndicator(value: number, watchCeiling: number): Indicator {
-  if (value === 0) return { label: "Clear", tone: "green" };
-  if (value <= watchCeiling) return { label: "Watch", tone: "amber" };
-  return { label: "Action needed", tone: "red" };
-}
-
 function selectedDate(value: string) {
   if (!value) return "";
   return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
@@ -87,38 +47,6 @@ function selectedDate(value: string) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function reportHighlights(report: Reports): Highlight[] {
-  const highlights: Highlight[] = [];
-  if (report.slaComplianceRate != null) {
-    const status = higherRateIndicator(report.slaComplianceRate, 0.95, 0.85);
-    highlights.push({
-      key: "sla",
-      title: "SLA health",
-      text: `${percent(report.slaComplianceRate)} of completed stages met SLA against a 95% target.`,
-      tone: status.tone,
-    });
-  }
-  highlights.push({
-    key: "overdue",
-    title: "Dispatch attention",
-    text:
-      report.overdueStages > 0
-        ? `${report.overdueStages.toLocaleString()} stages are past SLA${report.activeJobs ? ` across ${report.activeJobs.toLocaleString()} active jobs` : ""}.`
-        : "No overdue stages in the selected cohort.",
-    tone: report.overdueStages > 0 ? "red" : "green",
-  });
-  if (report.schedulingEfficiency != null) {
-    const status = higherRateIndicator(report.schedulingEfficiency, 0.8, 0.65);
-    highlights.push({
-      key: "coverage",
-      title: "Booking coverage",
-      text: `${percent(report.schedulingEfficiency)} of selected orders have a confirmed booking; target ≥ 80%.`,
-      tone: status.tone,
-    });
-  }
-  return highlights;
 }
 
 export function Analytics() {
@@ -165,42 +93,27 @@ export function Analytics() {
     from || to
       ? `${from ? selectedDate(from) : "Earliest date"} – ${to ? selectedDate(to) : "Today"}`
       : "All history";
-  const completionIndicator = higherRateIndicator(
-    r?.completionRate ?? null,
-    0.7,
-    0.5,
-  );
-  const slaIndicator = higherRateIndicator(
-    r?.slaComplianceRate ?? null,
-    0.95,
-    0.85,
-  );
-  const atRiskIndicator = countIndicator(r?.atRiskStages ?? 0, 5);
-  const overdueIndicator = countIndicator(r?.overdueStages ?? 0, 5);
-  const highlights = r ? reportHighlights(r) : [];
   return (
     <>
       <PageHeader
-        eyebrow="OPERATIONS ANALYTICS"
         title="Analytics"
-        description="Validated service performance, capacity, and trends from the reporting warehouse."
         actions={
           <>
             <Button
-              icon={<RefreshCw size={16} />}
+              icon={<RefreshCw aria-hidden="true" size={16} />}
               onClick={() => void report.refetch()}
               disabled={report.isFetching}
             >
               Refresh
             </Button>
             <Button
-              icon={<ArrowDownToLine size={16} />}
+              icon={<ArrowDownToLine aria-hidden="true" size={16} />}
               onClick={() => void exportFile("csv")}
             >
               Export CSV
             </Button>
             <Button
-              icon={<ArrowDownToLine size={16} />}
+              icon={<ArrowDownToLine aria-hidden="true" size={16} />}
               onClick={() => void exportFile("pdf")}
             >
               Export PDF
@@ -211,6 +124,8 @@ export function Analytics() {
       <div className="analytics-filter">
         <Field label="From date">
           <Input
+            name="from-date"
+            autoComplete="off"
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
@@ -218,6 +133,8 @@ export function Analytics() {
         </Field>
         <Field label="Through date">
           <Input
+            name="through-date"
+            autoComplete="off"
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
@@ -225,6 +142,7 @@ export function Analytics() {
         </Field>
         <Field label="Service category">
           <Select
+            name="service-category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
@@ -236,6 +154,7 @@ export function Analytics() {
         </Field>
         <Field label="Technician">
           <Select
+            name="technician"
             value={technician}
             onChange={(e) => setTechnician(e.target.value)}
           >
@@ -270,21 +189,13 @@ export function Analytics() {
       ) : (
         r && (
           <>
-            <div className="analytics-scorecard-heading">
-              <div>
-                <div className="eyebrow">PERFORMANCE SCORECARD</div>
-                <h2>Key performance indicators</h2>
-              </div>
-              <span className="scorecard-targets">
-                Targets: completion ≥ 70% · SLA ≥ 95% · booking coverage ≥ 80%
-              </span>
-            </div>
+            <h2 className="analytics-scorecard-heading">Service performance</h2>
             <div className="metrics-grid">
               <Metric
                 label="Total work orders"
                 value={r.totalWorkOrders.toLocaleString()}
                 note={`${r.completedWorkOrders.toLocaleString()} completed`}
-                icon={<BarChart3 size={20} />}
+                icon={<BarChart3 aria-hidden="true" size={20} />}
               />
               <Metric
                 label="Completion rate"
@@ -294,9 +205,8 @@ export function Analytics() {
                     ? "Not available: no orders in scope"
                     : "Completed / total · target ≥ 70%"
                 }
-                icon={<CheckCheck size={20} />}
+                icon={<CheckCheck aria-hidden="true" size={20} />}
                 tone="green"
-                indicator={completionIndicator}
               />
               <Metric
                 label="SLA compliance"
@@ -306,9 +216,8 @@ export function Analytics() {
                     ? "Not available: no completed stages"
                     : "Stages without breach · target ≥ 95%"
                 }
-                icon={<TrendingUp size={20} />}
+                icon={<TrendingUp aria-hidden="true" size={20} />}
                 tone="green"
-                indicator={slaIndicator}
               />
               <Metric
                 label="Average stage time"
@@ -327,67 +236,37 @@ export function Analytics() {
                     ? "Average service time not available"
                     : `${r.averageServiceMinutes.toFixed(1)} min average service`
                 }
-                icon={<Clock3 size={20} />}
+                icon={<Clock3 aria-hidden="true" size={20} />}
                 tone="amber"
               />
               <Metric
                 label="Active jobs"
                 value={r.activeJobs.toLocaleString()}
                 note="In progress in the selected cohort"
-                icon={<Activity size={20} />}
-                indicator={
-                  r.activeJobs === 0
-                    ? { label: "Clear", tone: "green" }
-                    : { label: "Live", tone: "neutral" }
-                }
+                icon={<Activity aria-hidden="true" size={20} />}
               />
               <Metric
                 label="At-risk stages"
                 value={r.atRiskStages.toLocaleString()}
                 note="Active stages flagged warning or critical"
-                icon={<TriangleAlert size={20} />}
+                icon={<TriangleAlert aria-hidden="true" size={20} />}
                 tone="amber"
-                indicator={atRiskIndicator}
               />
               <Metric
                 label="Overdue stages"
                 value={r.overdueStages.toLocaleString()}
                 note="Stages past their SLA deadline"
-                icon={<Clock3 size={20} />}
+                icon={<Clock3 aria-hidden="true" size={20} />}
                 tone="red"
-                indicator={overdueIndicator}
               />
               <Metric
                 label="Completed today"
                 value={r.completedToday.toLocaleString()}
                 note="Closed during the current UTC day"
-                icon={<CheckCircle2 size={20} />}
+                icon={<CheckCircle2 aria-hidden="true" size={20} />}
                 tone="green"
-                indicator={{ label: "Today", tone: "neutral" }}
               />
             </div>
-            {highlights.length > 0 && (
-              <div
-                className="analytics-highlights"
-                aria-label="Report highlights"
-              >
-                {highlights.map((highlight) => (
-                  <article
-                    key={highlight.key}
-                    className={`analytics-highlight ${highlight.tone}`}
-                  >
-                    <span
-                      className="analytics-highlight-signal"
-                      aria-hidden="true"
-                    />
-                    <div>
-                      <strong>{highlight.title}</strong>
-                      <p>{highlight.text}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
             <div className="analytics-grid">
               <Panel
                 title="Work order volume"
@@ -413,64 +292,51 @@ export function Analytics() {
                           data={r.volumeTrend}
                           margin={{ top: 10, right: 15, left: -20, bottom: 0 }}
                         >
-                          <defs>
-                            <linearGradient
-                              id="volumeFill"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0%"
-                                stopColor="#4078cf"
-                                stopOpacity={0.2}
-                              />
-                              <stop
-                                offset="100%"
-                                stopColor="#4078cf"
-                                stopOpacity={0}
-                              />
-                            </linearGradient>
-                          </defs>
                           <CartesianGrid
                             strokeDasharray="3 4"
                             vertical={false}
-                            stroke="#e9edf3"
+                            stroke="var(--border)"
                           />
                           <XAxis
                             dataKey="date"
                             axisLine={false}
                             tickLine={false}
-                            fontSize={11}
+                            fontSize="var(--font-size-caption)"
                           />
                           <YAxis
                             axisLine={false}
                             tickLine={false}
-                            fontSize={11}
+                            fontSize="var(--font-size-caption)"
                             allowDecimals={false}
                           />
                           <Tooltip />
                           <Area
+                            isAnimationActive={false}
                             type="monotone"
                             dataKey="total"
                             name="Created"
-                            stroke="#4078cf"
+                            stroke="var(--chart-1)"
                             strokeWidth={2}
-                            fill="url(#volumeFill)"
+                            fill="none"
                           />
                           <Area
+                            isAnimationActive={false}
                             type="monotone"
                             dataKey="completed"
                             name="Completed"
-                            stroke="#399c83"
+                            stroke="var(--color-success)"
                             strokeWidth={2}
                             fill="transparent"
                           />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="chart-data-table">
+                    <div
+                      tabIndex={0}
+                      role="region"
+                      aria-label="Work order volume by reporting date"
+                      className="chart-data-table"
+                    >
                       <table>
                         <caption>Work order volume by reporting date</caption>
                         <thead>
@@ -512,11 +378,11 @@ export function Analytics() {
                             <i
                               style={{
                                 background: [
-                                  "#346cc4",
-                                  "#6c91cf",
-                                  "#60ae99",
-                                  "#b09ac8",
-                                  "#a1afbf",
+                                  "var(--chart-1)",
+                                  "var(--chart-2)",
+                                  "var(--chart-3)",
+                                  "var(--chart-4)",
+                                  "var(--chart-5)",
                                 ][i % 5],
                               }}
                             />
@@ -529,11 +395,11 @@ export function Analytics() {
                             style={{
                               width: `${r.totalWorkOrders ? (c.count / r.totalWorkOrders) * 100 : 0}%`,
                               background: [
-                                "#346cc4",
-                                "#6c91cf",
-                                "#60ae99",
-                                "#b09ac8",
-                                "#a1afbf",
+                                "var(--chart-1)",
+                                "var(--chart-2)",
+                                "var(--chart-3)",
+                                "var(--chart-4)",
+                                "var(--chart-5)",
                               ][i % 5],
                             }}
                           />
@@ -548,7 +414,12 @@ export function Analytics() {
                   />
                 )}
                 {r.categoryBreakdown.length ? (
-                  <div className="chart-data-table">
+                  <div
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Work orders by service category"
+                    className="chart-data-table"
+                  >
                     <table>
                       <caption>Work orders by service category</caption>
                       <thead>
@@ -573,12 +444,7 @@ export function Analytics() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <Empty
-                    title="No category data"
-                    description="Category totals will be available after ingestion."
-                  />
-                )}
+                ) : null}
               </Panel>
               <Panel
                 title="Stage duration & breaches"
@@ -598,11 +464,11 @@ export function Analytics() {
                         <CartesianGrid
                           strokeDasharray="3 4"
                           vertical={false}
-                          stroke="#e9edf3"
+                          stroke="var(--border)"
                         />
                         <XAxis
                           dataKey="stage"
-                          fontSize={10}
+                          fontSize="var(--font-size-caption)"
                           tickLine={false}
                           axisLine={false}
                           angle={-25}
@@ -610,22 +476,24 @@ export function Analytics() {
                           height={70}
                         />
                         <YAxis
-                          fontSize={11}
+                          fontSize="var(--font-size-caption)"
                           axisLine={false}
                           tickLine={false}
                         />
                         <Tooltip />
                         <Legend />
                         <Bar
+                          isAnimationActive={false}
                           name="Average minutes"
                           dataKey="averageMinutes"
-                          fill="#5d89cb"
+                          fill="var(--chart-1)"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
+                          isAnimationActive={false}
                           name="Breaches"
                           dataKey="breaches"
-                          fill="#dc9a60"
+                          fill="var(--color-danger)"
                           radius={[4, 4, 0, 0]}
                         />
                       </BarChart>
@@ -683,16 +551,14 @@ export function Analytics() {
             </div>
             <WarehousePatterns report={r} />
             <div className="metric-definitions" id="definitions">
-              <Info size={18} />
+              <Info aria-hidden="true" size={18} />
               <div>
-                <strong>Understand the numbers</strong>
+                <strong>Metric definitions</strong>
                 <p>
-                  Reporting is eventually consistent with operations. Freshness
-                  reflects the latest ingestion. Completion rate uses work order
-                  counts; SLA compliance uses completed stages. Empty
-                  populations and unknown durations or capacity display
-                  unavailable values rather than assumed zero. Customer
-                  information is masked for analyst access.
+                  Reports may lag operations. Completion rate counts work
+                  orders; SLA compliance counts completed stages. Unknown
+                  durations or capacity display no value. Customer information
+                  is masked.
                 </p>
                 {r.dataSource && (
                   <p className="analytics-data-source">{r.dataSource}</p>
@@ -703,7 +569,13 @@ export function Analytics() {
               title="Metric drill-down"
               description="The underlying stage aggregates used by the visualizations."
             >
-              <div className="table-scroll">
+              <div
+                tabIndex={0}
+                role="region"
+                aria-label="Stage-level effective duration, observed volume and SLA
+                    breach rate"
+                className="table-scroll"
+              >
                 <table>
                   <caption className="sr-only">
                     Stage-level effective duration, observed volume and SLA
@@ -711,11 +583,11 @@ export function Analytics() {
                   </caption>
                   <thead>
                     <tr>
-                      <th>Workflow stage</th>
-                      <th>Observed stages</th>
-                      <th>Average effective minutes</th>
-                      <th>SLA breaches</th>
-                      <th>Breach rate</th>
+                      <th scope="col">Workflow stage</th>
+                      <th scope="col">Observed stages</th>
+                      <th scope="col">Average effective minutes</th>
+                      <th scope="col">SLA breaches</th>
+                      <th scope="col">Breach rate</th>
                     </tr>
                   </thead>
                   <tbody>

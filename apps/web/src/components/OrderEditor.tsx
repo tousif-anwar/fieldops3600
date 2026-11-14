@@ -65,6 +65,8 @@ export function OrderEditor({
         >
           <Field label="Work order title" required>
             <Input
+              name="work-order-title"
+              autoComplete="off"
               required
               minLength={3}
               maxLength={160}
@@ -74,6 +76,7 @@ export function OrderEditor({
           </Field>
           <Field label="Priority">
             <Select
+              name="priority"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
             >
@@ -83,7 +86,11 @@ export function OrderEditor({
             </Select>
           </Field>
           <Field label="Status">
-            <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <Select
+              name="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
               <option value={order.status}>{order.status}</option>
               {order.status === "Created" && (
                 <option value="Cancelled">Cancelled</option>

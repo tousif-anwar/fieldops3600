@@ -27,7 +27,12 @@ function SourceFigures({
   return (
     <details className="analytics-source-figures">
       <summary>View source figures</summary>
-      <div className="table-scroll">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Service metric observations"
+        className="table-scroll"
+      >
         <table>
           <caption className="sr-only">{caption}</caption>
           <thead>
@@ -102,17 +107,8 @@ export function WarehousePatterns({ report }: { report: Reports }) {
               ? "Not available: no selected orders"
               : "Distinct orders with a breach / selected · target ≤ 15%"
           }
-          icon={<TriangleAlert size={20} />}
+          icon={<TriangleAlert aria-hidden="true" size={20} />}
           tone="amber"
-          indicator={
-            report.escalationFrequency == null
-              ? { label: "No data", tone: "neutral" }
-              : report.escalationFrequency <= 0.15
-                ? { label: "On target", tone: "green" }
-                : report.escalationFrequency <= 0.25
-                  ? { label: "Watch", tone: "amber" }
-                  : { label: "At risk", tone: "red" }
-          }
         />
         <Metric
           label="Confirmed-booking coverage"
@@ -122,23 +118,13 @@ export function WarehousePatterns({ report }: { report: Reports }) {
               ? "Not available: no selected orders"
               : "Orders with a confirmed booking / selected · target ≥ 80%"
           }
-          icon={<CalendarDays size={20} />}
-          indicator={
-            report.schedulingEfficiency == null
-              ? { label: "No data", tone: "neutral" }
-              : report.schedulingEfficiency >= 0.8
-                ? { label: "On target", tone: "green" }
-                : report.schedulingEfficiency >= 0.65
-                  ? { label: "Watch", tone: "amber" }
-                  : { label: "At risk", tone: "red" }
-          }
+          icon={<CalendarDays aria-hidden="true" size={20} />}
         />
       </div>
       <p className="analytics-cohort-note">
-        These figures follow the selected order creation cohort. Trend dates are
-        UTC completion or action dates and can extend beyond the creation-date
-        filter. Missing calendar days are not filled in. Booking coverage
-        measures assignment coverage, not route or solver efficiency.
+        Counts use the selected order creation dates. Trends use UTC completion
+        or action dates, which may fall outside that range. Missing days are not
+        filled. Booking coverage measures assignments, not route efficiency.
       </p>
       <div
         className="analytics-pattern-tabs"
@@ -188,20 +174,20 @@ export function WarehousePatterns({ report }: { report: Reports }) {
                         <CartesianGrid
                           strokeDasharray="3 4"
                           vertical={false}
-                          stroke="#e9edf3"
+                          stroke="var(--border)"
                         />
                         <XAxis
                           dataKey="date"
                           axisLine={false}
                           tickLine={false}
-                          fontSize={11}
+                          fontSize="var(--font-size-caption)"
                         />
                         <YAxis
                           domain={[0, 100]}
                           tickFormatter={(value) => `${value}%`}
                           axisLine={false}
                           tickLine={false}
-                          fontSize={11}
+                          fontSize="var(--font-size-caption)"
                         />
                         <Tooltip
                           formatter={(value) =>
@@ -214,8 +200,8 @@ export function WarehousePatterns({ report }: { report: Reports }) {
                           name="Compliant completed stages"
                           type="linear"
                           dataKey="compliancePercent"
-                          stroke="#399c83"
-                          fill="#399c8315"
+                          stroke="var(--color-success)"
+                          fill="none"
                           strokeWidth={2}
                           dot={{ r: 4 }}
                           connectNulls={false}
@@ -227,7 +213,7 @@ export function WarehousePatterns({ report }: { report: Reports }) {
                 ) : (
                   <Empty
                     title="SLA rate not available"
-                    description="Recorded counts remain available below; an unknown denominator is not displayed as zero percent."
+                    description="Counts are shown below. No compliance rate is assumed."
                   />
                 )}
                 <SourceFigures
@@ -258,7 +244,7 @@ export function WarehousePatterns({ report }: { report: Reports }) {
             ) : (
               <Empty
                 title="No completed-stage observations"
-                description="The warehouse has no completed stages for these selected orders. No compliance rate is assumed."
+                description="No completed stages in the selected cohort."
               />
             )}
             <p className="analytics-evidence-note">
@@ -299,25 +285,25 @@ export function WarehousePatterns({ report }: { report: Reports }) {
                       <CartesianGrid
                         strokeDasharray="3 4"
                         vertical={false}
-                        stroke="#e9edf3"
+                        stroke="var(--border)"
                       />
                       <XAxis
                         dataKey="bucket"
                         axisLine={false}
                         tickLine={false}
-                        fontSize={11}
+                        fontSize="var(--font-size-caption)"
                       />
                       <YAxis
                         allowDecimals={false}
                         axisLine={false}
                         tickLine={false}
-                        fontSize={11}
+                        fontSize="var(--font-size-caption)"
                       />
                       <Tooltip />
                       <Bar
                         dataKey="count"
                         name="Observed stages"
-                        fill="#5d89cb"
+                        fill="var(--chart-1)"
                         radius={[4, 4, 0, 0]}
                         isAnimationActive={false}
                       />
@@ -343,7 +329,7 @@ export function WarehousePatterns({ report }: { report: Reports }) {
             ) : (
               <Empty
                 title="No known stage-duration samples"
-                description="A histogram requires valid recorded start, completion and pause timestamps. Zero-count bands alone do not establish a measured duration distribution."
+                description="No valid duration observations. Start, completion, and pause records are required."
               />
             )}
           </Panel>
@@ -375,25 +361,25 @@ export function WarehousePatterns({ report }: { report: Reports }) {
                       <CartesianGrid
                         strokeDasharray="3 4"
                         vertical={false}
-                        stroke="#e9edf3"
+                        stroke="var(--border)"
                       />
                       <XAxis
                         dataKey="date"
                         axisLine={false}
                         tickLine={false}
-                        fontSize={11}
+                        fontSize="var(--font-size-caption)"
                       />
                       <YAxis
                         allowDecimals={false}
                         axisLine={false}
                         tickLine={false}
-                        fontSize={11}
+                        fontSize="var(--font-size-caption)"
                       />
                       <Tooltip />
                       <Bar
                         dataKey="interventions"
                         name="Recorded actions"
-                        fill="#8b83b5"
+                        fill="var(--chart-4)"
                         radius={[4, 4, 0, 0]}
                         isAnimationActive={false}
                       />
@@ -422,7 +408,7 @@ export function WarehousePatterns({ report }: { report: Reports }) {
             ) : (
               <Empty
                 title="No recorded supervisor actions"
-                description="No pause, resume or override events have reached this selected order cohort."
+                description="No recorded supervisor actions in the selected cohort."
               />
             )}
             <p className="analytics-evidence-note">

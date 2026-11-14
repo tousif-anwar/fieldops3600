@@ -13,6 +13,7 @@ import { ClipboardCheck, RefreshCw } from "lucide-react";
 import { api, post } from "../api";
 import { useAuth } from "../auth";
 import { dateTime } from "../format";
+import { ListPagination, pageSlice } from "../components/ListPagination";
 import type { ServiceRequest } from "../service-request-contracts";
 import {
   Empty,
@@ -28,6 +29,7 @@ export function ServiceRequests() {
   const auth = useAuth();
   const [selected, setSelected] = useState<ServiceRequest | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState("Submitted");
   const requests = useQuery({
     queryKey: ["service-requests"],
@@ -37,15 +39,14 @@ export function ServiceRequests() {
   const visible = (requests.data ?? []).filter(
     (request) => !status || request.status === status,
   );
+  const rows = pageSlice(visible, page);
   return (
     <>
       <PageHeader
-        eyebrow="CUSTOMER INTAKE"
         title="Service requests"
-        description="Qualify customer requests into work orders, then confirm capacity through dispatch."
         actions={
           <Button
-            icon={<RefreshCw size={16} />}
+            icon={<RefreshCw aria-hidden="true" size={16} />}
             disabled={requests.isFetching}
             onClick={() => void requests.refetch()}
           >
@@ -55,13 +56,17 @@ export function ServiceRequests() {
       />
       <Panel
         title="Request queue"
-        description="An approved request creates a work order. Appointments are confirmed separately."
+        description="Approval creates a work order. Scheduling confirms the appointment."
       >
         <div className="offer-toolbar">
           <Field label="Request status">
             <Select
+              name="request-status"
               value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) => {
+                setStatus(event.target.value);
+                setPage(1);
+              }}
             >
               <option value="Submitted">Awaiting qualification</option>
               <option value="Qualified">Qualified</option>
@@ -86,11 +91,11 @@ export function ServiceRequests() {
         ) : visible.length === 0 ? (
           <Empty
             title="No requests in this queue"
-            description="Customer submissions will appear here for qualification."
+            description="Customer requests will appear here."
           />
         ) : (
           <div className="portal-records portal-record-grid">
-            {visible.map((request) => (
+            {rows.items.map((request) => (
               <article key={request.id} className="portal-record">
                 <div className="portal-record-heading">
                   <h3>{request.title}</h3>
@@ -114,7 +119,7 @@ export function ServiceRequests() {
                 {request.status === "Submitted" &&
                   auth.can("Dispatcher", "Supervisor", "OperationsManager") && (
                     <Button
-                      icon={<ClipboardCheck size={16} />}
+                      icon={<ClipboardCheck aria-hidden="true" size={16} />}
                       appearance="primary"
                       onClick={() => {
                         setSelected(request);
@@ -137,6 +142,14 @@ export function ServiceRequests() {
               </article>
             ))}
           </div>
+        )}
+        {requests.isSuccess && (
+          <ListPagination
+            page={rows.page}
+            total={visible.length}
+            onChange={setPage}
+            label="Service requests"
+          />
         )}
       </Panel>
       {selected && (
@@ -212,6 +225,7 @@ function Qualification({
         >
           <Field label="Decision">
             <Select
+              name="decision"
               value={decision}
               disabled={qualify.isPending}
               onChange={(event) => {
@@ -227,6 +241,7 @@ function Qualification({
             <>
               <Field label="Required service skill">
                 <Select
+                  name="required-service-skill"
                   value={serviceCategory}
                   disabled={qualify.isPending}
                   onChange={(event) => setCategory(event.target.value)}
@@ -246,6 +261,7 @@ function Qualification({
               </Field>
               <Field label="Work order priority">
                 <Select
+                  name="work-order-priority"
                   value={priority}
                   disabled={qualify.isPending}
                   onChange={(event) => setPriority(event.target.value)}
@@ -258,14 +274,15 @@ function Qualification({
                 </Select>
               </Field>
               <p className="muted">
-                This creates an unassigned work order. Contract and warranty
-                coverage require separate review; appointment capacity is
-                checked during scheduling.
+                Creates an unassigned order. Confirm coverage separately;
+                scheduling checks capacity.
               </p>
             </>
           )}
           <Field label="Decision reason" required>
             <Input
+              name="decision-reason"
+              autoComplete="off"
               required
               minLength={3}
               maxLength={500}

@@ -104,18 +104,13 @@ export function WorkOrders() {
   return (
     <>
       <PageHeader
-        eyebrow="SERVICE MANAGEMENT"
         title="Work orders"
-        description="Search, assign, and track service requests in your authorized scope."
         actions={
           auth.can("Dispatcher", "OperationsManager") && (
-            <Button
-              appearance="primary"
-              icon={<Plus size={17} />}
-              onClick={() => navigate("/work-orders/new")}
-            >
+            <Link to={"/work-orders/new"} className="button-link primary">
+              <Plus aria-hidden="true" size={17} />
               Create work order
-            </Button>
+            </Link>
           )
         }
       />
@@ -124,19 +119,21 @@ export function WorkOrders() {
         description={`${filtered.length} ${filtered.length === 1 ? "request" : "requests"} in your authorized scope`}
       >
         <div className="filter-bar">
-          <div className="search-field">
-            <Search size={17} />
-            <input
-              aria-label="Filter work orders"
-              placeholder="Search number, customer, or address…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                updateFilter("q", e.target.value);
-              }}
-            />
-          </div>
+          <Input
+            name="filter-work-orders"
+            autoComplete="off"
+            className="search-field"
+            contentBefore={<Search size={17} aria-hidden="true" />}
+            aria-label="Filter work orders"
+            placeholder="Search number, customer, or address…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              updateFilter("q", e.target.value);
+            }}
+          />
           <Select
+            name="filter-status"
             aria-label="Filter status"
             value={status}
             onChange={(e) => {
@@ -150,6 +147,7 @@ export function WorkOrders() {
             ))}
           </Select>
           <Select
+            name="filter-priority"
             aria-label="Filter priority"
             value={priority}
             onChange={(e) => {
@@ -189,17 +187,22 @@ export function WorkOrders() {
             }
           />
         ) : (
-          <div className="table-scroll">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="All work orders"
+            className="table-scroll"
+          >
             <table>
               <thead>
                 <tr>
-                  <th>Work order</th>
-                  <th>Customer & location</th>
-                  <th>Service category</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>
+                  <th scope="col">Work order</th>
+                  <th scope="col">Customer & location</th>
+                  <th scope="col">Service category</th>
+                  <th scope="col">Priority</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Created</th>
+                  <th scope="col">
                     <span className="visually-hidden">Actions</span>
                   </th>
                 </tr>
@@ -231,7 +234,7 @@ export function WorkOrders() {
                     <td>
                       <Button
                         appearance="subtle"
-                        icon={<ArrowRight size={16} />}
+                        icon={<ArrowRight aria-hidden="true" size={16} />}
                         aria-label={`Open ${w.number}`}
                         onClick={() => navigate(`/work-orders/${w.id}`)}
                       />
@@ -377,20 +380,13 @@ export function CreateOrder() {
     );
   return (
     <>
-      <button className="back-link" onClick={() => navigate("/work-orders")}>
-        <ArrowLeft size={15} />
+      <Link to={"/work-orders"} className="back-link">
+        <ArrowLeft aria-hidden="true" size={15} />
         Work orders
-      </button>
-      <PageHeader
-        eyebrow="NEW SERVICE REQUEST"
-        title="Create a work order"
-        description="Record the customer, site, and service details needed to dispatch the job."
-      />
+      </Link>
+      <PageHeader title="Create a work order" />
       <div className="form-layout">
-        <Panel
-          title="Service details"
-          description="All information is saved securely to the Work Order Service."
-        >
+        <Panel title="Service details">
           <form
             className="form-body"
             noValidate
@@ -428,6 +424,8 @@ export function CreateOrder() {
               <>
                 <Field label="Search registered customers">
                   <Input
+                    name="search-registered-customers"
+                    autoComplete="off"
                     value={customerSearch}
                     onChange={(_, d) => setCustomerSearch(d.value)}
                     placeholder="Search the customer registry…"
@@ -444,6 +442,7 @@ export function CreateOrder() {
                   <Field label="Registered customer" required>
                     {" "}
                     <Select
+                      name="registered-customer"
                       value={customerId}
                       onChange={(e) => {
                         setCustomerId(e.target.value);
@@ -478,6 +477,7 @@ export function CreateOrder() {
                 )}
                 <Field label="Registered service location" required>
                   <Select
+                    name="registered-service-location"
                     value={locationId}
                     disabled={
                       !selectedCustomer.data || selectedCustomer.isPending
@@ -502,6 +502,7 @@ export function CreateOrder() {
                   hint="Optional: link one active registered asset at this location."
                 >
                   <Select
+                    name="equipment"
                     value={assetId}
                     disabled={!locationId || assets.isPending}
                     onChange={(e) => setAssetId(e.target.value)}
@@ -531,6 +532,8 @@ export function CreateOrder() {
                 hint="This exception is retained in the work order audit history."
               >
                 <Textarea
+                  name="unregistered-customer-reason"
+                  autoComplete="off"
                   value={exceptionReason}
                   maxLength={500}
                   onChange={(_, d) => setExceptionReason(d.value)}
@@ -544,6 +547,7 @@ export function CreateOrder() {
               validationMessage={errors.title?.message}
             >
               <Input
+                autoComplete="off"
                 placeholder="e.g. Rooftop unit not cooling"
                 {...register("title")}
               />
@@ -556,6 +560,7 @@ export function CreateOrder() {
                 validationMessage={errors.customerName?.message}
               >
                 <Input
+                  autoComplete="off"
                   placeholder="Business or customer name"
                   readOnly={!unregistered}
                   {...register("customerName")}
@@ -581,6 +586,7 @@ export function CreateOrder() {
               validationMessage={errors.siteAddress?.message}
             >
               <Textarea
+                autoComplete="off"
                 placeholder="Street address, city, and access details"
                 readOnly={!unregistered}
                 {...register("siteAddress")}
@@ -598,7 +604,7 @@ export function CreateOrder() {
                 label="Team"
                 hint="Assignment scope from your authenticated account"
               >
-                <Input readOnly {...register("teamId")} />
+                <Input autoComplete="off" readOnly {...register("teamId")} />
               </Field>
             </div>
             {mutation.isError && (
@@ -611,7 +617,7 @@ export function CreateOrder() {
                 appearance="primary"
                 type="submit"
                 disabled={mutation.isPending}
-                icon={<Plus size={16} />}
+                icon={<Plus aria-hidden="true" size={16} />}
               >
                 {mutation.isPending ? "Creating…" : "Create work order"}
               </Button>
@@ -620,7 +626,7 @@ export function CreateOrder() {
         </Panel>
         <aside className="form-aside">
           <span className="quick-icon">
-            <ClipboardList size={23} />
+            <ClipboardList aria-hidden="true" size={23} />
           </span>
           <h3>A good start saves time in the field.</h3>
           <p>
@@ -679,10 +685,10 @@ export function OrderDetails() {
   const w = order.data;
   return (
     <>
-      <button className="back-link" onClick={() => navigate("/work-orders")}>
-        <ArrowLeft size={15} />
+      <Link to={"/work-orders"} className="back-link">
+        <ArrowLeft aria-hidden="true" size={15} />
         Work orders
-      </button>
+      </Link>
       <PageHeader
         eyebrow={w.number}
         title={w.title}
@@ -715,7 +721,7 @@ export function OrderDetails() {
             <div>
               <dt>Service address</dt>
               <dd>
-                <MapPin size={15} />
+                <MapPin aria-hidden="true" size={15} />
                 {w.siteAddress}
               </dd>
             </div>
@@ -743,30 +749,28 @@ export function OrderDetails() {
             </div>
           </dl>
         </Panel>
-        <Panel
-          title="Move service forward"
-          description="Plan, execute, and review this work order."
-        >
+        <Panel title="Actions">
           <div className="detail-actions">
             {auth.can("Dispatcher", "OperationsManager") && (
-              <Button
-                icon={<CalendarPlus size={17} />}
-                onClick={() => navigate(`/schedule?workOrderId=${w.id}`)}
+              <Link
+                to={`/schedule?workOrderId=${w.id}`}
+                className="button-link"
               >
+                <CalendarPlus aria-hidden="true" size={17} />
                 Schedule service
-              </Button>
+              </Link>
             )}
             {workflows.data?.map((f) => (
-              <Button
+              <Link
+                to={`/workflow/${f.id}`}
+                className="button-link primary"
                 key={f.id}
-                appearance="primary"
-                icon={<Wrench size={17} />}
-                onClick={() => navigate(`/workflow/${f.id}`)}
               >
+                <Wrench aria-hidden="true" size={17} />
                 {f.status === "Completed"
                   ? "Review completed workflow"
                   : "Continue workflow"}
-              </Button>
+              </Link>
             ))}
             {!workflows.isPending &&
               !workflows.data?.length &&
@@ -779,7 +783,7 @@ export function OrderDetails() {
               ) && (
                 <Button
                   appearance="primary"
-                  icon={<Wrench size={17} />}
+                  icon={<Wrench aria-hidden="true" size={17} />}
                   disabled={start.isPending}
                   onClick={() => start.mutate()}
                 >
@@ -793,12 +797,10 @@ export function OrderDetails() {
               </p>
             )}
             {auth.can("Supervisor", "OperationsManager") && (
-              <Button
-                icon={<History size={17} />}
-                onClick={() => navigate(`/replay?workOrderId=${w.id}`)}
-              >
+              <Link to={`/replay?workOrderId=${w.id}`} className="button-link">
+                <History aria-hidden="true" size={17} />
                 Investigate operational history
-              </Button>
+              </Link>
             )}
             {start.isError && (
               <InlineMessage>{start.error.message}</InlineMessage>
@@ -868,7 +870,7 @@ function OrderEquipmentPanel({
   return (
     <Panel
       title="Equipment"
-      description="Equipment service history is scoped to the linked registered asset."
+
       action={
         canChange && !editing ? (
           <Button onClick={() => setEditing(true)}>
@@ -923,6 +925,7 @@ function OrderEquipmentPanel({
             hint="Only active equipment at this work order's customer location is selectable."
           >
             <Select
+              name="linked-equipment"
               value={assetId}
               disabled={available.isPending}
               onChange={(e) => setAssetId(e.target.value)}

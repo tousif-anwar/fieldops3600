@@ -38,6 +38,7 @@ export function WorkflowAnswer({
     <Field label={field.label} required={field.required && editable}>
       {field.inputType === "text" ? (
         <Textarea
+          autoComplete="off"
           value={value}
           required={field.required && editable}
           disabled={!editable}
@@ -47,6 +48,7 @@ export function WorkflowAnswer({
         />
       ) : field.inputType === "number" ? (
         <Input
+          autoComplete="off"
           type="number"
           value={value}
           required={field.required && editable}

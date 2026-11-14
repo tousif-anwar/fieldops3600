@@ -38,7 +38,9 @@ async function signIn(page: Page) {
   await page.locator("#username").fill("supervisor");
   await page.locator("#password").fill(demoPassword!);
   await page.locator("#kc-login").click();
-  await expect(page.locator("h1.home-greeting")).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: "Home", exact: true }),
+  ).toBeVisible({
     timeout: 30000,
   });
   await expect.poll(() => authorization).toBeTruthy();

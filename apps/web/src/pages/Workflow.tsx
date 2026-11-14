@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  CheckCheck,
   Clock3,
   HelpCircle,
   History,
@@ -21,7 +20,6 @@ import {
   Pause,
   Play,
   Save,
-  ShieldCheck,
   Wrench,
 } from "lucide-react";
 import { api, post } from "../api";
@@ -37,6 +35,7 @@ import {
   Status,
 } from "../components/common";
 import type { FormField, Template, WorkOrder, Workflow } from "../types";
+import { ListPagination, pageSlice } from "../components/ListPagination";
 import { completedStageCount } from "../workflow";
 import { answerError, WorkflowAnswer } from "../components/WorkflowAnswer";
 import { ServiceReport } from "../components/ServiceReport";
@@ -50,6 +49,7 @@ export function visibleFields(
   );
 }
 export function MyJobs() {
+  const [page, setPage] = useState(1);
   const auth = useAuth();
   const navigate = useNavigate();
   const orders = useQuery({
@@ -71,28 +71,33 @@ export function MyJobs() {
       (auth.can("Supervisor", "Dispatcher", "OperationsManager") ||
         w.technicianId === auth.user?.profile.sub),
   );
+  const rows = pageSlice(assigned, page);
+  const flowByOrder = new Map(
+    (workflows.data ?? []).map((flow) => [flow.workOrderId, flow]),
+  );
   return (
     <>
-      <PageHeader
-        eyebrow="TECHNICIAN WORKSPACE"
-        title="My work"
-        description="Open an assigned job and continue its guided service workflow."
-      />
-      {orders.isPending ? (
+      <PageHeader title="My work" />
+      {orders.isPending || workflows.isPending ? (
         <Loading />
       ) : orders.isError ? (
         <ErrorState error={orders.error} retry={() => void orders.refetch()} />
+      ) : workflows.isError ? (
+        <ErrorState
+          error={workflows.error}
+          retry={() => void workflows.refetch()}
+        />
       ) : assigned.length === 0 ? (
         <Panel title="Assigned work">
           <Empty
             title="No assigned jobs yet"
-            description="Your confirmed assignments will appear here. Contact dispatch if you are expecting a job."
+            description="Contact dispatch if you are expecting an assignment."
           />
         </Panel>
       ) : (
         <div className="jobs-grid">
-          {assigned.map((w) => {
-            const f = workflows.data?.find((f) => f.workOrderId === w.id);
+          {rows.items.map((w) => {
+            const f = flowByOrder.get(w.id);
             const completed = completedStageCount(f);
             return (
               <article
@@ -135,7 +140,7 @@ export function MyJobs() {
                 </div>
                 <Button
                   appearance="primary"
-                  icon={<ArrowRight size={16} />}
+                  icon={<ArrowRight aria-hidden="true" size={16} />}
                   iconPosition="after"
                   disabled={start.isPending}
                   onClick={() =>
@@ -152,6 +157,14 @@ export function MyJobs() {
             );
           })}
         </div>
+      )}
+      {orders.isSuccess && workflows.isSuccess && (
+        <ListPagination
+          page={rows.page}
+          total={assigned.length}
+          onChange={setPage}
+          label="Assigned jobs"
+        />
       )}
       {start.isError && <InlineMessage>{start.error.message}</InlineMessage>}
     </>
@@ -245,9 +258,7 @@ export function WorkflowPage() {
       setSelectedStage(null);
       requestKey.current = crypto.randomUUID();
       setMessage(
-        next.status === "Completed"
-          ? "Service workflow complete. Thank you for a job well done."
-          : "Stage submitted. Your next step is ready.",
+        next.status === "Completed" ? "Service complete." : "Stage submitted.",
       );
     },
   });
@@ -303,16 +314,14 @@ export function WorkflowPage() {
   if (!f) return null;
   return (
     <>
-      <button className="back-link" onClick={() => navigate("/my-jobs")}>
-        <ArrowLeft size={15} />
+      <Link to={"/my-jobs"} className="back-link">
+        <ArrowLeft aria-hidden="true" size={15} />
         My workflow
-      </button>
+      </Link>
       <PageHeader
         eyebrow={`SERVICE WORKFLOW · TEMPLATE V${f.templateVersion}`}
         title={
-          f.status === "Completed"
-            ? "A job well done."
-            : (stage?.name ?? "Guided service")
+          f.status === "Completed" ? "Service complete" : "Service workflow"
         }
         description={`Work order ${f.workOrderId.slice(0, 8)} · ${f.technicianId} · Version ${f.version}`}
         actions={
@@ -323,12 +332,13 @@ export function WorkflowPage() {
               </Button>
             )}
             {auth.can("Supervisor", "OperationsManager") && (
-              <Button
-                icon={<History size={17} />}
-                onClick={() => navigate(`/replay?workOrderId=${f.workOrderId}`)}
+              <Link
+                to={`/replay?workOrderId=${f.workOrderId}`}
+                className="button-link"
               >
+                <History aria-hidden="true" size={17} />
                 View operational replay
-              </Button>
+              </Link>
             )}
           </>
         }
@@ -336,7 +346,7 @@ export function WorkflowPage() {
       <div className="workflow-layout">
         <aside className="workflow-stepper">
           <div className="stepper-heading">
-            <Wrench size={18} />
+            <Wrench aria-hidden="true" size={18} />
             <strong>Service pipeline</strong>
             <small>{completedStageCount(f)} of 8 complete</small>
           </div>
@@ -355,7 +365,11 @@ export function WorkflowPage() {
                     aria-current={s.index === activeIndex ? "step" : undefined}
                   >
                     <span className="step-number">
-                      {completed ? <Check size={15} /> : s.index + 1}
+                      {completed ? (
+                        <Check aria-hidden="true" size={15} />
+                      ) : (
+                        s.index + 1
+                      )}
                     </span>
                     <span>
                       <strong>{s.name}</strong>
@@ -367,16 +381,12 @@ export function WorkflowPage() {
                             : "Coming up"}
                       </small>
                     </span>
-                    {!available && <LockKeyhole size={13} />}
+                    {!available && <LockKeyhole aria-hidden="true" size={13} />}
                   </button>
                 </li>
               );
             })}
           </ol>
-          <div className="stepper-note">
-            <ShieldCheck size={16} />
-            <span>Your progress is recorded securely at every step.</span>
-          </div>
         </aside>
         <div className="workflow-main">
           <Panel
@@ -408,27 +418,13 @@ export function WorkflowPage() {
             )}
           </Panel>
           {message && <InlineMessage success>{message}</InlineMessage>}
-          {f.status === "Completed" && (
-            <div className="completed-banner">
-              <span>
-                <CheckCheck size={28} />
-              </span>
-              <div>
-                <h2>Service complete</h2>
-                <p>
-                  Every stage is preserved as read-only history. Select a step
-                  to review the recorded answers.
-                </p>
-              </div>
-            </div>
-          )}
           {stage && (
             <Panel
               title={`${activeIndex + 1}. ${stage.name}`}
               description={
                 !isCurrent
-                  ? "Recorded stage history. Completed answers cannot be edited."
-                  : "Choose the answers that accurately describe the service. Request assistance when you need another path."
+                  ? "Recorded answers are read-only."
+                  : "Record the service result. Request assistance if you cannot proceed."
               }
               action={
                 <Status
@@ -445,7 +441,7 @@ export function WorkflowPage() {
                   className={`countdown-bar ${/Breach|Critical/.test(stage.slaStatus) ? "countdown-critical" : ""}`}
                 >
                   <span className="countdown-icon">
-                    <Clock3 size={24} />
+                    <Clock3 aria-hidden="true" size={24} />
                   </span>
                   <div>
                     <small>
@@ -519,9 +515,9 @@ export function WorkflowPage() {
                 {editable && (
                   <>
                     <div className="workflow-help">
-                      <HelpCircle size={19} />
+                      <HelpCircle aria-hidden="true" size={19} />
                       <span>
-                        No accurate option or need a hand?
+                        Need assistance?
                         <br />
                         <button
                           type="button"
@@ -537,7 +533,7 @@ export function WorkflowPage() {
                     <div className="form-actions">
                       <Button
                         type="button"
-                        icon={<Save size={16} />}
+                        icon={<Save aria-hidden="true" size={16} />}
                         onClick={saveDraft}
                       >
                         Save draft
@@ -545,7 +541,7 @@ export function WorkflowPage() {
                       <Button
                         type="submit"
                         appearance="primary"
-                        icon={<ArrowRight size={17} />}
+                        icon={<ArrowRight aria-hidden="true" size={17} />}
                         iconPosition="after"
                         disabled={
                           submit.isPending ||
@@ -564,7 +560,7 @@ export function WorkflowPage() {
                 )}
                 {!isCurrent && (
                   <div className="history-note">
-                    <LockKeyhole size={15} />
+                    <LockKeyhole aria-hidden="true" size={15} />
                     Completed {dateTime(stage.completedAtUtc)} · Preserved as
                     recorded history
                   </div>
@@ -575,15 +571,15 @@ export function WorkflowPage() {
           {isCurrent && auth.can("Supervisor", "OperationsManager") && (
             <Panel
               title="Supervisor controls"
-              description="Every intervention requires a reason and is included in the audit history."
+              description="A reason is required for every intervention."
             >
               <div className="supervisor-controls">
                 <Button
                   icon={
                     stage?.pausedAtUtc ? (
-                      <Play size={16} />
+                      <Play aria-hidden="true" size={16} />
                     ) : (
-                      <Pause size={16} />
+                      <Pause aria-hidden="true" size={16} />
                     )
                   }
                   onClick={() => {
@@ -619,7 +615,6 @@ export function WorkflowPage() {
           }}
         >
           <DialogSurface className="modal" aria-labelledby="action-title">
-            <span className="eyebrow">AUDITED WORKFLOW ACTION</span>
             <h2 id="action-title">
               {action === "assistance"
                 ? "Request assistance"
@@ -636,6 +631,8 @@ export function WorkflowPage() {
             </p>
             <Field label="Reason" required>
               <Input
+                name="reason"
+                autoComplete="off"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Describe why this action is needed"
@@ -644,6 +641,7 @@ export function WorkflowPage() {
             {action === "override" && (
               <Field label="Target stage">
                 <Select
+                  name="target-stage"
                   value={targetStage}
                   onChange={(e) => setTargetStage(e.target.value)}
                 >
