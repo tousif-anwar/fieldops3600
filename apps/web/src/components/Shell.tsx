@@ -144,7 +144,7 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     items: [
       {
         to: "/registry-insights",
-        label: "Customer and asset insights",
+        label: "Registry insights",
         icon: Building2,
         roles: ["Analyst", "Supervisor", "OperationsManager", "Administrator"],
       },

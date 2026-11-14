@@ -78,7 +78,13 @@ export function MyJobs() {
   );
   return (
     <>
-      <PageHeader title="My work" />
+      <PageHeader
+        title={
+          auth.can("Supervisor", "OperationsManager")
+            ? "Workflow review"
+            : "My work"
+        }
+      />
       {orders.isPending || workflows.isPending ? (
         <Loading />
       ) : orders.isError ? (

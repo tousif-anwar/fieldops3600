@@ -34,11 +34,13 @@ const failures = [];
 for (const file of files) {
   if (file === tokenFile) continue;
   const source = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  for (const [index, raw] of source.split("\n").entries()) {
-    const declaration = raw.match(/^\s*([\w-]+)\s*:\s*([^;]+);/);
-    if (!declaration) continue;
-    const [, property, value] = declaration;
-    const line = relative(root, file) + ":" + (index + 1);
+  const declarations = /([\w-]+)\s*:\s*([^;{}]+);/g;
+  for (const match of source.matchAll(declarations)) {
+    const [, property, value] = match;
+    const line =
+      relative(root, file) +
+      ":" +
+      source.slice(0, match.index).split("\n").length;
     if (rawColor.test(value)) {
       failures.push(`${line}: raw color or gradient in ${property}; use a semantic token`);
     }

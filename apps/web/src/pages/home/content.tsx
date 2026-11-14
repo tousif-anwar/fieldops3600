@@ -169,7 +169,7 @@ export function figuresFor(input: HomeFigureInput): Figure[] {
       {
         label: "Active jobs",
         value: reportsPending ? "—" : (report?.activeJobs ?? "—"),
-        detail: `${report?.atRiskStages ?? "—"} at risk · ${report?.overdueStages ?? "—"} overdue`,
+        detail: `${report?.atRiskStages ?? "—"} warning · ${report?.overdueStages ?? "—"} overdue`,
         tone: report?.overdueStages ? "danger" : "default",
       },
     ];
