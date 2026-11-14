@@ -1,5 +1,7 @@
 # Testing and Validation
 
+This document records the earlier release verification. New customer intake, offers, v2 service rules and native Android evidence are recorded in [Operational verification](OPERATIONS_VERIFICATION.md); its current results supersede the historical limitations below.
+
 ## Environment
 
 | Item | Value |

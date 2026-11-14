@@ -104,7 +104,7 @@ public static class CustomerPortalApi
     {
         var scope = CustomerScope.From(http.User);
         CustomerRules.Text(input.IdempotencyKey, 8, 128, "operation ID");
-        var key = $"{scope.Subject}:service-request:{input.IdempotencyKey}";
+        var key = $"{scope.Subject}:{scope.CustomerId}:service-request:{input.IdempotencyKey}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Json.Write(input))));
         var receipt = await db.Receipts.AsNoTracking().SingleOrDefaultAsync(x => x.Id == key, ct);
         if (receipt is not null) return Receipt(receipt, scope.Subject, hash);

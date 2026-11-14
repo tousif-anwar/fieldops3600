@@ -572,12 +572,11 @@ export function WorkflowPage() {
           )}
         </div>
       </div>
-      {reportOpen && (
-        <ServiceReport
-          workOrderId={f.workOrderId}
-          onClose={() => setReportOpen(false)}
-        />
-      )}
+      <ServiceReport
+        workOrderId={f.workOrderId}
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+      />
       {action && (
         <Dialog
           open

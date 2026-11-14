@@ -21,9 +21,9 @@ import type {
   PortalAccount,
   PortalEquipment,
   PortalWorkOrder,
+  PortalAppointment,
   ServiceRequest,
 } from "../service-request-contracts";
-import type { Booking } from "../types";
 import {
   Empty,
   ErrorState,
@@ -57,7 +57,8 @@ export function CustomerPortal() {
   });
   const bookings = useQuery({
     queryKey: ["portal-appointments"],
-    queryFn: () => api<Booking[]>("/api/customer-portal/appointments"),
+    queryFn: () =>
+      api<PortalAppointment[]>("/api/customer-portal/appointments"),
     refetchInterval: 15000,
   });
   const [serviceLocationId, setLocation] = useState("");
@@ -68,6 +69,7 @@ export function CustomerPortal() {
     useState<ServiceRequest["serviceType"]>("Repair");
   const [urgency, setUrgency] = useState<ServiceRequest["urgency"]>("Routine");
   const [reportOrderId, setReportOrderId] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
   const requestKey = useRef(crypto.randomUUID());
   const submit = useMutation({
     mutationFn: () =>
@@ -486,7 +488,12 @@ export function CustomerPortal() {
                       : `Created ${dateTime(order.createdAtUtc)}`}
                   </p>
                   {order.status === "Completed" && (
-                    <Button onClick={() => setReportOrderId(order.id)}>
+                    <Button
+                      onClick={() => {
+                        setReportOrderId(order.id);
+                        setReportOpen(true);
+                      }}
+                    >
                       View service report
                     </Button>
                   )}
@@ -499,7 +506,8 @@ export function CustomerPortal() {
       {reportOrderId && (
         <ServiceReport
           workOrderId={reportOrderId}
-          onClose={() => setReportOrderId(null)}
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
         />
       )}
     </>

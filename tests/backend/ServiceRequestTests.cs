@@ -51,6 +51,19 @@ public sealed class ServiceRequestTests
 public sealed class ServiceRequestPostgresTests(PostgresFixture fixture)
 {
     [Fact]
+    public async Task DatabaseRejectsTerminalDecisionWithoutARetainedReason()
+    {
+        var cs = await fixture.Database("work-orders", false);
+        await using var db = PostgresFixture.Db(cs, "work-orders");
+        await SchemaMigrator.Apply(db);
+        var invalid = new ServiceRequest { CustomerId = Guid.NewGuid(), ServiceLocationId = Guid.NewGuid(), TeamId = "north", SubmittedBy = "synthetic", CustomerName = "Synthetic", SiteAddress = "Synthetic", Title = "Synthetic rejection", Description = "Synthetic rejected request without decision evidence.", Status = "Rejected", CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow };
+        db.ServiceRequests.Add(invalid);
+        var failure = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        Assert.IsType<Npgsql.PostgresException>(failure.InnerException);
+        Assert.Equal("23514", ((Npgsql.PostgresException)failure.InnerException!).SqlState);
+    }
+
+    [Fact]
     public async Task ConcurrentQualificationCommitsOnlyOneOrderAndItsEvent()
     {
         var cs = await fixture.Database("work-orders", false);

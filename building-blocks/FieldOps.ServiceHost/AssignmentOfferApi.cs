@@ -33,6 +33,28 @@ public static class AssignmentOfferApi
         group.MapPost("/{id:guid}/revoke", async (Guid id, RespondToAssignmentOffer request, ServiceDb db,
             RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
             await Respond(id, "Revoked", request, db, remote, clock, http, ct)).RequireAuthorization("dispatch");
+        app.MapPost("/api/scheduling/work-orders/{id:guid}/cancel-intent", async (Guid id, ServiceDb db,
+            RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await LockOrder(db, id, ct);
+            var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{id}", http, ct);
+            Caller.From(http.User).Demand(order.TeamId);
+            if (order.Status is not ("Created" or "Cancelled"))
+                throw new DomainException(409, "Only an unassigned, unstarted work order may be cancelled.");
+            var now = clock.GetUtcNow();
+            var added = await RecordCancellationIntent(db, id, now, ct);
+            await RevokePendingOffers(db, id, now, http, "Work order cancellation is pending.", ct);
+            if (added)
+            {
+                var revision = await NextAssignmentRevision(db, id, ct);
+                db.Enqueue(EventFactory.Create(http, "scheduling", "WorkOrderCancellationReserved.v1", id,
+                    new { workOrderId = id, order.TeamId, cancellationPending = true }, revision, now));
+            }
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.Ok(new { workOrderId = id, cancellationPending = true });
+        }).RequireAuthorization("dispatch");
     }
 
     private static async Task<IResult> Create(CreateAssignmentOffer request, ServiceDb db, RemoteServices remote,
@@ -48,6 +70,7 @@ public static class AssignmentOfferApi
         await LockOrder(db, request.WorkOrderId, ct);
         var prior = await ReplayReceipt(db, key, caller.Id, hash, ct);
         if (prior is not null) return prior;
+        await RequireNotCancelling(db, request.WorkOrderId, ct);
         var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{request.WorkOrderId}", http, ct);
         caller.Demand(order.TeamId);
         RequireSchedulable(order);
@@ -100,6 +123,7 @@ public static class AssignmentOfferApi
         Guid? bookingId = null;
         if (status == "Accepted")
         {
+            await RequireNotCancelling(db, offer.WorkOrderId, ct);
             // The work-order endpoint grants a candidate read only while this exact offer is live.
             var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{offer.WorkOrderId}", http, ct);
             if (order.TeamId != offer.TeamId) throw new DomainException(409, "The work order's team changed. Ask dispatch to issue a new offer.");
@@ -144,6 +168,20 @@ public static class AssignmentOfferApi
         return revisions.Single();
     }
 
+    public static async Task RequireNotCancelling(ServiceDb db, Guid orderId, CancellationToken ct)
+    {
+        var cancelling = await db.Database.SqlQuery<bool>($"SELECT EXISTS (SELECT 1 FROM work_order_cancellations WHERE work_order_id={orderId}) AS \"Value\"").SingleAsync(ct);
+        if (cancelling) throw new DomainException(409, "Cancellation is pending for this work order. Refresh it or ask dispatch to finish cancellation.");
+    }
+
+    // The caller holds LockOrder inside its transaction, shared with every allocation path.
+    public static async Task<bool> RecordCancellationIntent(ServiceDb db, Guid orderId, DateTimeOffset now, CancellationToken ct)
+    {
+        if (await db.Bookings.AnyAsync(x => x.WorkOrderId == orderId && x.Status == "Confirmed", ct))
+            throw new DomainException(409, "Cancel the confirmed booking first, then refresh the work order before cancelling it.");
+        return await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO work_order_cancellations(work_order_id, requested_at_utc) VALUES ({orderId}, {now}) ON CONFLICT (work_order_id) DO NOTHING", ct) > 0;
+    }
+
     public static void RequireSchedulable(WorkOrder order)
     {
         if (order.Status is not ("Created" or "Scheduled"))
@@ -169,11 +207,14 @@ public static class AssignmentOfferApi
     }
 
     public static async Task RevokeForDirectBooking(ServiceDb db, Guid orderId, DateTimeOffset now, HttpContext http, CancellationToken ct)
+        => await RevokePendingOffers(db, orderId, now, http, "Dispatcher confirmed a direct assignment.", ct);
+
+    private static async Task RevokePendingOffers(ServiceDb db, Guid orderId, DateTimeOffset now, HttpContext http, string reason, CancellationToken ct)
     {
         await ExpireForOrder(db, orderId, now, http, ct);
         foreach (var offer in await db.AssignmentOffers.Where(x => x.WorkOrderId == orderId && x.Status == "Pending").ToListAsync(ct))
         {
-            AssignmentOfferRules.Respond(offer, "Revoked", offer.Version, now, "Dispatcher confirmed a direct assignment.");
+            AssignmentOfferRules.Respond(offer, "Revoked", offer.Version, now, reason);
             Enqueue(db, http, offer, "AssignmentOfferRevoked.v1", now);
         }
     }

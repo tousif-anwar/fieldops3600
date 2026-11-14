@@ -74,6 +74,7 @@ public sealed class Booking
     public string Status { get; set; } = "Confirmed";
     public int Version { get; set; } = 1;
     public string? OverrideReason { get; set; }
+    public DateTimeOffset? ServiceStartedAtUtc { get; set; }
 }
 
 public sealed class Workflow

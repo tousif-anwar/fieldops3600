@@ -1,5 +1,7 @@
 # Features
 
+The source checkout now includes the [operational implementation](BUSINESS_OPERATIONS.md) and [current verification](OPERATIONS_VERIFICATION.md). Historical archive results are retained separately in the release documentation.
+
 ## Role workspaces
 
 ### Technician
@@ -9,7 +11,7 @@
 - A guided workflow with server-defined fields, conditional questions, read-only history, local drafts, and idempotent submission.
 - Stage timers, pause indicators, supervisor assistance requests, and explicit offline/online state.
 - Equipment context for an assigned job, including serial number, warranty status, and linked service history when the work order references a registered asset.
-- Expo mobile app with SecureStore PKCE, job list, job details, forms, photo/notes support, offline drafts, and a synchronization queue.
+- Expo mobile app with SecureStore PKCE, contextual daily itinerary, navigation handoff, assignment offers, service notes, offline drafts, and a synchronization queue. File/photo attachment storage is not implemented.
 
 ### Dispatcher
 
@@ -19,6 +21,13 @@
 - Scheduling board with technician availability, baseline and OR-Tools recommendations, booking confirmation, rescheduling, and cancellation.
 - Conflict indicators and an audited manual override path.
 - Notification inbox and acknowledgment.
+- Customer-request qualification queue and explicit offer/direct-assignment modes, with pending/expired/declined history and reasoned revocation.
+
+### Customer
+
+- Provisioned Keycloak sign-in with signed organization membership and a dedicated portal.
+- Own service locations and registered equipment, service request submission, request review status, confirmed appointment tracking and completed reports.
+- Request submission and qualification do not promise appointment availability. Direct customer booking and financial approvals are not implemented.
 
 Dispatchers do not receive the Analytics navigation item. Reporting access is intentionally limited to Analysts, Supervisors, Operations Managers, and Administrators.
 
@@ -91,7 +100,7 @@ Replay shows the recorded event timeline, causation/ordering evidence, delivery 
 
 ### J. Offline operation
 
-The Expo app stores drafts locally and queues submissions with an idempotency key. Retries preserve the original logical submission. Conflicts stop automatic retries and retain the answers for review. The mobile tests cover queue recreation, concurrent flushes, identity changes, transient failures, and conflict behavior. A native emulator run was not completed in this release.
+The Expo app stores drafts locally and queues submissions with an idempotency key. Retries preserve the original logical submission. Conflicts stop automatic retries and retain the answers for review. The mobile tests cover queue recreation, concurrent flushes, identity changes, transient failures, and conflict behavior. Actual Android airplane-mode, force-stop/relaunch and reconnect verification is recorded in [Operational verification](OPERATIONS_VERIFICATION.md).
 
 ## Deterministic rules
 
@@ -106,7 +115,7 @@ The Expo app stores drafts locally and queues submissions with an idempotency ke
 ## Explicit non-features
 
 - Generative AI, LLM chat, embeddings, RAG, and model-download scripts are not part of the release.
-- Customer self-service login, customer-initiated booking, contract entitlement validation, and installation permitting are not implemented.
+- Direct customer booking, contract entitlement validation, and installation permitting are not implemented.
 - Dispatcher analytics access is not granted.
-- Native Android emulator/device certification was not performed.
+- Physical-device and iOS certification were not performed.
 - There is no production deployment, billing, or multi-tenant provisioning.

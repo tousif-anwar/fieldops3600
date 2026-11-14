@@ -30,6 +30,7 @@ export function AssignmentOffers({
   canManage: boolean;
 }) {
   const [revoking, setRevoking] = useState<AssignmentOffer | null>(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [now, setNow] = useState(Date.now());
   const offers = useQuery({
@@ -149,7 +150,10 @@ export function AssignmentOffers({
                         <div className="booking-actions">
                           <Button
                             size="small"
-                            onClick={() => setRevoking(offer)}
+                            onClick={() => {
+                              setRevoking(offer);
+                              setRevokeOpen(true);
+                            }}
                           >
                             Revoke offer
                           </Button>
@@ -163,7 +167,12 @@ export function AssignmentOffers({
         )}
       </Panel>
       {revoking && (
-        <RevokeOffer offer={revoking} onClose={() => setRevoking(null)} />
+        <RevokeOffer
+          key={revoking.id}
+          offer={revoking}
+          open={revokeOpen}
+          onClose={() => setRevokeOpen(false)}
+        />
       )}
     </>
   );
@@ -171,9 +180,11 @@ export function AssignmentOffers({
 
 function RevokeOffer({
   offer,
+  open,
   onClose,
 }: {
   offer: AssignmentOffer;
+  open: boolean;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -196,7 +207,7 @@ function RevokeOffer({
   });
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(_, data) => {
         if (!data.open && !revoke.isPending) onClose();
       }}

@@ -29,7 +29,7 @@ class AssignmentOffersHttpTests(unittest.TestCase):
         headers = {"Authorization": "Bearer " + self.tokens[role]}
         if data is not None:
             headers["Content-Type"] = "application/json"
-        request = urllib.request.Request("http://localhost:5100" + path,
+        request = urllib.request.Request("http://127.0.0.1:5100" + path,
             data=json.dumps(data).encode() if data is not None else None, headers=headers, method=method)
         try:
             with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=30) as response:
@@ -70,6 +70,10 @@ class AssignmentOffersHttpTests(unittest.TestCase):
             time.sleep(0.2)
         self.fail("Timed out waiting for " + description)
 
+    def wait_notification(self, order_id, title, role="technician"):
+        return self.wait(lambda: (result := self.request("GET", "/api/notifications", role))[0] == 200 and
+            next((x for x in result[1] if x["workOrderId"] == order_id and x["title"].startswith(title)), None), title + " notification")
+
     def cleanup_order(self, order_id):
         status, offers = self.request("GET", "/api/assignment-offers?workOrderId=" + order_id)
         if status == 200:
@@ -92,6 +96,7 @@ class AssignmentOffersHttpTests(unittest.TestCase):
     def test_decline_keeps_order_unassigned_and_replays_without_duplicate_offer(self):
         order = self.order()
         offer, request = self.create_offer(order)
+        self.wait_notification(order["id"], "New assignment offer")
         self.assertEqual(200, self.request("GET", "/api/work-orders/" + order["id"], "technician")[0])
         status, replayed = self.request("POST", "/api/assignment-offers", data=request)
         self.assertEqual(200, status, replayed)
@@ -100,6 +105,10 @@ class AssignmentOffersHttpTests(unittest.TestCase):
             "expectedVersion": offer["version"], "idempotencyKey": str(uuid4()), "reason": "Required vehicle is unavailable"})
         self.assertEqual(200, status, declined)
         self.assertEqual("Declined", declined["status"])
+        self.wait_notification(order["id"], "Assignment offer declined", "supervisor")
+        technician_alerts = self.request("GET", "/api/notifications", "technician")[1]
+        self.assertFalse(any(x["workOrderId"] == order["id"] and x["title"].startswith("Assignment offer declined") for x in technician_alerts))
+        self.assertEqual(1, len([x for x in technician_alerts if x["workOrderId"] == order["id"] and x["title"].startswith("New assignment offer")]))
         self.assertEqual(404, self.request("GET", "/api/work-orders/" + order["id"], "technician")[0])
         self.assertEqual("Created", self.request("GET", "/api/work-orders/" + order["id"])[1]["status"])
         replacement, _ = self.create_offer(order)
@@ -122,6 +131,13 @@ class AssignmentOffersHttpTests(unittest.TestCase):
         self.assertEqual(409, self.request("POST", path, "technician", {**command, "reason": "A changed request"})[0])
         self.assertEqual(409, self.request("POST", path, "technician", {**command, "idempotencyKey": str(uuid4())})[0])
         self.wait(lambda: self.request("GET", "/api/work-orders/" + order["id"])[1]["status"] == "Scheduled", "assignment event projection")
+        self.wait_notification(order["id"], "Service appointment confirmed")
+        booking = next(x for x in bookings if x["workOrderId"] == order["id"] and x["status"] == "Confirmed")
+        status, moved = self.request("PUT", "/api/bookings/" + booking["id"], data={
+            "expectedVersion": booking["version"], "startUtc": (datetime.fromisoformat(booking["startUtc"]) + timedelta(days=1)).isoformat(),
+            "endUtc": (datetime.fromisoformat(booking["endUtc"]) + timedelta(days=1)).isoformat(), "reason": "Synthetic verified appointment change"})
+        self.assertEqual(200, status, moved)
+        self.wait_notification(order["id"], "Service appointment changed")
 
     def test_direct_assignment_revokes_offer_and_removes_candidate_access(self):
         order = self.order()
@@ -135,7 +151,28 @@ class AssignmentOffersHttpTests(unittest.TestCase):
         self.assertEqual(404, self.request("GET", "/api/work-orders/" + order["id"], "technician")[0])
         current = self.request("GET", "/api/assignment-offers?workOrderId=" + order["id"], "technician")[1]
         self.assertEqual("Revoked", current[0]["status"])
+        self.wait_notification(order["id"], "Assignment offer withdrawn")
         self.wait(lambda: self.request("GET", "/api/work-orders/" + order["id"])[1]["status"] == "Scheduled", "direct assignment projection")
+
+    def test_concurrent_distinct_offers_cannot_double_book_technician(self):
+        first, second = self.order(), self.order()
+        shared = self.offer_request(first)
+        status, offer_a = self.request("POST", "/api/assignment-offers", data=shared)
+        self.assertEqual(201, status, offer_a)
+        status, offer_b = self.request("POST", "/api/assignment-offers", data={
+            **shared, "workOrderId": second["id"], "idempotencyKey": str(uuid4())})
+        self.assertEqual(201, status, offer_b)
+        def accept(offer):
+            return self.request("POST", "/api/assignment-offers/" + offer["id"] + "/accept", "technician", {
+                "expectedVersion": offer["version"], "idempotencyKey": str(uuid4())})
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            responses = list(pool.map(accept, [offer_a, offer_b]))
+        self.assertEqual([200, 409], sorted(x[0] for x in responses), responses)
+        for order in [first, second]:
+            status, offers = self.request("GET", "/api/assignment-offers?workOrderId=" + order["id"])
+            self.assertEqual(200, status)
+            expected = "Scheduled" if offers[0]["status"] == "Accepted" else "Created"
+            self.wait(lambda order=order, expected=expected: self.request("GET", "/api/work-orders/" + order["id"])[1]["status"] == expected, "concurrent assignment projection")
 
     def test_expired_offer_cannot_be_accepted_and_expiration_is_audited(self):
         order = self.order()

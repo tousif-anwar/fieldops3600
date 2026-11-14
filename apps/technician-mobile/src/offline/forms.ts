@@ -10,8 +10,8 @@ export function validateField(field: FormField, answers: Record<string, string>)
   if (!answer && field.required) return `${inputType === 'choice' ? 'Select' : 'Enter'} ${field.label.toLowerCase()}.`;
   if (!answer) return null;
   if (inputType === 'choice' && !field.options.includes(answer)) return `${field.label} contains an invalid selection.`;
-  if (inputType === 'text' && field.maxLength != null && answer.length > field.maxLength)
-    return `${field.label} must be at most ${field.maxLength} characters.`;
+  if (inputType !== 'choice' && answer.length > (field.maxLength ?? 2000))
+    return `${field.label} must be at most ${field.maxLength ?? 2000} characters.`;
   if (inputType === 'number') {
     const number = Number(answer);
     if (!/^-?\d+(\.\d+)?$/.test(answer) || !Number.isFinite(number)) return `${field.label} must be a valid number.`;

@@ -2,13 +2,15 @@
 
 FieldOps 360 is a field-service operations platform for dispatching qualified technicians, guiding HVAC service work through a server-controlled workflow, supervising SLA performance, and investigating operational incidents from immutable event evidence. The implementation is an engineering demonstration built around a real local deployment: PostgreSQL, RabbitMQ, Keycloak, eight ASP.NET Core service hosts, a YARP gateway, a React operations portal, an Expo technician app, a deterministic OR-Tools optimizer, and a warehouse-backed analytics path.
 
-The application is designed for six authenticated operational roles: Technician, Dispatcher, Supervisor, Operations Manager, Analyst, and Administrator. Customers and service locations are managed as operational records; a separate customer sign-in portal is **not implemented** in this release. See [Known limitations](#known-limitations) before demonstrating customer self-service.
+The application supports six operational roles plus a separately scoped Customer role. The current source adds customer request/qualification, assignment offers, guided-service integrity and completed reports. [Business operations](BUSINESS_OPERATIONS.md) documents the actual implementation and remaining enterprise scope; [Operational verification](OPERATIONS_VERIFICATION.md) records current evidence. The release ZIP is an older snapshot.
 
 ## Documentation set
 
 | Document | Purpose |
 |---|---|
 | [Project overview](PROJECT_OVERVIEW.md) | Business problem, scope, roles, and delivery boundaries. |
+| [Business operations](BUSINESS_OPERATIONS.md) | Current architecture audit, entities, state machines, permissions, API ownership and prioritized backlog. |
+| [Operational verification](OPERATIONS_VERIFICATION.md) | Current commands/results, actual Android evidence and reproducible business scenarios. |
 | [System architecture](SYSTEM_ARCHITECTURE.md) | Service boundaries, data flow, messaging, security, and deployment topology. |
 | [Features](FEATURES.md) | Implemented behavior by role and business workflow. |
 | [Database design](DATABASE_DESIGN.md) | Operational schemas, warehouse model, migrations, and consistency rules. |
@@ -69,8 +71,8 @@ The exact commands, timestamps, and evidence boundaries are recorded in [Testing
 
 ## Known limitations
 
-- There is no customer-facing login or self-service portal. Customer and location records are maintained by dispatchers, supervisors, and managers.
-- No native Android emulator or physical-device run was completed for this release. The Expo application passed typechecking and its 34 deterministic tests.
+- The current source provides provisioned customer portal accounts; self-registration, direct customer booking and financial/contract workflows remain outside the implemented scope.
+- Android emulator offline persistence/reconnection has now been exercised. Physical-device and iOS validation remain outstanding.
 - Dispatchers do not receive the Analytics navigation item; analytics is limited to Analysts, Supervisors, Operations Managers, and Administrators. The API enforces the same policy.
 - The analytics and replay paths are eventually consistent. Warehouse readings depend on RabbitMQ delivery and the ingestion worker.
 - SLA timing is server-authoritative. The accelerated 30-second configuration is a local demonstration override, not a production default.

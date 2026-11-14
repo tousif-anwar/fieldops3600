@@ -60,3 +60,12 @@ export interface PortalWorkOrder {
   serviceLocationId: string;
   assetId?: string | null;
 }
+
+export interface PortalAppointment {
+  id: string;
+  workOrderId: string;
+  startUtc: string;
+  endUtc: string;
+  status: string;
+  version: number;
+}

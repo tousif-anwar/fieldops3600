@@ -1257,10 +1257,23 @@ tbody tr:hover {
 .portal-notes {
   white-space: pre-wrap;
 }
-.service-report {
+.fui-DialogSurface.modal.service-report {
+  display: block;
   width: min(90vw, 800px);
-  max-height: 90vh;
+  max-width: min(90vw, 800px);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+}
+.service-report .fui-DialogBody {
+  max-height: calc(100dvh - 104px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.service-report .fui-DialogContent {
+  min-height: 0;
   overflow-y: auto;
+}
+.service-report .fui-DialogContent > p {
+  margin: 8px 0;
 }
 .service-report-section {
   margin-top: 20px;
@@ -1279,7 +1292,9 @@ tbody tr:hover {
   overflow-wrap: anywhere;
 }
 @media (max-width: 900px) {
-  .portal-layout { grid-template-columns: minmax(0, 1fr); }
+  .portal-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .offer-toolbar {
   display: flex;

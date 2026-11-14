@@ -343,18 +343,20 @@ export function Shell() {
     section &&
     location.pathname !== section.to &&
     !extra?.match.test(location.pathname);
-  const crumbs = customerSurface ? [{ label: "Customer portal", to: undefined }] : [
-    {
-      label: "Home",
-      to: "/",
-    },
-    ...(section
-      ? [{ label: section.label, to: section.to }]
-      : extra
-        ? [{ label: extra.label, to: extra.to }]
-        : []),
-    ...(detail ? [{ label: "Details", to: undefined }] : []),
-  ];
+  const crumbs = customerSurface
+    ? [{ label: "Customer portal", to: undefined }]
+    : [
+        {
+          label: "Home",
+          to: "/",
+        },
+        ...(section
+          ? [{ label: section.label, to: section.to }]
+          : extra
+            ? [{ label: extra.label, to: extra.to }]
+            : []),
+        ...(detail ? [{ label: "Details", to: undefined }] : []),
+      ];
   useEffect(() => {
     const current =
       section?.label ??

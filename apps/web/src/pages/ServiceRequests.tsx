@@ -27,6 +27,7 @@ import {
 export function ServiceRequests() {
   const auth = useAuth();
   const [selected, setSelected] = useState<ServiceRequest | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [status, setStatus] = useState("Submitted");
   const requests = useQuery({
     queryKey: ["service-requests"],
@@ -115,7 +116,10 @@ export function ServiceRequests() {
                     <Button
                       icon={<ClipboardCheck size={16} />}
                       appearance="primary"
-                      onClick={() => setSelected(request)}
+                      onClick={() => {
+                        setSelected(request);
+                        setReviewOpen(true);
+                      }}
                     >
                       Review request
                     </Button>
@@ -136,7 +140,12 @@ export function ServiceRequests() {
         )}
       </Panel>
       {selected && (
-        <Qualification request={selected} onClose={() => setSelected(null)} />
+        <Qualification
+          key={selected.id}
+          request={selected}
+          open={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+        />
       )}
     </>
   );
@@ -144,9 +153,11 @@ export function ServiceRequests() {
 
 function Qualification({
   request,
+  open,
   onClose,
 }: {
   request: ServiceRequest;
+  open: boolean;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -180,7 +191,7 @@ function Qualification({
   });
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(_, data) => {
         if (!data.open && !qualify.isPending) onClose();
       }}

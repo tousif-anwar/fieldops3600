@@ -37,17 +37,28 @@ class NativeCheck:
         self.tokens = {role: AUTH.login(ROOT, role) for role in ("dispatcher", "technician")}
         self.evidence: list[str] = []
 
+    def record(self, message):
+        self.evidence.append(message)
+        print(message, flush=True)
+
     def call(self, *args: str) -> bytes:
         return subprocess.run(self.adb + list(args), check=True, capture_output=True, timeout=30).stdout
 
-    def request(self, method: str, path: str, role="technician", data=None):
+    def request(self, method: str, path: str, role="technician", data=None, retry_auth=True):
         headers = {"Authorization": "Bearer " + self.tokens[role]}
         if data is not None:
             headers["Content-Type"] = "application/json"
         request = urllib.request.Request(BASE + path, method=method, headers=headers,
             data=json.dumps(data).encode() if data is not None else None)
-        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=20) as response:
-            return json.load(response)
+        try:
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=20) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            if error.code != 401 or not retry_auth:
+                raise
+            error.close()
+            self.tokens[role] = AUTH.login(ROOT, role)
+            return self.request(method, path, role, data, retry_auth=False)
 
     def nodes(self):
         self.call("shell", "uiautomator", "dump", "/sdcard/fieldops-native-check.xml")
@@ -61,8 +72,8 @@ class NativeCheck:
     def find(self, text: str, *, prefix=False, attempts=8):
         for _ in range(attempts):
             for node in self.nodes():
-                label = self.label(node)
-                if (label.startswith(text) if prefix else label == text) and node.get("enabled") != "false":
+                label = self.label(node).casefold()
+                if (label.startswith(text.casefold()) if prefix else label == text.casefold()) and node.get("enabled") != "false":
                     return node
             time.sleep(.5)
         raise AssertionError(f"Native control did not appear: {text}")
@@ -108,7 +119,7 @@ class NativeCheck:
         workflow = self.request("POST", "/api/workflows", data={"workOrderId": order["id"]})
         if (datetime.fromisoformat(workflow["stages"][0]["deadlineUtc"]) - datetime.now(timezone.utc)).total_seconds() < 300:
             raise AssertionError("Use normal SLA timings for this durability check; accelerated SLA intentionally causes version conflicts.")
-        self.evidence.append("Created synthetic work, confirmed booking, and workflow through authenticated real APIs.")
+        self.record("Created synthetic work, confirmed booking, and workflow through authenticated real APIs.")
         return order, workflow
 
     def run(self):
@@ -124,7 +135,7 @@ class NativeCheck:
         self.tap("Accept")
         self.tap("Readiness.", prefix=True)
         self.tap("Ready")
-        self.evidence.append("Loaded the real cached assignment and completed stage controls on Android.")
+        self.record("Loaded the real cached assignment and completed stage controls on Android.")
         # The OS connectivity change is observed by NetInfo, not simulated in JS.
         self.call("shell", "cmd", "connectivity", "airplane-mode", "enable")
         self.call("shell", "svc", "wifi", "disable")
@@ -133,7 +144,7 @@ class NativeCheck:
         self.find("Saved on this device", attempts=12)
         server = self.request("GET", "/api/workflows/" + workflow["id"])
         assert server["currentStageIndex"] == 0, "Offline work must not advance authoritative server state"
-        self.evidence.append("Disabled Android connectivity, queued a stage, and verified the server did not advance.")
+        self.record("Disabled Android connectivity, queued a stage, and verified the server did not advance.")
         time.sleep(2)  # Query persister throttle must complete before process death.
         self.call("shell", "am", "force-stop", APP)
         self.call("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d",
@@ -142,7 +153,7 @@ class NativeCheck:
         self.tap("Sync")
         self.find("Waiting to sync")
         self.find("Stage 1")
-        self.evidence.append("Force-stopped and relaunched the Android app offline; queued answers survived on the Sync screen.")
+        self.record("Force-stopped and relaunched the Android app offline; queued answers survived on the Sync screen.")
         self.call("shell", "cmd", "connectivity", "airplane-mode", "disable")
         self.call("shell", "svc", "wifi", "enable")
         self.wait(lambda: self.request("GET", "/api/workflows/" + workflow["id"])["currentStageIndex"] == 1,
@@ -150,7 +161,7 @@ class NativeCheck:
         self.find("Everything is synced", attempts=15)
         updated = self.request("GET", "/api/workflows/" + workflow["id"])
         assert updated["stages"][0]["answers"] == {"assignment": "Accept", "readiness": "Ready"}
-        self.evidence.append("Reconnected Android; automatic synchronization advanced exactly one stage and retained the original answers.")
+        self.record("Reconnected Android; automatic synchronization advanced exactly one stage and retained the original answers.")
         return {"result": "passed", "platform": "Android emulator", "workOrderId": order["id"],
             "workflowId": workflow["id"], "templateVersion": workflow["templateVersion"], "checks": self.evidence}
 

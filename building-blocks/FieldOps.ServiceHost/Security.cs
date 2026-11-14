@@ -28,7 +28,7 @@ public sealed record Caller(string Id, string TeamId, string Role, bool IsAdmini
     {
         var id = principal.FindFirst("sub")?.Value ?? throw new DomainException(401, "Missing subject.");
         var team = principal.FindFirst("team_id")?.Value ?? principal.FindFirst("teamId")?.Value ?? "";
-        var role = new[] { "Administrator", "OperationsManager", "Supervisor", "Dispatcher", "Analyst", "Technician" }.FirstOrDefault(principal.IsInRole) ?? "Unknown";
+        var role = new[] { "Administrator", "OperationsManager", "Supervisor", "Dispatcher", "Analyst", "Technician", "Customer" }.FirstOrDefault(principal.IsInRole) ?? "Unknown";
         return new(id, team, role, principal.IsInRole("Administrator"), principal.IsInRole("Technician"));
     }
     public bool CanAccess(string team, string? technicianId = null) => IsAdministrator || (TeamId.Length > 0 && team == TeamId && (!IsTechnician || technicianId == Id));

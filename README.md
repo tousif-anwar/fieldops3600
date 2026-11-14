@@ -2,7 +2,7 @@
 
 FieldOps 360 is a local-first field-service operations platform for qualified dispatch, guided HVAC service work, server-enforced SLA supervision, warehouse analytics, and immutable incident replay. It combines eight ASP.NET Core service hosts, a YARP gateway, a React operations portal, an Expo technician app, PostgreSQL, RabbitMQ, Keycloak, and a deterministic OR-Tools scheduling service.
 
-The project is an engineering demonstration with a verified local stack. It does not claim a production deployment, customer portal, native-device certification, or real-customer data.
+The project is an engineering demonstration with a verified local stack, a scoped customer portal, and a native Android offline verification path. It does not claim a production deployment, physical-device certification, or real-customer data. The current implementation audit and remaining enterprise scope are recorded in [Business operations](docs/BUSINESS_OPERATIONS.md).
 
 ## The problem
 
@@ -22,12 +22,16 @@ A service operation has to decide who is qualified and available, whether a tech
 | Equipment | Asset hierarchy, serial/QR identity, warranty, location history, assigned service history. |
 | Work orders | Search, filtering, validated creation, customer/asset links, optimistic versions, eligible cancellation. |
 | Scheduling | Baseline and OR-Tools CP-SAT recommendations, availability/skills validation, booking, rescheduling, conflict protection. |
+| Customer intake | Customer-scoped requests, dispatcher qualification, linked orders, appointment tracking and completed service reports. |
+| Assignment offers | Exclusive invitations, expiry/decline/revoke, online acceptance, transactional booking, durable scheduling revisions. |
 | Guided service | Eight-stage workflow, conditional fields, drafts, assistance, idempotent submissions, read-only history. |
 | SLA | Persisted warning, critical, and breach milestones; approved pauses; restart-safe sweeps. |
 | Supervision | At-risk queues, retained alerts, live notifications, pause/resume, one-stage overrides. |
 | Analytics | Warehouse-backed completion, SLA, duration, volume, category, escalation, and utilization metrics. |
 | Replay | Ordered evidence, causation, delivery attempts, integrity checks, trace availability, CSV/PDF exports. |
 | Mobile | Expo technician app with SecureStore PKCE, equipment context, offline drafts, and conflict-aware sync. |
+
+New service workflows use immutable template v2 with diagnostic notes, documented labor/parts, server-enforced readiness/arrival/quality rules, customer acknowledgment and generated service reports. Historical v1 instances retain their pinned template.
 
 There is no generative-AI, LLM, embedding, RAG, or predictive-model dependency in this release. The scheduling service is deterministic OR-Tools optimization; technician matching and workflow rules are explicit business logic.
 
@@ -99,6 +103,8 @@ python scripts/wait-local.py
 
 Open **http://localhost:8088**. The generated local accounts are `technician`, `dispatcher`, `supervisor`, `manager`, `analyst`, and `administrator`. Their shared password is the `DEMO_PASSWORD` value in the ignored root `.env`; it is never printed or committed.
 
+After startup, run `python scripts/seed-customer-portal.py` to provision isolated synthetic `customer` and `customer-other` portal accounts with the same local demonstration password. Customer membership comes from signed Keycloak claims, not request fields.
+
 The first build can take several minutes. For prerequisites, archive startup, monitoring, source development, and troubleshooting, read [Installation and setup](docs/INSTALLATION_AND_SETUP.md).
 
 ## Demonstration data
@@ -115,6 +121,8 @@ These scripts create labeled synthetic customers, equipment, work orders, bookin
 ## Tests
 
 The release was verified on 13 November 2026 against the local Docker Compose stack:
+
+The table below records the earlier release snapshot. Current operational changes, exact test results, browser scenarios and native Android evidence are recorded separately in [Operational verification](docs/OPERATIONS_VERIFICATION.md).
 
 | Check | Result |
 |---|---|
@@ -135,6 +143,8 @@ Commands and evidence boundaries are recorded in [Testing and validation](docs/T
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Business rules, architecture audit and remaining work](docs/BUSINESS_OPERATIONS.md)
+- [Current operational verification and demonstrations](docs/OPERATIONS_VERIFICATION.md)
 - [Project overview](docs/PROJECT_OVERVIEW.md)
 - [System architecture](docs/SYSTEM_ARCHITECTURE.md)
 - [Features](docs/FEATURES.md)
@@ -148,8 +158,8 @@ Commands and evidence boundaries are recorded in [Testing and validation](docs/T
 
 ## Known limitations
 
-- Customer self-service login, customer-initiated booking, contract entitlement validation, and a customer portal are not implemented. Customer records are managed by the operational team.
-- No native Android emulator or physical-device run was completed for this release. The Expo app passed typechecking and its deterministic tests.
+- Customer self-service supports provisioned accounts, request submission, status/appointment tracking and reports. Self-registration, direct customer booking, contract entitlement validation and financial approvals remain unimplemented.
+- Android emulator offline persistence/reconnect was verified. Physical-device and iOS certification remain outstanding.
 - Dispatchers do not receive the Analytics navigation item; analytics is limited to Analysts, Supervisors, Operations Managers, and Administrators.
 - The warehouse and replay paths are eventually consistent.
 - The optimizer uses a straight-line travel proxy; it does not model traffic or between-job routing.

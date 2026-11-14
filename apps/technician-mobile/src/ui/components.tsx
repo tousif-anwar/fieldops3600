@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { type ReactNode } from 'react';
+import { Children, type ReactNode } from 'react';
 import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
   type StyleProp, type ViewStyle,
@@ -191,6 +191,8 @@ export function InlineNotice({
   title?: string;
 }) {
   const palette = noticePalette[tone];
+  const content = Children.toArray(children);
+  const textOnly = content.every(child => typeof child === 'string' || typeof child === 'number');
   return (
     <View
       accessibilityRole={tone === 'danger' || tone === 'warning' ? 'alert' : 'text'}
@@ -198,9 +200,12 @@ export function InlineNotice({
       style={[styles.notice, { backgroundColor: palette.background, borderColor: palette.border }]}
     >
       {title ? <Text style={[styles.noticeTitle, { color: palette.foreground }]}>{title}</Text> : null}
-      {typeof children === 'string' || typeof children === 'number'
+      {textOnly
         ? <Text style={[styles.noticeText, { color: palette.foreground }]}>{children}</Text>
-        : <View style={styles.noticeBody}>{children}</View>}
+        : <View style={styles.noticeBody}>{content.map((child, index) =>
+          typeof child === 'string' || typeof child === 'number'
+            ? <Text key={index} style={[styles.noticeText, { color: palette.foreground }]}>{child}</Text>
+            : child)}</View>}
     </View>
   );
 }

@@ -29,7 +29,7 @@ class CustomerLifecycleHttpTests(unittest.TestCase):
         auth = {"Authorization": "Bearer " + self.tokens[role]} | (headers or {})
         if data is not None:
             auth["Content-Type"] = "application/json"
-        request = urllib.request.Request("http://localhost:5100" + path, method=method, headers=auth,
+        request = urllib.request.Request("http://127.0.0.1:5100" + path, method=method, headers=auth,
             data=json.dumps(data).encode() if data is not None else None)
         try:
             with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=30) as response:
@@ -119,6 +119,12 @@ class CustomerLifecycleHttpTests(unittest.TestCase):
         self.assertEqual(200, status, appointments)
         booking = next(x for x in appointments if x["workOrderId"] == order_id and x["status"] == "Confirmed")
         self.assertNotIn("technicianId", booking)
+        status, claimed = self.call("GET", "/api/bookings/" + booking["id"], "dispatcher")
+        self.assertEqual(200, status, claimed); self.assertIsNotNone(claimed["serviceStartedAtUtc"])
+        status, repeated_claim = self.call("POST", "/api/bookings/" + booking["id"] + "/begin-service", "technician", {})
+        self.assertEqual(200, status, repeated_claim)
+        self.assertEqual(claimed["version"], repeated_claim["version"])
+        self.assertEqual(claimed["serviceStartedAtUtc"], repeated_claim["serviceStartedAtUtc"])
         self.assertEqual(409, self.call("POST", "/api/bookings/" + booking["id"] + "/cancel", "dispatcher", {"expectedVersion": booking["version"], "reason": "Must not cancel active service"})[0])
         self.assertEqual(409, self.call("PUT", "/api/bookings/" + booking["id"], "dispatcher", {"expectedVersion": booking["version"], "startUtc": (start + timedelta(hours=1)).isoformat(), "endUtc": (start + timedelta(hours=2)).isoformat(), "reason": "Must not reschedule active service"})[0])
         self.assertEqual(409, self.call("GET", "/api/workflows/service-report/" + order_id)[0])

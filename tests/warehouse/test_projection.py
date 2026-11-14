@@ -75,6 +75,27 @@ class WarehouseTests(unittest.TestCase):
             ).fetchone()[0],
         )
 
+    def test_offer_events_retain_evidence_without_creating_jobs_or_technician_assignments(self):
+        events = [self.event("AssignmentOffer" + state + ".v1", source="scheduling")
+                  for state in ["Created", "Accepted", "Declined", "Revoked", "Expired"]]
+        for event in events:
+            self.assertTrue(WORKER.project(self.db, event))
+            self.assertFalse(WORKER.project(self.db, event))
+        self.assertEqual(5, self.db.execute("SELECT count(*) FROM warehouse.staging_event WHERE work_order_id=%s", (self.order,)).fetchone()[0])
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.fact_work_order WHERE work_order_id=%s", (self.order,)).fetchone())
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.dim_technician WHERE technician_id=%s", ("tech-" + self.order,)).fetchone())
+
+    def test_offer_candidate_does_not_replace_unassigned_job_or_confirmed_technician(self):
+        WORKER.project(self.db, self.event("WorkOrderCreated.v1", payload={"technicianId": None, "createdAtUtc": self.now.isoformat()}))
+        WORKER.project(self.db, self.event("AssignmentOfferCreated.v1", source="scheduling"))
+        self.assertIsNone(self.db.execute("SELECT technician_key FROM warehouse.fact_work_order WHERE work_order_id=%s", (self.order,)).fetchone()[0])
+        assigned_technician = "confirmed-" + self.order
+        WORKER.project(self.db, self.event("BookingCreated.v1", source="scheduling", payload={
+            "id": str(uuid4()), "technicianId": assigned_technician, "startUtc": self.now.isoformat(),
+            "endUtc": (self.now + timedelta(hours=1)).isoformat()}))
+        WORKER.project(self.db, self.event("AssignmentOfferRevoked.v1", sequence=2, source="scheduling"))
+        self.assertEqual(assigned_technician, self.db.execute("SELECT t.technician_id FROM warehouse.fact_work_order o JOIN warehouse.dim_technician t USING(technician_key) WHERE o.work_order_id=%s", (self.order,)).fetchone()[0])
+
     def test_work_order_asset_reference_is_projected_and_preserved(self):
         asset = str(uuid4())
         created = self.event(
