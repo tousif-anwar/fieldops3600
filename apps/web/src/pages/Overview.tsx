@@ -196,7 +196,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
               aria-label="Active service workflows"
               className="table-scroll"
             >
-              <table>
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th scope="col">Work order</th>

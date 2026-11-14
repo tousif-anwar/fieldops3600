@@ -192,7 +192,7 @@ export function WorkOrders() {
             aria-label="All work orders"
             className="table-scroll"
           >
-            <table>
+            <table className="data-table">
               <thead>
                 <tr>
                   <th scope="col">Work order</th>

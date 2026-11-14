@@ -452,6 +452,7 @@ pre {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
+  contain: paint;
   overscroll-behavior-inline: contain;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -793,6 +794,24 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: var(--space-20);
+}
+.form-body > *,
+.form-body .fui-Field {
+  min-width: 0;
+}
+.form-body .fui-Field {
+  grid-template-columns: minmax(0, 1fr);
+}
+.form-body .fui-Select,
+.form-body .fui-Input {
+  min-width: 0;
+  max-width: 100%;
+}
+.form-body input,
+.form-body select,
+.form-body textarea {
+  min-width: 0;
+  max-width: 100%;
 }
 .form-two {
   display: grid;
@@ -3546,6 +3565,13 @@ summary:focus-visible,
 }
 .data-table {
   min-width: 640px;
+  table-layout: fixed;
+}
+.table-scroll th {
+  white-space: normal;
+}
+.table-scroll:focus-visible {
+  outline-offset: -2px;
 }
 th,
 td {
