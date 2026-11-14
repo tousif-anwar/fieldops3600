@@ -8,6 +8,7 @@ export const ROLE_PRIORITY: Role[] = [
   "Dispatcher",
   "Technician",
   "Analyst",
+  "Customer",
 ];
 
 const labels: Record<Role, string> = {
@@ -17,6 +18,7 @@ const labels: Record<Role, string> = {
   OperationsManager: "Operations manager",
   Analyst: "Analyst",
   Administrator: "Administrator",
+  Customer: "Customer",
 };
 
 export function primaryRole(roles: Role[]): Role | null {
@@ -54,6 +56,8 @@ export function roleDescription(role: Role | null, teamId?: string): string {
       return "Validated service metrics and the areas worth investigating next.";
     case "Administrator":
       return "Identity, workflow standards, and audit access across the platform.";
+    case "Customer":
+      return "Your service locations, equipment, requests, and confirmed appointments.";
     default:
       return "Your account is signed in, but no FieldOps 360 role has been assigned.";
   }
@@ -123,6 +127,8 @@ export function homeDestination(role: Role | null): string {
       return "/analytics";
     case "Administrator":
       return "/administration";
+    case "Customer":
+      return "/portal";
     default:
       return "/workspaces";
   }

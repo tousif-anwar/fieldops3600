@@ -1,41 +1,53 @@
 #!/usr/bin/env python3
-"""Validate relative links and image paths in maintained Markdown.
+"""Validate relative links in the maintained Markdown documentation.
 
+The checker works from the project root (the parent of ``scripts/``) so it
+supports both the source checkout and the extracted four-directory release.
 External URLs, mail links, and pure anchors are intentionally out of scope.
-The checker works from tracked/untracked-but-not-ignored files and covers the maintained source documentation.
 """
 
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote
 
-ROOT = Path(__file__).resolve().parents[1]
+HERE = Path(__file__).resolve()
+ROOT = HERE.parents[1]
+# In the four-directory release this script lives in ``server/scripts`` and the
+# docs directory is one level above the server tree.
+if not (ROOT / "docs").is_dir() and (HERE.parents[2] / "docs").is_dir():
+    ROOT = HERE.parents[2]
 LINK = re.compile(r"!?\[[^\]]*\]\(([^)\n]+)\)")
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
-SKIP_PREFIXES: tuple[str, ...] = ()
+SKIP_PARTS = {
+    ".git",
+    ".local",
+    ".tools",
+    ".tmp",
+    "artifacts",
+    "bin",
+    "obj",
+    "node_modules",
+    ".venv",
+    ".packages",
+    ".pytest_cache",
+    ".ruff_cache",
+    "dist",
+    "coverage",
+    "test-results",
+    "playwright-report",
+}
 
 
 def markdown_files() -> list[Path]:
-    result = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "*.md"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    paths = []
-    for name in result.stdout.splitlines():
-        normalized = name.replace("\\", "/")
-        if normalized.startswith(SKIP_PREFIXES):
-            continue
-        path = ROOT / normalized
-        if path.is_file():
-            paths.append(path)
-    return sorted(set(paths))
+    candidates = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
+    return [
+        path
+        for path in candidates
+        if path.is_file() and not (set(path.relative_to(ROOT).parts) & SKIP_PARTS)
+    ]
 
 
 def without_fences(text: str) -> str:
@@ -65,7 +77,7 @@ def main() -> int:
                 resolved.relative_to(ROOT.resolve())
             except ValueError:
                 failures.append(
-                    f"{document.relative_to(ROOT)}: link escapes repository: {raw}"
+                    f"{document.relative_to(ROOT)}: link escapes project: {raw}"
                 )
                 continue
             checked += 1

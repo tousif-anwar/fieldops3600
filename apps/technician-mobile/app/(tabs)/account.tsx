@@ -2,14 +2,21 @@ import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../src/auth';
 import { useRuntime } from '../../src/runtime';
+import { completedVisitsToday, serviceActivity } from '../../src/itinerary';
+import { useActivity } from '../../src/use-activity';
+import { useWorkOrders } from '../../src/use-work-orders';
 import {
-  Button, InlineNotice, Screen, ScreenHeader, Section, StatusBadge,
+  Button, InlineNotice, LoadingState, Screen, ScreenHeader, Section, StatusBadge,
 } from '../../src/ui';
+import { formatTimestamp } from '../../src/ui/model';
 import { colors, spacing, typography } from '../../src/ui/tokens';
 
 export default function Account() {
   const { session, logout, error } = useAuth();
   const { online, submissions } = useRuntime();
+  const activity = useActivity();
+  const work = useWorkOrders();
+  const recent = serviceActivity(activity.data ?? []).slice(0, 8);
   const pending = submissions.filter(item => item.status !== 'synced').length;
   return (
     <Screen topInset>
@@ -30,6 +37,22 @@ export default function Account() {
           submissions remain available without a connection.
         </Text>
         <Link href="/sync" style={styles.link}>Review synchronization</Link>
+      </Section>
+      <Section card title="Your service activity" description="Recorded workflow milestones from your authorized work.">
+        {activity.isPending && !activity.data ? <LoadingState label="Loading service activity…" /> : null}
+        {activity.error ? <InlineNotice tone="warning" title="Activity needs refreshing">{activity.data ? 'Showing the last synchronized service history.' : 'Connect to load recorded service activity.'}</InlineNotice> : null}
+        {activity.data ? <Text style={styles.body}>{completedVisitsToday(activity.data)} visits completed today · {activity.data.filter(item => item.status === 'Completed').length} completed in your loaded history.</Text> : null}
+        {activity.data && !recent.length ? <Text style={styles.small}>Completed service stages will appear here after the server accepts your work.</Text> : null}
+        {recent.map(event => (
+          <View key={event.id} style={styles.activity}>
+            <Text style={styles.body}>{event.label}</Text>
+            <Text style={styles.small}>{formatTimestamp(event.occurredAtUtc)}</Text>
+            <Link href={{ pathname: '/job/[id]', params: { id: event.workOrderId } }} style={styles.link}>
+              {work.data?.find(item => item.id === event.workOrderId)?.number ?? 'View job history'}
+            </Link>
+          </View>
+        ))}
+        <Text style={styles.small}>History is limited to the latest 500 authorized workflows. These milestones describe recorded service activity.</Text>
       </Section>
       <Section title="Device storage" description="What stays on this phone">
         <Text style={styles.body}>
@@ -55,6 +78,7 @@ export default function Account() {
 
 const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  activity: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: spacing.xs },
   body: { ...typography.body, color: colors.ink },
   small: { ...typography.small, color: colors.muted },
   link: { ...typography.label, color: colors.primary, paddingVertical: spacing.sm },

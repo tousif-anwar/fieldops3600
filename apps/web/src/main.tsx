@@ -27,6 +27,14 @@ const OrderDetails = lazy(() =>
 const Schedule = lazy(() =>
   import("./pages/Schedule").then((m) => ({ default: m.Schedule })),
 );
+const CustomerPortal = lazy(() =>
+  import("./pages/CustomerPortal").then((m) => ({ default: m.CustomerPortal })),
+);
+const ServiceRequests = lazy(() =>
+  import("./pages/ServiceRequests").then((m) => ({
+    default: m.ServiceRequests,
+  })),
+);
 const MyJobs = lazy(() =>
   import("./pages/Workflow").then((m) => ({ default: m.MyJobs })),
 );
@@ -144,12 +152,33 @@ function App() {
   const auth = useAuth();
   if (!auth.ready) return <Loading label="Checking your secure session…" />;
   if (!auth.user) return <Login />;
+  if (auth.roles.includes("Customer"))
+    return (
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route element={<Shell />}>
+            <Route path="portal" element={<CustomerPortal />} />
+            <Route path="*" element={<Navigate to="/portal" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    );
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
         <Route element={<Shell />}>
           <Route index element={<Home />} />
           <Route path="workspaces" element={<Workspaces />} />
+          <Route
+            path="service-requests"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager"]}
+              >
+                <ServiceRequests />
+              </RequireRole>
+            }
+          />
           <Route
             path="customers"
             element={

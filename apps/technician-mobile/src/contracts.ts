@@ -90,7 +90,30 @@ export interface Workflow {
   currentStageIndex: number;
   version: number;
   status: string;
+  startedAtUtc?: string;
+  completedAtUtc?: string | null;
   stages: WorkflowStage[];
+}
+
+export interface AssignmentOffer {
+  id: string;
+  workOrderId: string;
+  technicianId: string;
+  teamId: string;
+  workOrderNumber: string;
+  title: string;
+  siteAddress: string;
+  serviceCategory: string;
+  priority: string;
+  startUtc: string;
+  endUtc: string;
+  expiresAtUtc: string;
+  status: 'Pending' | 'Accepted' | 'Declined' | 'Revoked' | 'Expired';
+  version: number;
+  createdAtUtc: string;
+  respondedAtUtc?: string | null;
+  reason?: string | null;
+  bookingId?: string | null;
 }
 
 export interface FormField {
@@ -100,6 +123,10 @@ export interface FormField {
   required: boolean;
   conditionField?: string | null;
   conditionValue?: string | null;
+  inputType?: 'choice' | 'text' | 'number' | null;
+  maxLength?: number | null;
+  minimum?: number | null;
+  maximum?: number | null;
 }
 
 export interface WorkflowTemplate {

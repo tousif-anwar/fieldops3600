@@ -2,6 +2,19 @@ namespace FieldOps.Core;
 
 public static class WorkOrderRules
 {
+    public static bool ApplyBookingEvent(WorkOrder order, string eventType, string? technicianId, long revision)
+    {
+        if (eventType is not ("BookingCreated.v1" or "BookingCancelled.v1" or "BookingRescheduled.v1") || revision <= order.AssignmentRevision) return false;
+        order.AssignmentRevision = revision;
+        if (order.Status is "Created" or "Scheduled")
+        {
+            order.TechnicianId = eventType == "BookingCancelled.v1" ? null : technicianId;
+            order.Status = eventType == "BookingCancelled.v1" ? "Created" : "Scheduled";
+        }
+        order.Version++;
+        return true;
+    }
+
     public static void RequireAllowedUpdate(string currentStatus, string requestedStatus)
     {
         if (requestedStatus == currentStatus) return;

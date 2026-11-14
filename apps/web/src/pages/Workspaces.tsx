@@ -27,6 +27,14 @@ interface Workspace {
 
 const workspaces: Workspace[] = [
   {
+    to: "/service-requests",
+    title: "Service requests",
+    description: "Qualify customer intake into an actionable work order.",
+    group: "Operations",
+    roles: ["Dispatcher", "Supervisor", "OperationsManager", "Administrator"],
+    icon: <ClipboardList size={22} />,
+  },
+  {
     to: "/customers",
     title: "Customers",
     description:

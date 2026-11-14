@@ -610,20 +610,6 @@ class WarehouseTests(unittest.TestCase):
             ).fetchone()[0]
         )
 
-    def test_prediction_decision_is_an_idempotent_supervisor_intervention(self):
-        event = self.event(
-            "RecommendationDecisionRecorded.v1", 3, 20, {"decision": "Accepted"}, True
-        )
-        WORKER.project(self.db, event)
-        WORKER.project(self.db, event)
-        self.assertEqual(
-            1,
-            self.db.execute(
-                "SELECT count(*) FROM warehouse.fact_supervisor_intervention WHERE work_order_id=%s AND intervention_type='RecommendationDecisionRecorded.v1'",
-                (self.order,),
-            ).fetchone()[0],
-        )
-
     def test_migration_ledger_prevents_repeated_backfill(self):
         WORKER.project(
             self.db,

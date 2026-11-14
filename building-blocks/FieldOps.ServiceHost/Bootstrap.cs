@@ -22,6 +22,7 @@ public static class Bootstrap
         builder.Host.UseSerilog((context, logger) => logger.ReadFrom.Configuration(context.Configuration).MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning).MinimumLevel.Override("Microsoft.IdentityModel", Serilog.Events.LogEventLevel.Warning).MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning).Enrich.FromLogContext().WriteTo.Console());
         builder.Services.AddSingleton(new ServiceIdentity(service));
         builder.Services.AddSingleton(TimeProvider.System);
+        if (service == "scheduling") builder.Services.AddHostedService<AssignmentOfferExpiryWorker>();
         builder.Services.AddDbContext<ServiceDb>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database") ?? throw new InvalidOperationException("ConnectionStrings:Database is required.")).ReplaceService<IModelCacheKeyFactory, ServiceModelKeyFactory>());
         builder.Services.AddHttpClient("services", client => client.Timeout = TimeSpan.FromSeconds(12));
         builder.Services.AddScoped<RemoteServices>();
@@ -43,12 +44,15 @@ public static class Bootstrap
         builder.Services.AddTransient<IClaimsTransformation, KeycloakClaims>();
         builder.Services.AddAuthorization(options =>
         {
+            options.AddPolicy("customer", p => p.RequireAuthenticatedUser().RequireRole("Customer"));
+            options.AddPolicy("intake", p => p.RequireAuthenticatedUser().RequireRole("Customer", "Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
+            options.AddPolicy("service-report", p => p.RequireAuthenticatedUser().RequireRole("Customer", "Technician", "Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("operational", p => p.RequireAuthenticatedUser().RequireRole("Technician", "Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("execute", p => p.RequireAuthenticatedUser().RequireRole("Technician", "Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("dispatch", p => p.RequireAuthenticatedUser().RequireRole("Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("supervise", p => p.RequireAuthenticatedUser().RequireRole("Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("report", p => p.RequireAuthenticatedUser().RequireRole("Analyst", "Supervisor", "OperationsManager", "Administrator"));
-            options.AddPolicy("replay", p => p.RequireAuthenticatedUser().RequireRole("Supervisor", "Administrator"));
+            options.AddPolicy("replay", p => p.RequireAuthenticatedUser().RequireRole("Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("admin", p => p.RequireAuthenticatedUser().RequireRole("Administrator"));
         });
         builder.Services.AddOpenTelemetry().ConfigureResource(r => r.AddService($"fieldops-{service}")).WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddSource("MassTransit", "FieldOps").AddOtlpExporter());
@@ -100,6 +104,8 @@ public static class Bootstrap
         // Metrics are intentionally bound on the internal service network by Compose.
         app.MapMetrics();
         OperationsApi.Map(app, service);
+        CustomerPortalApi.Map(app, service);
+        if (service == "workflows") ServiceReportApi.Map(app);
         if (service == "notifications") { ReportingApi.Map(app); app.MapHub<NotificationHub>("/hubs/notifications"); }
         if (service == "reporting") ReportingApi.MapReporting(app);
         if (args.Contains("--describe-endpoints", StringComparer.Ordinal))

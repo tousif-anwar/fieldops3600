@@ -6,7 +6,8 @@ public sealed class DomainException(int status, string message) : Exception(mess
 }
 
 public sealed record FormField(string Key, string Label, string[] Options, bool Required = true,
-    string? ConditionField = null, string? ConditionValue = null);
+    string? ConditionField = null, string? ConditionValue = null, string InputType = "choice",
+    int? MaxLength = null, decimal? Minimum = null, decimal? Maximum = null);
 public sealed record StageDefinition(int Index, string Name, FormField[] Fields);
 public sealed record WorkflowTemplate(int Version, StageDefinition[] Stages);
 
@@ -46,6 +47,7 @@ public static class WorkflowEngine
         var stage = stages[workflow.CurrentStageIndex];
         if (stage.PausedAtUtc is not null) throw new DomainException(409, "Resume the stage before submitting.");
         Templates.Validate(stage.Index, answers, workflow.TemplateVersion);
+        ServiceExecutionRules.RequireProgression(workflow, stage.Index, answers);
         if (stage.Index == 0 && answers.GetValueOrDefault("assignment") == "Request Reassignment")
             throw new DomainException(409, "Reassignment does not accept the job. Use Request Assistance to notify the supervisor; the acceptance stage remains open.");
         stage.Answers = new(answers);

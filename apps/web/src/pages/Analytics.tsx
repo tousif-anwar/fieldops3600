@@ -181,7 +181,7 @@ export function Analytics() {
   return (
     <>
       <PageHeader
-        eyebrow="OPERATIONAL INTELLIGENCE"
+        eyebrow="OPERATIONS ANALYTICS"
         title="Analytics"
         description="Validated service performance, capacity, and trends from the reporting warehouse."
         actions={

@@ -9,6 +9,7 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
 {
     public string ServiceName => identity.Name;
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
+    public DbSet<ServiceRequest> ServiceRequests => Set<ServiceRequest>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerContact> CustomerContacts => Set<CustomerContact>();
     public DbSet<ServiceLocation> ServiceLocations => Set<ServiceLocation>();
@@ -19,6 +20,7 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
     public DbSet<Technician> Technicians => Set<Technician>();
     public DbSet<TimeOff> TimeOff => Set<TimeOff>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<AssignmentOffer> AssignmentOffers => Set<AssignmentOffer>();
     public DbSet<Workflow> Workflows => Set<Workflow>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<InboxMessage> Inbox => Set<InboxMessage>();
@@ -34,17 +36,17 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
     {
         var owned = identity.Name switch
         {
-            "work-orders" => new[] { typeof(WorkOrder) },
+            "work-orders" => new[] { typeof(WorkOrder), typeof(ServiceRequest) },
             "customers" => [typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange)],
             "assets" => [typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange)],
             "technicians" => [typeof(Technician), typeof(TimeOff)],
-            "scheduling" => [typeof(Booking)],
+            "scheduling" => [typeof(Booking), typeof(AssignmentOffer)],
             "workflows" => [typeof(Workflow)],
             "notifications" => [typeof(Notification)],
             "reporting" => [typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact)],
             _ => []
         };
-        foreach (var type in new[] { typeof(WorkOrder), typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange), typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange), typeof(Technician), typeof(TimeOff), typeof(Booking), typeof(Workflow), typeof(Notification), typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact) })
+        foreach (var type in new[] { typeof(WorkOrder), typeof(ServiceRequest), typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange), typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange), typeof(Technician), typeof(TimeOff), typeof(Booking), typeof(AssignmentOffer), typeof(Workflow), typeof(Notification), typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact) })
             if (!owned.Contains(type)) b.Ignore(type);
         b.Entity<OutboxMessage>().ToTable("outbox_messages").HasKey(x => x.Id);
         b.Entity<OutboxMessage>().HasIndex(x => new { x.PublishedAtUtc, x.NextAttemptAtUtc });
@@ -90,6 +92,11 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
                 b.Entity<WorkOrder>().Property(x => x.Version).IsConcurrencyToken();
                 b.Entity<WorkOrder>().HasIndex(x => new { x.CustomerId, x.CreatedAtUtc });
                 b.Entity<WorkOrder>().HasIndex(x => new { x.TeamId, x.AssetId, x.CreatedAtUtc }).HasFilter("\"AssetId\" IS NOT NULL");
+                b.Entity<ServiceRequest>().ToTable("service_requests");
+                b.Entity<ServiceRequest>().HasOne<WorkOrder>().WithMany().HasForeignKey(x => x.WorkOrderId).OnDelete(DeleteBehavior.Restrict);
+                b.Entity<ServiceRequest>().Property(x => x.Version).IsConcurrencyToken();
+                b.Entity<ServiceRequest>().HasIndex(x => x.WorkOrderId).IsUnique().HasFilter("\"WorkOrderId\" IS NOT NULL");
+                b.Entity<ServiceRequest>().HasIndex(x => new { x.TeamId, x.Status, x.CreatedAtUtc });
                 break;
             case "technicians":
                 b.Entity<Technician>().ToTable("technicians");
@@ -101,6 +108,11 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
                 b.Entity<Booking>().ToTable("bookings");
                 b.Entity<Booking>().Property(x => x.Version).IsConcurrencyToken();
                 b.Entity<Booking>().HasIndex(x => new { x.WorkOrderId, x.Status });
+                b.Entity<AssignmentOffer>().ToTable("assignment_offers");
+                b.Entity<AssignmentOffer>().Property(x => x.Version).IsConcurrencyToken();
+                b.Entity<AssignmentOffer>().HasIndex(x => x.WorkOrderId).IsUnique().HasFilter("\"Status\" = 'Pending'");
+                b.Entity<AssignmentOffer>().HasIndex(x => new { x.TeamId, x.TechnicianId, x.ExpiresAtUtc });
+                b.Entity<AssignmentOffer>().HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
                 break;
             case "workflows":
                 b.Entity<Workflow>().ToTable("workflows");

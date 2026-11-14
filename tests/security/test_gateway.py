@@ -63,7 +63,7 @@ class GatewaySecurityTests(unittest.TestCase):
 
     def test_only_health_is_anonymous(self):
         self.assertEqual(200, self.request("/health/live")[0])
-        for path in ["/api/session", "/api/work-orders", "/api/replay/00000000-0000-0000-0000-000000000000", "/api/intelligence/predict"]:
+        for path in ["/api/session", "/api/work-orders", "/api/replay/00000000-0000-0000-0000-000000000000", "/api/optimizer/optimize"]:
             with self.subTest(path=path):
                 self.assertEqual(401, self.request(path)[0])
 

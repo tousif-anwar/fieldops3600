@@ -1203,6 +1203,102 @@ tbody tr:hover {
 .recommendations > h3 {
   font-size: 12px;
 }
+
+.dispatch-offers-section {
+  margin-top: 24px;
+}
+.portal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.portal-side {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.portal-records {
+  padding: 6px 22px;
+}
+.portal-record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 0 24px;
+}
+.portal-record {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.portal-record:last-child {
+  border-bottom: 0;
+}
+.portal-record p {
+  margin: 8px 0;
+  color: var(--muted);
+}
+.portal-record strong > svg,
+.portal-record p > svg {
+  vertical-align: middle;
+}
+.portal-record-heading {
+  display: flex;
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+.portal-record-heading h3 {
+  margin: 0;
+}
+.portal-notes {
+  white-space: pre-wrap;
+}
+.service-report {
+  width: min(90vw, 800px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.service-report-section {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.service-report-section dl > div {
+  margin: 10px 0;
+}
+.service-report-section dt {
+  font-weight: 600;
+}
+.service-report-section dd {
+  margin: 4px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .portal-layout { grid-template-columns: minmax(0, 1fr); }
+}
+.offer-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.offer-toolbar .muted {
+  font-size: 12px;
+}
+.offer-card .booking-content {
+  width: 100%;
+}
+.offer-card .offer-reason {
+  display: block;
+  overflow-wrap: anywhere;
+}
 .recommendation {
   display: flex;
   align-items: flex-start;
@@ -3791,64 +3887,6 @@ tbody tr:hover {
 }
 .risk-intro svg {
   flex-shrink: 0;
-}
-.risk-intro p {
-  font-size: 11px;
-}
-.risk-result {
-  padding: 20px;
-  border: 1px solid #e5ebf4;
-  background: #f8fafd;
-  border-radius: 8px;
-}
-.risk-result > div {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.risk-result > div > strong {
-  font-size: 30px;
-  color: #7091bb;
-  font-family:
-    Manrope,
-    Segoe UI,
-    sans-serif;
-}
-.risk-result > p {
-  font-size: 11px;
-  color: #8fa4bf;
-  margin-top: 15px;
-}
-.risk-result > ul {
-  font-size: 10px;
-  color: #9db0c9;
-  line-height: 1.9;
-  padding-left: 16px;
-  margin: 16px 0;
-}
-.risk-result > small {
-  display: block;
-  color: #b0bdd0;
-  font-size: 9px;
-  line-height: 1.9;
-}
-.risk-result > .risk-advisory {
-  font-size: 9px;
-  color: #b69c77;
-  border-top: 1px solid #e9edf5;
-  padding-top: 12px;
-}
-.risk-result .fui-Field {
-  margin-top: 20px;
-}
-.risk-decision-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 15px;
-}
-.risk-decision-actions button {
-  font-size: 10px;
 }
 .trace-card > .fui-Button {
   font-size: 9px;

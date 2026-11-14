@@ -56,6 +56,17 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     label: "Operations",
     items: [
       {
+        to: "/service-requests",
+        label: "Service requests",
+        icon: ClipboardList,
+        roles: [
+          "Dispatcher",
+          "Supervisor",
+          "OperationsManager",
+          "Administrator",
+        ],
+      },
+      {
         to: "/customers",
         label: "Customers",
         icon: Building2,
@@ -171,6 +182,7 @@ const extraRoutes: { match: RegExp; label: string; to?: string }[] = [
 
 export function Shell() {
   const auth = useAuth();
+  const customerSurface = auth.roles.includes("Customer");
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -185,12 +197,9 @@ export function Shell() {
   const [query, setQuery] = useState("");
   const [live, setLive] = useState(false);
   const qc = useQueryClient();
-  const notificationsAllowed = auth.can(
-    "Technician",
-    "Dispatcher",
-    "Supervisor",
-    "OperationsManager",
-  );
+  const notificationsAllowed =
+    !customerSurface &&
+    auth.can("Technician", "Dispatcher", "Supervisor", "OperationsManager");
   const notifications = useQuery({
     queryKey: ["notifications"],
     queryFn: () => api<Notification[]>("/api/notifications"),
@@ -201,7 +210,7 @@ export function Shell() {
     notifications.data?.filter(
       (notification) => !notification.acknowledgedAtUtc,
     ).length ?? 0;
-  const role = primaryRole(auth.roles);
+  const role = customerSurface ? "Customer" : primaryRole(auth.roles);
   const teamId = String(
     auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? "",
   );
@@ -219,22 +228,34 @@ export function Shell() {
     .map((part) => part.charAt(0))
     .join("")
     .toUpperCase();
-  const canSearch = auth.can(
-    "Technician",
-    "Dispatcher",
-    "Supervisor",
-    "OperationsManager",
-  );
-  const visibleGroups = navigationGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) =>
-          item.roles === null ||
-          item.roles.some((allowed) => auth.roles.includes(allowed)),
-      ),
-    }))
-    .filter((group) => group.items.length > 0);
+  const canSearch =
+    !customerSurface &&
+    auth.can("Technician", "Dispatcher", "Supervisor", "OperationsManager");
+  const visibleGroups = customerSurface
+    ? [
+        {
+          label: "Your service",
+          items: [
+            {
+              to: "/portal",
+              label: "Customer portal",
+              icon: Home,
+              roles: ["Customer"] as Role[],
+              end: true,
+            },
+          ],
+        },
+      ]
+    : navigationGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter(
+            (item) =>
+              item.roles === null ||
+              item.roles.some((allowed) => auth.roles.includes(allowed)),
+          ),
+        }))
+        .filter((group) => group.items.length > 0);
   const visibleNavigation = visibleGroups.flatMap((group) => group.items);
 
   useEffect(() => {
@@ -280,6 +301,10 @@ export function Shell() {
       void qc.invalidateQueries({ queryKey: ["notifications"] });
       void qc.invalidateQueries({ queryKey: ["workflows"] });
       void qc.invalidateQueries({ queryKey: ["reports"] });
+      void qc.invalidateQueries({ queryKey: ["assignment-offers"] });
+      void qc.invalidateQueries({ queryKey: ["bookings"] });
+      void qc.invalidateQueries({ queryKey: ["work-orders"] });
+      void qc.invalidateQueries({ queryKey: ["service-requests"] });
     };
     connection.on("notification", refresh);
     connection.on("NotificationReceived", refresh);
@@ -318,8 +343,11 @@ export function Shell() {
     section &&
     location.pathname !== section.to &&
     !extra?.match.test(location.pathname);
-  const crumbs = [
-    { label: "Home", to: "/" },
+  const crumbs = customerSurface ? [{ label: "Customer portal", to: undefined }] : [
+    {
+      label: "Home",
+      to: "/",
+    },
     ...(section
       ? [{ label: section.label, to: section.to }]
       : extra
@@ -356,7 +384,11 @@ export function Shell() {
         className={`sidebar ${open ? "sidebar-open" : ""}`}
       >
         <div className="sidebar-brand-row">
-          <Link to="/" className="brand" aria-label="FieldOps 360 home">
+          <Link
+            to={customerSurface ? "/portal" : "/"}
+            className="brand"
+            aria-label="FieldOps 360 home"
+          >
             <span className="brand-symbol">
               <Compass size={23} aria-hidden="true" />
             </span>
@@ -381,8 +413,10 @@ export function Shell() {
             <Building2 size={18} aria-hidden="true" />
           </span>
           <span className="workspace-switch-copy">
-            {teamLabel(teamId)}
-            <small>Service operations</small>
+            {customerSurface ? "Your service account" : teamLabel(teamId)}
+            <small>
+              {customerSurface ? "Customer service" : "Service operations"}
+            </small>
           </span>
         </div>
         <div className="primary-navigation">
@@ -405,19 +439,21 @@ export function Shell() {
               ))}
             </div>
           ))}
-          <div className="nav-group nav-group-tools">
-            <div className="nav-group-label">Directory</div>
-            <NavLink
-              to="/workspaces"
-              className={({ isActive }) =>
-                `nav-item ${isActive ? "active" : ""}`
-              }
-              title={collapsed ? "All workspaces" : undefined}
-            >
-              <LayoutGrid size={19} aria-hidden="true" />
-              <span>All workspaces</span>
-            </NavLink>
-          </div>
+          {!customerSurface && (
+            <div className="nav-group nav-group-tools">
+              <div className="nav-group-label">Directory</div>
+              <NavLink
+                to="/workspaces"
+                className={({ isActive }) =>
+                  `nav-item ${isActive ? "active" : ""}`
+                }
+                title={collapsed ? "All workspaces" : undefined}
+              >
+                <LayoutGrid size={19} aria-hidden="true" />
+                <span>All workspaces</span>
+              </NavLink>
+            </div>
+          )}
         </div>
         <div className="sidebar-bottom">
           <button
@@ -535,10 +571,12 @@ export function Shell() {
                     {roleLabel(role)} · {teamLabel(teamId)}
                   </small>
                 </div>
-                <Link to="/workspaces" className="user-popover-link">
-                  <LayoutGrid size={16} aria-hidden="true" />
-                  All workspaces
-                </Link>
+                {!customerSurface && (
+                  <Link to="/workspaces" className="user-popover-link">
+                    <LayoutGrid size={16} aria-hidden="true" />
+                    All workspaces
+                  </Link>
+                )}
                 {notificationsAllowed && (
                   <Link to="/notifications" className="user-popover-link">
                     <Bell size={16} aria-hidden="true" />

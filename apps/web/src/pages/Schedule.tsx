@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Button, Field, Input, Select } from "@fluentui/react-components";
@@ -7,6 +7,7 @@ import {
   Check,
   Clock3,
   MapPin,
+  RefreshCw,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -24,6 +25,8 @@ import {
 } from "../components/common";
 import type { Booking, Recommendation, Technician, WorkOrder } from "../types";
 import { BookingEditor } from "../components/BookingEditor";
+import { AssignmentOffers } from "../components/AssignmentOffers";
+import type { AssignmentOffer } from "../assignment-contracts";
 
 export function Schedule() {
   const [editing, setEditing] = useState<{
@@ -46,6 +49,12 @@ export function Schedule() {
   const [strategy, setStrategy] = useState("baseline");
   const [selected, setSelected] = useState("");
   const [reason, setReason] = useState("");
+  const [assignmentMode, setAssignmentMode] = useState("direct");
+  const [offerMinutes, setOfferMinutes] = useState("30");
+  const offerCommand = useRef<{
+    idempotencyKey: string;
+    expiresAtUtc: string;
+  } | null>(null);
   const orders = useQuery({
     queryKey: ["work-orders"],
     queryFn: () => api<WorkOrder[]>("/api/work-orders"),
@@ -58,6 +67,7 @@ export function Schedule() {
   const bookings = useQuery({
     queryKey: ["bookings"],
     queryFn: () => api<Booking[]>("/api/bookings"),
+    refetchInterval: 10000,
   });
   const startUtc = useMemo(
     () =>
@@ -90,16 +100,81 @@ export function Schedule() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["bookings"] });
       void qc.invalidateQueries({ queryKey: ["work-orders"] });
+      void qc.invalidateQueries({ queryKey: ["assignment-offers"] });
       setSelected("");
     },
+    onError: () => {
+      void qc.invalidateQueries({ queryKey: ["bookings"] });
+      void qc.invalidateQueries({ queryKey: ["work-orders"] });
+    },
   });
+  const sendOffer = useMutation({
+    mutationFn: () => {
+      offerCommand.current ??= {
+        idempotencyKey: crypto.randomUUID(),
+        expiresAtUtc: new Date(
+          Math.min(
+            Date.now() + Number(offerMinutes) * 60000,
+            Date.parse(startUtc),
+          ),
+        ).toISOString(),
+      };
+      return post<AssignmentOffer>("/api/assignment-offers", {
+        workOrderId,
+        technicianId: selected,
+        startUtc,
+        endUtc,
+        ...offerCommand.current,
+      });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["assignment-offers"] });
+      setSelected("");
+      offerCommand.current = null;
+    },
+    onError: () => {
+      void qc.invalidateQueries({ queryKey: ["assignment-offers"] });
+      void qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+  const busy =
+    recommendations.isPending || confirm.isPending || sendOffer.isPending;
+  const resetPlan = () => {
+    recommendations.reset();
+    confirm.reset();
+    sendOffer.reset();
+    setSelected("");
+    setReason("");
+    offerCommand.current = null;
+  };
+  const refreshDispatch = () => {
+    void orders.refetch();
+    void bookings.refetch();
+    void qc.invalidateQueries({ queryKey: ["assignment-offers"] });
+    resetPlan();
+  };
   return (
     <>
       <PageHeader
         eyebrow="DISPATCH & CAPACITY"
         title="Dispatch board"
         description="Assign qualified technicians, review availability, and prevent overlapping bookings."
+        actions={
+          <Button
+            icon={<RefreshCw size={16} />}
+            disabled={busy}
+            onClick={refreshDispatch}
+          >
+            Refresh dispatch
+          </Button>
+        }
       />
+      {orders.isError && (
+        <ErrorState error={orders.error} retry={() => void orders.refetch()} />
+      )}
+      {techs.isError && (
+        <ErrorState error={techs.error} retry={() => void techs.refetch()} />
+      )}
       <div
         className={`schedule-grid ${auth.can("Dispatcher", "OperationsManager") ? "" : "schedule-review"}`}
       >
@@ -112,18 +187,21 @@ export function Schedule() {
               <Field label="Work order" required>
                 <Select
                   value={workOrderId}
-                  disabled={recommendations.isPending}
+                  disabled={busy}
                   onChange={(e) => {
                     setOrder(e.target.value);
-                    recommendations.reset();
-                    setSelected("");
+                    resetPlan();
                   }}
                 >
                   <option value="">Choose a work order</option>
                   {orders.data
                     ?.filter(
                       (w) =>
-                        w.status !== "Completed" && w.status !== "Cancelled",
+                        w.status === "Created" &&
+                        !bookings.data?.some(
+                          (b) =>
+                            b.workOrderId === w.id && b.status === "Confirmed",
+                        ),
                     )
                     .map((w) => (
                       <option key={w.id} value={w.id}>
@@ -136,11 +214,10 @@ export function Schedule() {
                 <Input
                   type="datetime-local"
                   value={start}
-                  disabled={recommendations.isPending}
+                  disabled={busy}
                   onChange={(e) => {
                     setStart(e.target.value);
-                    recommendations.reset();
-                    setSelected("");
+                    resetPlan();
                   }}
                 />
               </Field>
@@ -148,11 +225,10 @@ export function Schedule() {
                 <Field label="Duration">
                   <Select
                     value={duration}
-                    disabled={recommendations.isPending}
+                    disabled={busy}
                     onChange={(e) => {
                       setDuration(e.target.value);
-                      recommendations.reset();
-                      setSelected("");
+                      resetPlan();
                     }}
                   >
                     {[30, 60, 90, 120, 180, 240].map((v) => (
@@ -165,11 +241,10 @@ export function Schedule() {
                 <Field label="Dispatch strategy">
                   <Select
                     value={strategy}
-                    disabled={recommendations.isPending}
+                    disabled={busy}
                     onChange={(e) => {
                       setStrategy(e.target.value);
-                      recommendations.reset();
-                      setSelected("");
+                      resetPlan();
                     }}
                   >
                     <option value="baseline">
@@ -183,9 +258,21 @@ export function Schedule() {
                 appearance="primary"
                 icon={<Sparkles size={16} />}
                 disabled={
-                  !workOrderId || !startUtc || recommendations.isPending
+                  !workOrderId ||
+                  !startUtc ||
+                  busy ||
+                  orders.isPending ||
+                  bookings.isPending ||
+                  orders.isError ||
+                  bookings.isError
                 }
-                onClick={() => recommendations.mutate()}
+                onClick={() => {
+                  confirm.reset();
+                  sendOffer.reset();
+                  setSelected("");
+                  offerCommand.current = null;
+                  recommendations.mutate();
+                }}
               >
                 {recommendations.isPending
                   ? "Checking availability…"
@@ -212,7 +299,13 @@ export function Schedule() {
                           type="radio"
                           name="technician"
                           checked={selected === r.technicianId}
-                          onChange={() => setSelected(r.technicianId)}
+                          disabled={busy}
+                          onChange={() => {
+                            setSelected(r.technicianId);
+                            confirm.reset();
+                            sendOffer.reset();
+                            offerCommand.current = null;
+                          }}
                         />
                         <div>
                           <strong>
@@ -244,37 +337,122 @@ export function Schedule() {
                       </label>
                     ))
                   )}
-                  <Field
-                    label="Override or dispatch reason"
-                    required={
-                      !!selected &&
-                      selected !== recommendations.data?.[0]?.technicianId
-                    }
-                    hint="A reason is required when choosing a different recommendation."
-                  >
-                    <Input
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="Optional dispatch context"
-                    />
+                  <Field label="Assignment method">
+                    <Select
+                      value={assignmentMode}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setAssignmentMode(e.target.value);
+                        confirm.reset();
+                        sendOffer.reset();
+                        offerCommand.current = null;
+                      }}
+                    >
+                      <option value="direct">
+                        Dispatcher confirms booking
+                      </option>
+                      <option value="offer">Offer to technician</option>
+                    </Select>
                   </Field>
+                  {assignmentMode === "offer" && (
+                    <>
+                      <Field
+                        label="Offer response time"
+                        hint="The offer expires at the appointment start if it comes sooner."
+                      >
+                        <Select
+                          value={offerMinutes}
+                          disabled={busy}
+                          onChange={(e) => {
+                            setOfferMinutes(e.target.value);
+                            sendOffer.reset();
+                            offerCommand.current = null;
+                          }}
+                        >
+                          {[15, 30, 60, 240].map((minutes) => (
+                            <option key={minutes} value={minutes}>
+                              {minutes} minutes
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <p className="muted">
+                        Sending an offer leaves the job unassigned.
+                        Qualifications and capacity are checked again on
+                        acceptance.
+                      </p>
+                    </>
+                  )}
+                  {assignmentMode === "direct" && (
+                    <Field
+                      label="Override or dispatch reason"
+                      required={
+                        !!selected &&
+                        selected !== recommendations.data?.[0]?.technicianId
+                      }
+                      hint="A reason is required when choosing a different recommendation."
+                    >
+                      <Input
+                        value={reason}
+                        disabled={busy}
+                        maxLength={500}
+                        onChange={(e) => {
+                          setReason(e.target.value);
+                          confirm.reset();
+                        }}
+                        placeholder="Optional dispatch context"
+                      />
+                    </Field>
+                  )}
+                  {assignmentMode === "direct" && (
+                    <p className="muted">
+                      Confirming a booking replaces any pending offer for this
+                      work order.
+                    </p>
+                  )}
                   <Button
                     appearance="primary"
                     disabled={
                       !selected ||
-                      confirm.isPending ||
-                      (selected !== recommendations.data?.[0]?.technicianId &&
+                      busy ||
+                      (assignmentMode === "direct" &&
+                        selected !== recommendations.data?.[0]?.technicianId &&
                         reason.trim().length < 3)
                     }
                     icon={<Check size={16} />}
-                    onClick={() => confirm.mutate()}
+                    onClick={() =>
+                      assignmentMode === "offer"
+                        ? sendOffer.mutate()
+                        : confirm.mutate()
+                    }
                   >
-                    {confirm.isPending ? "Confirming…" : "Confirm booking"}
+                    {sendOffer.isPending
+                      ? "Sending offer…"
+                      : confirm.isPending
+                        ? "Confirming…"
+                        : assignmentMode === "offer"
+                          ? "Send assignment offer"
+                          : "Confirm booking"}
                   </Button>
                 </div>
               )}
               {confirm.isError && (
-                <InlineMessage>{confirm.error.message}</InlineMessage>
+                <InlineMessage>
+                  {confirm.error.message} Refresh dispatch and check
+                  availability before retrying.
+                </InlineMessage>
+              )}
+              {sendOffer.isError && (
+                <InlineMessage>
+                  {sendOffer.error.message} The offer has not been confirmed
+                  here. Refresh offers to check its status.
+                </InlineMessage>
+              )}
+              {sendOffer.isSuccess && (
+                <InlineMessage success>
+                  Offer sent. Awaiting technician acceptance; no booking is
+                  confirmed yet.
+                </InlineMessage>
               )}
               {confirm.isSuccess && (
                 <InlineMessage success>
@@ -373,6 +551,12 @@ export function Schedule() {
             </div>
           )}
         </Panel>
+      </div>
+      <div className="dispatch-offers-section">
+        <AssignmentOffers
+          technicians={techs.data ?? []}
+          canManage={auth.can("Dispatcher", "OperationsManager")}
+        />
       </div>
       {editing && (
         <BookingEditor

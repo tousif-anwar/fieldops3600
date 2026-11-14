@@ -10,6 +10,17 @@ function tokenWith(payload: Record<string, unknown>) {
 }
 
 describe("authenticated role extraction", () => {
+  it("recognizes a signed Customer role without inferring office access", () => {
+    expect(
+      rolesFromToken(
+        tokenWith({
+          realm_access: { roles: ["Customer"] },
+          customer_id: "account-1",
+        }),
+      ),
+    ).toEqual(["Customer"]);
+    expect(rolesFromToken(tokenWith({ customer_id: "account-1" }))).toEqual([]);
+  });
   it("reads known Keycloak realm roles from a padded or unpadded token", () => {
     expect(
       rolesFromToken(

@@ -66,7 +66,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
-    options.AddPolicy("intelligence", policy => policy.RequireRole("Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
+    options.AddPolicy("optimizer", policy => policy.RequireRole("Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
 });
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins((builder.Configuration["Web:Origins"] ?? "http://localhost:5173,http://localhost:8088").Split(','))
@@ -87,11 +87,11 @@ builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddSe
 
 var servicePaths = new Dictionary<string, string[]>
 {
-    ["customers"] = ["/api/customers/{**remaining}"],
-    ["assets"] = ["/api/assets/{**remaining}"],
-    ["work-orders"] = ["/api/work-orders/{**remaining}"],
+    ["customers"] = ["/api/customers/{**remaining}", "/api/customer-portal/account"],
+    ["assets"] = ["/api/assets/{**remaining}", "/api/customer-portal/equipment"],
+    ["work-orders"] = ["/api/work-orders/{**remaining}", "/api/service-requests/{**remaining}", "/api/customer-portal/work-orders/{**remaining}"],
     ["technicians"] = ["/api/technicians/{**remaining}"],
-    ["scheduling"] = ["/api/bookings/{**remaining}", "/api/scheduling/{**remaining}"],
+    ["scheduling"] = ["/api/bookings/{**remaining}", "/api/scheduling/{**remaining}", "/api/assignment-offers/{**remaining}", "/api/customer-portal/appointments"],
     ["workflows"] = ["/api/workflows/{**remaining}"],
     ["notifications"] = ["/api/notifications/{**remaining}", "/hubs/notifications/{**remaining}"],
     ["reporting"] = ["/api/reports/{**remaining}", "/api/replay/{**remaining}"]
@@ -116,19 +116,19 @@ foreach (var (service, paths) in servicePaths)
 }
 clusters.Add(new ClusterConfig
 {
-    ClusterId = "intelligence",
+    ClusterId = "optimizer",
     Destinations = new Dictionary<string, DestinationConfig>
     {
-        ["primary"] = new() { Address = builder.Configuration["Services:intelligence"] ?? "http://localhost:8001" }
+        ["primary"] = new() { Address = builder.Configuration["Services:optimizer"] ?? "http://localhost:8001" }
     }
 });
 routes.Add(new RouteConfig
 {
-    RouteId = "intelligence",
-    ClusterId = "intelligence",
-    AuthorizationPolicy = "intelligence",
-    Match = new RouteMatch { Path = "/api/intelligence/{**remaining}" },
-    Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/intelligence" }]
+    RouteId = "optimizer",
+    ClusterId = "optimizer",
+    AuthorizationPolicy = "optimizer",
+    Match = new RouteMatch { Path = "/api/optimizer/{**remaining}" },
+    Transforms = [new Dictionary<string, string> { ["PathRemovePrefix"] = "/api/optimizer" }]
 });
 builder.Services.AddReverseProxy().LoadFromMemory(routes, clusters);
 var app = builder.Build();

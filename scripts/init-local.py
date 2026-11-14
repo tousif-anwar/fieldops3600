@@ -69,6 +69,7 @@ def main() -> None:
         "OperationsManager",
         "Analyst",
         "Administrator",
+        "Customer",
     ]
     users = [
         ("tech-01", "technician", "Technician", "Jordan", "Rivera"),
@@ -77,6 +78,7 @@ def main() -> None:
         ("manager-01", "manager", "OperationsManager", "Casey", "Patel"),
         ("analyst-01", "analyst", "Analyst", "Taylor", "Reed"),
         ("admin-01", "administrator", "Administrator", "Avery", "Brooks"),
+        ("customer-01", "customer", "Customer", "Demo", "Customer"),
     ]
     audience_mapper = {
         "name": "fieldops-audience",
@@ -117,6 +119,17 @@ def main() -> None:
             "userinfo.token.claim": "true",
         },
     }
+    customer_mapper = {
+        "name": "customer-membership",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usermodel-attribute-mapper",
+        "consentRequired": False,
+        "config": {
+            "user.attribute": "customer_id", "claim.name": "customer_id",
+            "jsonType.label": "String", "id.token.claim": "true",
+            "access.token.claim": "true", "userinfo.token.claim": "true",
+        },
+    }
     clients = []
     for client_id, redirects, origins in [
         (
@@ -144,7 +157,7 @@ def main() -> None:
                     "pkce.code.challenge.method": "S256",
                     "post.logout.redirect.uris": "+",
                 },
-                "protocolMappers": [audience_mapper, team_mapper, role_mapper],
+                "protocolMappers": [audience_mapper, team_mapper, role_mapper, customer_mapper],
                 "defaultClientScopes": ["basic", "web-origins", "profile", "email", "roles"],
             }
         )

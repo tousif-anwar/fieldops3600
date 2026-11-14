@@ -504,6 +504,9 @@ def ensure_orders(api: Api, state: dict, accounts: list[dict]):
                 for field in fields:
                     if field.get("conditionField") and answers.get(field["conditionField"]) != field.get("conditionValue"):
                         continue
+                    if field.get("inputType") in ("number", "text"):
+                        answers[field["key"]] = "45" if field["inputType"] == "number" else "Synthetic history service evidence. No real customer data."
+                        continue
                     choices = field["options"]
                     answers[field["key"]] = next((choice for choice in ["Accept", "Ready", "Arrived", "Accessible", "Good", "None", "Passed", "Confirmed", "Completed"] if choice in choices), choices[0])
                 current = api.request("POST", f"/api/workflows/{current['id']}/submit", {

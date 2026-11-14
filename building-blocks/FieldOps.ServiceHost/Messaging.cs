@@ -145,10 +145,9 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         switch (e.EventType)
         {
             case "BookingCreated.v1":
-                if (order.Status is "Created" or "Scheduled") { order.TechnicianId = GetString(e, "technicianId"); order.Status = "Scheduled"; order.Version++; }
-                break;
             case "BookingCancelled.v1":
-                if (order.Status == "Scheduled") { order.TechnicianId = null; order.Status = "Created"; order.Version++; }
+            case "BookingRescheduled.v1":
+                if (e.SourceService == "scheduling") WorkOrderRules.ApplyBookingEvent(order, e.EventType, GetString(e, "technicianId"), e.SequenceNumber);
                 break;
             case "WorkflowStarted.v1":
                 if (order.Status is not "Completed" and not "Cancelled") { order.Status = "InProgress"; order.TechnicianId = GetString(e, "technicianId"); order.Version++; }
@@ -161,6 +160,27 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
 
     private Notification? ProjectNotification(AuditEvent e, DateTimeOffset now)
     {
+        if (e.EventType is "AssignmentOfferCreated.v1" or "AssignmentOfferDeclined.v1" or "AssignmentOfferRevoked.v1" or "AssignmentOfferExpired.v1" or "BookingCreated.v1" or "BookingRescheduled.v1" or "BookingCancelled.v1")
+        {
+            var operational = new Notification
+            {
+                EventId = e.EventId, WorkOrderId = e.WorkOrderId, TeamId = GetString(e, "teamId") ?? "", TechnicianId = GetString(e, "technicianId"),
+                Audience = e.EventType == "AssignmentOfferDeclined.v1" ? "Supervisor" : "Technician",
+                Title = e.EventType switch
+                {
+                    "AssignmentOfferCreated.v1" => "New assignment offer — review before it expires",
+                    "AssignmentOfferDeclined.v1" => "Assignment offer declined — dispatcher review required",
+                    "AssignmentOfferRevoked.v1" => "Assignment offer withdrawn by dispatch",
+                    "AssignmentOfferExpired.v1" => "Assignment offer expired without a booking",
+                    "BookingCreated.v1" => "Service appointment confirmed",
+                    "BookingRescheduled.v1" => "Service appointment changed — review your schedule",
+                    _ => "Service appointment cancelled"
+                },
+                Severity = "Information", CreatedAtUtc = now
+            };
+            db.Notifications.Add(operational);
+            return operational;
+        }
         if (e.EventType is not ("StageWarningRaised.v1" or "StageCriticalWarningRaised.v1" or "StageSLABreached.v1" or "AssistanceRequested.v1")) return null;
         var warning = e.EventType == "StageWarningRaised.v1";
         var notification = new Notification { EventId = e.EventId, WorkOrderId = e.WorkOrderId, TeamId = GetString(e, "teamId") ?? "", TechnicianId = GetString(e, "technicianId"), Audience = warning || e.EventType == "StageCriticalWarningRaised.v1" ? "Technician" : "Supervisor", Title = e.EventType switch { "StageWarningRaised.v1" => "Stage has reached its warning threshold", "StageCriticalWarningRaised.v1" => "Stage is approaching its SLA deadline", "StageSLABreached.v1" => "Stage SLA breached — supervisor review required", _ => "Technician requested assistance" }, Severity = warning ? "Warning" : "Critical", CreatedAtUtc = now };

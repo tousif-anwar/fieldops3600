@@ -1,0 +1,18 @@
+erDiagram
+    DIM_DATE ||--o{ FACT_WORK_ORDER : created_on
+    DIM_TECHNICIAN ||--o{ FACT_WORK_ORDER : assigned_to
+    DIM_CUSTOMER ||--o{ FACT_WORK_ORDER : requests
+    DIM_SERVICE_CATEGORY ||--o{ FACT_WORK_ORDER : categorized_as
+    DIM_WORK_ORDER_STATUS ||--o{ FACT_WORK_ORDER : state
+    FACT_WORK_ORDER ||--o{ FACT_WORKFLOW_STAGE : contains
+    FACT_WORK_ORDER ||--o{ FACT_BOOKING : scheduled_as
+    FACT_WORK_ORDER ||--o{ FACT_SLA_BREACH : breaches
+    FACT_WORK_ORDER ||--o{ FACT_SUPERVISOR_INTERVENTION : receives
+    DIM_WORKFLOW_STAGE ||--o{ FACT_WORKFLOW_STAGE : type
+    DIM_TECHNICIAN ||--o{ FACT_BOOKING : assigned
+    DIM_SUPERVISOR ||--o{ FACT_SUPERVISOR_INTERVENTION : acts
+    DIM_CUSTOMER ||--o{ DIM_SERVICE_LOCATION : has
+    DIM_CUSTOMER ||--o{ DIM_ASSET : owns
+    DIM_CUSTOMER ||--o{ FACT_CUSTOMER_CHANGE : changes
+    DIM_ASSET ||--o{ FACT_ASSET_CHANGE : changes
+    DIM_TECHNICIAN ||--o{ FACT_TECHNICIAN_TIME_OFF : unavailable

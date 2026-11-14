@@ -98,7 +98,7 @@ public sealed class WarehouseAnalyticsTests(PostgresFixture fixture)
             await EventFact(db, first, active, "StageSLABreached.v1", Day.AddHours(23).AddMinutes(1)); //same order must not double count escalation ratio
             await EventFact(db, first, breached, "StagePaused.v1", Day.AddHours(23).AddMinutes(55), "supervisor-01");
             await EventFact(db, first, breached, "StageResumed.v1", Day.AddDays(1).AddMinutes(5), "supervisor-01");
-            await EventFact(db, second, breached, "RecommendationDecisionRecorded.v1", Day.AddDays(1).AddMinutes(10), "supervisor-02");
+            await EventFact(db, second, breached, "StagePaused.v1", Day.AddDays(1).AddMinutes(10), "supervisor-02");
             await Execute(db, "INSERT INTO warehouse.fact_booking(booking_id,work_order_id,start_utc,end_utc,status) VALUES(@id,@order,@start,@end,'Confirmed'),(@other,@order,@start,@end,'Confirmed')", ("id", Guid.NewGuid()), ("other", Guid.NewGuid()), ("order", first), ("start", Day.AddHours(13)), ("end", Day.AddHours(14)));
             foreach (var excluded in new[]
             {

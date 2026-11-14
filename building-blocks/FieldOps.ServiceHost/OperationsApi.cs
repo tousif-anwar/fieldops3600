@@ -16,7 +16,6 @@ public sealed record SubmitStage(int ExpectedVersion, string IdempotencyKey, Dic
 public sealed record Intervention(int ExpectedVersion, string Reason, int? TargetStageIndex);
 public sealed record RecommendationRequest(Guid WorkOrderId, DateTimeOffset StartUtc, int DurationMinutes = 60, string Strategy = "baseline");
 public sealed record TimeOffRequest(DateTimeOffset StartUtc, DateTimeOffset EndUtc, string Reason);
-public sealed record RecommendationDecision(int ExpectedVersion, string ModelVersion, double BreachRisk, string Decision, string Reason, DateTimeOffset? PredictedAtUtc = null, Dictionary<string, string>? Features = null);
 
 public sealed class RemoteServices(IHttpClientFactory factory, IConfiguration config)
 {
@@ -41,7 +40,7 @@ public static class OperationsApi
             case "assets": AssetApi.Map(app); break;
             case "work-orders": MapOrders(app); break;
             case "technicians": MapTechnicians(app); break;
-            case "scheduling": MapScheduling(app); break;
+            case "scheduling": MapScheduling(app); AssignmentOfferApi.Map(app); break;
             case "workflows": MapWorkflows(app); break;
         }
     }
@@ -57,10 +56,18 @@ public static class OperationsApi
             if (caller.IsTechnician) query = query.Where(x => x.TechnicianId == caller.Id);
             return Results.Ok(await query.OrderByDescending(x => x.CreatedAtUtc).Take(500).ToListAsync(ct));
         });
-        group.MapGet("/{id:guid}", async (Guid id, ServiceDb db, HttpContext http, CancellationToken ct) =>
+        group.MapGet("/{id:guid}", async (Guid id, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
             var order = await db.WorkOrders.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Work order not found.");
-            Caller.From(http.User).Demand(order.TeamId, order.TechnicianId);
+            var caller = Caller.From(http.User);
+            if (!caller.CanAccess(order.TeamId, order.TechnicianId))
+            {
+                if (!caller.IsTechnician || caller.TeamId != order.TeamId) throw new DomainException(404, "Work order not found.");
+                // Scheduling is the authority for candidate access; revocation/expiry removes this grant immediately.
+                var offers = await remote.Get<AssignmentOffer[]>("Scheduling", $"/api/assignment-offers?workOrderId={id}", http, ct);
+                if (!(order.Status is "Created" or "Scheduled") || !offers.Any(x => x.WorkOrderId == id && x.TeamId == order.TeamId && x.TechnicianId == caller.Id && AssignmentOfferRules.IsLive(x, clock.GetUtcNow())))
+                    throw new DomainException(404, "Work order not found.");
+            }
             return Results.Ok(order);
         });
         group.MapGet("/by-customer/{customerId:guid}", async (Guid customerId, ServiceDb db, RemoteServices remote, HttpContext http, CancellationToken ct, int page = 1, int pageSize = 25) =>
@@ -234,49 +241,84 @@ public static class OperationsApi
     private static void MapScheduling(WebApplication app)
     {
         var group = app.MapGroup("/api/bookings").RequireAuthorization("operational");
-        group.MapGet("", async (ServiceDb db, HttpContext http, CancellationToken ct) =>
+        group.MapGet("", async (Guid? workOrderId, ServiceDb db, HttpContext http, CancellationToken ct) =>
         {
             var caller = Caller.From(http.User);
-            return Results.Ok(await db.Bookings.AsNoTracking().Where(x => caller.IsAdministrator || (x.TeamId == caller.TeamId && (!caller.IsTechnician || x.TechnicianId == caller.Id))).OrderBy(x => x.StartUtc).Take(1000).ToListAsync(ct));
+            var query = db.Bookings.AsNoTracking().Where(x => caller.IsAdministrator || (x.TeamId == caller.TeamId && (!caller.IsTechnician || x.TechnicianId == caller.Id)));
+            if (workOrderId.HasValue) query = query.Where(x => x.WorkOrderId == workOrderId);
+            return Results.Ok(await query.OrderBy(x => x.StartUtc).Take(1000).ToListAsync(ct));
+        });
+        group.MapGet("/{id:guid}", async (Guid id, ServiceDb db, HttpContext http, CancellationToken ct) =>
+        {
+            var booking = await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Booking not found.");
+            Caller.From(http.User).Demand(booking.TeamId, booking.TechnicianId);
+            return Results.Ok(booking);
         });
         group.MapPost("", async (CreateBooking request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await AssignmentOfferApi.LockOrder(db, request.WorkOrderId, ct);
             var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{request.WorkOrderId}", http, ct);
             var tech = await GetTechnician(remote, request.TechnicianId, http, ct);
             var timeOff = await remote.Get<TimeOff[]>("Technicians", $"/api/technicians/{request.TechnicianId}/time-off", http, ct);
             Caller.From(http.User).Demand(order.TeamId);
             if (order.Status is "Completed" or "Cancelled" or "InProgress") throw new DomainException(409, "Work order cannot be scheduled in this state.");
             BookingRules.Validate(tech, order, request.StartUtc, request.EndUtc, timeOff);
+            await AssignmentOfferApi.RequireCapacity(db, order.Id, tech.Id, request.StartUtc, request.EndUtc, ct);
+            if (!string.IsNullOrWhiteSpace(request.OverrideReason)) ValidateText(request.OverrideReason, 3, 500, "override reason");
+            await AssignmentOfferApi.RevokeForDirectBooking(db, order.Id, clock.GetUtcNow(), http, ct);
             var booking = new Booking { WorkOrderId = order.Id, TechnicianId = tech.Id, TeamId = order.TeamId, StartUtc = request.StartUtc.ToUniversalTime(), EndUtc = request.EndUtc.ToUniversalTime(), OverrideReason = request.OverrideReason };
             db.Bookings.Add(booking);
-            db.Enqueue(EventFactory.Create(http, "scheduling", "BookingCreated.v1", order.Id, booking, booking.Version, clock.GetUtcNow()));
+            var revision = await AssignmentOfferApi.NextAssignmentRevision(db, order.Id, ct);
+            db.Enqueue(EventFactory.Create(http, "scheduling", "BookingCreated.v1", order.Id, booking, revision, clock.GetUtcNow()));
             await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
             return Results.Created($"/api/bookings/{booking.Id}", booking);
         }).RequireAuthorization("dispatch");
         group.MapPut("/{id:guid}", async (Guid id, MoveBooking request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
-            var booking = await db.Bookings.FindAsync([id], ct) ?? throw new DomainException(404, "Booking not found.");
+            var initial = await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Booking not found.");
+            Caller.From(http.User).Demand(initial.TeamId);
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await AssignmentOfferApi.LockOrder(db, initial.WorkOrderId, ct);
+            var booking = await db.Bookings.SingleAsync(x => x.Id == id, ct);
             Caller.From(http.User).Demand(booking.TeamId);
             if (booking.Version != request.ExpectedVersion || booking.Status != "Confirmed") throw new DomainException(409, "Booking changed or is not confirmed.");
             ValidateText(request.Reason, 3, 240, "reason");
-            var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{booking.WorkOrderId}", http, ct);
+            var order = await RequireUnstartedBooking(remote, booking, http, ct);
             var tech = await GetTechnician(remote, booking.TechnicianId, http, ct);
             var timeOff = await remote.Get<TimeOff[]>("Technicians", $"/api/technicians/{booking.TechnicianId}/time-off", http, ct);
             BookingRules.Validate(tech, order, request.StartUtc, request.EndUtc, timeOff);
             booking.StartUtc = request.StartUtc.ToUniversalTime(); booking.EndUtc = request.EndUtc.ToUniversalTime(); booking.Version++; booking.OverrideReason = request.Reason;
-            db.Enqueue(EventFactory.Create(http, "scheduling", "BookingRescheduled.v1", booking.WorkOrderId, booking, booking.Version, clock.GetUtcNow()));
-            await db.SaveChangesAsync(ct); return Results.Ok(booking);
+            var revision = await AssignmentOfferApi.NextAssignmentRevision(db, booking.WorkOrderId, ct);
+            db.Enqueue(EventFactory.Create(http, "scheduling", "BookingRescheduled.v1", booking.WorkOrderId, booking, revision, clock.GetUtcNow()));
+            await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return Results.Ok(booking);
         }).RequireAuthorization("dispatch");
-        group.MapPost("/{id:guid}/cancel", async (Guid id, Intervention request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        group.MapPost("/{id:guid}/cancel", async (Guid id, Intervention request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
-            var booking = await db.Bookings.FindAsync([id], ct) ?? throw new DomainException(404, "Booking not found.");
+            var initial = await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Booking not found.");
+            Caller.From(http.User).Demand(initial.TeamId);
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await AssignmentOfferApi.LockOrder(db, initial.WorkOrderId, ct);
+            var booking = await db.Bookings.SingleAsync(x => x.Id == id, ct);
             Caller.From(http.User).Demand(booking.TeamId);
             if (booking.Version != request.ExpectedVersion || booking.Status != "Confirmed") throw new DomainException(409, "Booking changed or is not confirmed.");
+            _ = await RequireUnstartedBooking(remote, booking, http, ct);
             ValidateText(request.Reason, 3, 240, "reason"); booking.Status = "Cancelled"; booking.Version++;
-            db.Enqueue(EventFactory.Create(http, "scheduling", "BookingCancelled.v1", booking.WorkOrderId, new { booking.Id, booking.WorkOrderId, booking.TeamId, booking.TechnicianId, request.Reason }, booking.Version, clock.GetUtcNow()));
-            await db.SaveChangesAsync(ct); return Results.Ok(booking);
+            var revision = await AssignmentOfferApi.NextAssignmentRevision(db, booking.WorkOrderId, ct);
+            db.Enqueue(EventFactory.Create(http, "scheduling", "BookingCancelled.v1", booking.WorkOrderId, new { booking.Id, booking.WorkOrderId, booking.TeamId, booking.TechnicianId, request.Reason }, revision, clock.GetUtcNow()));
+            await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return Results.Ok(booking);
         }).RequireAuthorization("dispatch");
         app.MapPost("/api/scheduling/recommendations", SchedulingRecommendations.Handle).RequireAuthorization("dispatch");
+    }
+
+    private static async Task<WorkOrder> RequireUnstartedBooking(RemoteServices remote, Booking booking, HttpContext http, CancellationToken ct)
+    {
+        var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{booking.WorkOrderId}", http, ct);
+        var workflows = await remote.Get<Workflow[]>("Workflows", $"/api/workflows?workOrderId={booking.WorkOrderId}", http, ct);
+        if (order.Status is not ("Created" or "Scheduled") || workflows.Length > 0)
+            throw new DomainException(409, "An appointment cannot be moved or cancelled after its service workflow has started. Ask a supervisor to manage the active service.");
+        return order;
     }
 
     private static async Task<Technician> GetTechnician(RemoteServices remote, string id, HttpContext http, CancellationToken ct) => (await remote.Get<TechnicianDto>("Technicians", $"/api/technicians/{id}", http, ct)).ToEntity();
@@ -287,7 +329,7 @@ public static class OperationsApi
 
     private static void MapWorkflows(WebApplication app)
     {
-        var defaultTemplateVersion = app.Configuration.GetValue("Workflows:DefaultTemplateVersion", 1);
+        var defaultTemplateVersion = app.Configuration.GetValue("Workflows:DefaultTemplateVersion", Templates.CurrentVersion);
         _ = Templates.Get(defaultTemplateVersion);
         var group = app.MapGroup("/api/workflows").RequireAuthorization("operational");
         group.MapGet("/templates/default", () => Results.Ok(Templates.Get(defaultTemplateVersion)));
@@ -303,7 +345,7 @@ public static class OperationsApi
         group.MapPost("", async (StartWorkflow request, ServiceDb db, RemoteServices remote, TimeProvider clock, SlaPolicy policy, HttpContext http, CancellationToken ct) =>
         {
             var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{request.WorkOrderId}", http, ct);
-            var bookings = await remote.Get<Booking[]>("Scheduling", "/api/bookings", http, ct);
+            var bookings = await remote.Get<Booking[]>("Scheduling", $"/api/bookings?workOrderId={order.Id}", http, ct);
             var booking = bookings.SingleOrDefault(x => x.WorkOrderId == order.Id && x.Status == "Confirmed") ?? throw new DomainException(409, "A confirmed booking is required before starting work.");
             Caller.From(http.User).Demand(order.TeamId, booking.TechnicianId);
             if (order.Status is "Completed" or "Cancelled") throw new DomainException(409, "Work order cannot be started.");
@@ -361,19 +403,6 @@ public static class OperationsApi
             }
             return Results.Content(response, "application/json");
         }).RequireAuthorization("execute");
-        group.MapPost("/{id:guid}/interventions", async (Guid id, RecommendationDecision request, ServiceDb db, TimeProvider clock, HttpContext http, CancellationToken ct) =>
-        {
-            var workflow = await FindWorkflow(id, db, http, ct);
-            WorkflowEngine.RequireVersion(workflow, request.ExpectedVersion);
-            if (workflow.Status != "Active") throw new DomainException(409, "Prediction decisions require an active workflow.");
-            ValidateText(request.Reason, 3, 500, "reason"); ValidateText(request.ModelVersion, 2, 100, "model version");
-            if (request.BreachRisk is < 0 or > 1 || !double.IsFinite(request.BreachRisk) || request.Decision is not ("Accepted" or "Dismissed")) throw new DomainException(400, "Choose Accepted or Dismissed and a probability between zero and one.");
-            var allowedFeatures = new[] { "serviceCategory", "stageIndex", "technicianWorkload", "historicalStageDurationMinutes", "elapsedMinutes", "progress", "priority", "previousDelays", "equipmentCategory" };
-            if (request.Features is not null && request.Features.Any(x => !allowedFeatures.Contains(x.Key) || x.Value.Length > 128)) throw new DomainException(400, "Unknown or oversized advisory feature.");
-            workflow.Version++;
-            db.Enqueue(EventFactory.Create(http, "workflows", "RecommendationDecisionRecorded.v1", workflow.WorkOrderId, new { workflow.TeamId, workflow.TechnicianId, request.ModelVersion, request.BreachRisk, request.Decision, request.Reason, request.PredictedAtUtc, request.Features, advisory = true, provenance = "Supervisor-submitted advisory snapshot; model output is not independently verified by this endpoint." }, workflow.Version, clock.GetUtcNow(), workflow.Id, workflow.Stages[workflow.CurrentStageIndex].Id));
-            await db.SaveChangesAsync(ct); return Results.Ok(WorkflowView(workflow));
-        }).RequireAuthorization("supervise");
         foreach (var action in new[] { "pause", "resume", "assistance", "override" })
         {
             var operation = action;

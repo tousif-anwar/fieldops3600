@@ -4,6 +4,7 @@ export type Role =
   | "Supervisor"
   | "OperationsManager"
   | "Analyst"
+  | "Customer"
   | "Administrator";
 export interface WorkOrder {
   id: string;
@@ -75,6 +76,10 @@ export interface FormField {
   required: boolean;
   conditionField?: string;
   conditionValue?: string;
+  inputType?: "choice" | "text" | "number";
+  maxLength?: number | null;
+  minimum?: number | null;
+  maximum?: number | null;
 }
 export interface Template {
   version: number;
@@ -205,13 +210,4 @@ export interface Recommendation {
   explanation?: string[];
   reasons?: string[];
   feasible?: boolean;
-}
-export interface Risk {
-  probability: number;
-  riskCategory: string;
-  factors: string[];
-  predictedAtUtc: string;
-  modelVersion: string;
-  intervention: string;
-  synthetic?: boolean;
 }

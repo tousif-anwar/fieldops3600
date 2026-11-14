@@ -1,102 +1,95 @@
 # FieldOps 360
 
-FieldOps 360 is a local-first field-service operations platform for dispatch, guided HVAC work, SLA supervision, warehouse analytics, and incident replay. It combines eight ASP.NET Core services, a React operations portal, an Expo technician app, PostgreSQL, RabbitMQ, Keycloak, and a Python intelligence service.
+FieldOps 360 is a local-first field-service operations platform for qualified dispatch, guided HVAC service work, server-enforced SLA supervision, warehouse analytics, and immutable incident replay. It combines eight ASP.NET Core service hosts, a YARP gateway, a React operations portal, an Expo technician app, PostgreSQL, RabbitMQ, Keycloak, and a deterministic OR-Tools scheduling service.
 
-> **Status:** engineering demonstration with a verified local stack. There is no production deployment, certification, or real-customer data in this repository. Demo records are synthetic; production hosting remains pending.
-
+The project is an engineering demonstration with a verified local stack. It does not claim a production deployment, customer portal, native-device certification, or real-customer data.
 
 ## The problem
 
-A regional service operation has to answer four questions without relying on spreadsheets or undocumented decisions:
+A service operation has to decide who is qualified and available, whether a technician is following the required procedure, which jobs need escalation, and what evidence exists after an incident. FieldOps 360 keeps those answers in service-owned records:
 
-- Who is qualified and available to take this work?
-- Is the technician following the required procedure, and how much SLA time remains?
-- Which jobs or stages need a supervisor decision now?
-- What actually happened when an incident is investigated later?
+- dispatch validates skills, certifications, hours, time off, and overlap before booking;
+- workflow state and SLA deadlines are server-authoritative;
+- supervisor interventions retain a reason and enter the audit stream;
+- replay reconstructs history from immutable events without re-executing commands.
 
-FieldOps 360 keeps those answers in service-owned records. Dispatch validates availability and qualifications, workflow state and SLA deadlines are server-authoritative, supervisor actions retain their reasons, and replay reconstructs history without re-executing commands.
+## Capabilities
 
-## Implemented capabilities
-
-| Area | Working behavior |
+| Area | Implemented behavior |
 |---|---|
-| Role-aware Home | A separate landing view for Technician, Dispatcher, Supervisor, Operations Manager, Analyst, and Administrator, built from authorized API data. |
-| Customer registry | Team-scoped customers, contacts, consent, locations, change history and validated work-order references. |
-| Asset registry | Equipment identity, hierarchy, warranties, location history and assigned-work service history. |
-| Work orders | Search, status/priority filters, validated creation, details, optimistic version checks, and eligible cancellation. |
-| Scheduling | Scoped availability, baseline and OR-Tools recommendations, confirmed-booking overlap protection, rescheduling, and reasoned cancellation. |
-| Guided service | Eight-stage HVAC workflow with versioned server forms, conditional fields, drafts, assistance, idempotent submissions, and read-only history. |
-| SLA control | Persisted 20/25/30-minute warning, critical, and breach milestones; approved pauses; restart-safe sweeps. |
-| Supervision | At-risk queues, persistent alerts, acknowledgment, pause/resume, overrides, and advisory risk review with recorded decisions. |
-| Analytics | Warehouse-backed completion, SLA, duration, volume, category, and utilization metrics with filters, definitions, and CSV/PDF exports. |
-| Operational replay | Read-only timeline, retries, delivery evidence, ordering uncertainty, trace availability checks, playback, and incident exports. |
-| Technician mobile | Expo/React Native jobs, schedule, guided forms, SecureStore PKCE, durable offline drafts, and a conflict-aware synchronization queue. |
-| Identity | Keycloak Authorization Code + PKCE with signed realm roles and team claims enforced again by every backend service. |
+| Identity | Keycloak Authorization Code + PKCE with signed realm roles and team claims. |
+| Customers | Team-scoped customers, contacts, consent, locations, versioned history. |
+| Equipment | Asset hierarchy, serial/QR identity, warranty, location history, assigned service history. |
+| Work orders | Search, filtering, validated creation, customer/asset links, optimistic versions, eligible cancellation. |
+| Scheduling | Baseline and OR-Tools CP-SAT recommendations, availability/skills validation, booking, rescheduling, conflict protection. |
+| Guided service | Eight-stage workflow, conditional fields, drafts, assistance, idempotent submissions, read-only history. |
+| SLA | Persisted warning, critical, and breach milestones; approved pauses; restart-safe sweeps. |
+| Supervision | At-risk queues, retained alerts, live notifications, pause/resume, one-stage overrides. |
+| Analytics | Warehouse-backed completion, SLA, duration, volume, category, escalation, and utilization metrics. |
+| Replay | Ordered evidence, causation, delivery attempts, integrity checks, trace availability, CSV/PDF exports. |
+| Mobile | Expo technician app with SecureStore PKCE, equipment context, offline drafts, and conflict-aware sync. |
+
+There is no generative-AI, LLM, embedding, RAG, or predictive-model dependency in this release. The scheduling service is deterministic OR-Tools optimization; technician matching and workflow rules are explicit business logic.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Web["React web\nrole-aware portal"] --> Gateway["YARP gateway\nJWT validation"]
-    Mobile["Expo technician app\nAndroid"] --> Gateway
-    Gateway --> WorkOrders["Work orders"]
-    Gateway --> Technicians["Technicians"]
-    Gateway --> Scheduling["Scheduling"]
-    Gateway --> Workflows["Workflows"]
-    Gateway --> Notifications["Notifications"]
-    Gateway --> Reporting["Reporting"]
-    Gateway --> Intelligence["Intelligence\nFastAPI + OR-Tools"]
-    WorkOrders & Technicians & Scheduling & Workflows & Notifications & Reporting --> Owned[("Service-owned\nPostgreSQL databases")]
-    Workflows --> Broker[("RabbitMQ\noutbox / inbox")]
-    Broker --> Notifications
-    Broker --> Reporting
-    Broker --> Analytics["Warehouse\ningestion worker"]
-    Analytics --> Warehouse[("Reporting\nwarehouse")]
+    Web["React web<br/>role-aware portal"] --> Gateway["YARP gateway<br/>JWT validation"]
+    Mobile["Expo technician app"] --> Gateway
+    Gateway --> Services["Eight ASP.NET Core<br/>service hosts"]
+    Gateway --> Optimizer["FastAPI + OR-Tools<br/>private optimizer"]
+    Services --> Pg[("Service-owned<br/>PostgreSQL databases")]
+    Services --> Broker[("RabbitMQ<br/>outbox / inbox")]
+    Broker --> Notifications["Notifications"]
+    Broker --> Reporting["Reporting"]
+    Broker --> Worker["Analytics worker"]
+    Worker --> Warehouse[("Reporting warehouse")]
     Reporting --> Warehouse
-    Scheduling --> Intelligence
+    Services --> Optimizer
 ```
 
-Each business service owns its database and runtime identity. Critical writes commit business state and an outbox event together; consumers deduplicate stable event IDs. Reporting reads a separate warehouse through a read-only identity and keeps replay evidence append-only.
+Each business service owns its database and validates authorization itself. Critical writes and their outbox events commit together; consumers deduplicate stable events through an inbox. Reporting reads a separate warehouse and preserves append-only replay evidence.
 
-### Services
-
-| Component | Responsibility |
-|---|---|
-| `services/work-orders` | Service-request lifecycle, validation, versioning, and integration events. |
-| `services/technicians` | Team profiles, skills, certifications, hours, availability, and time off. |
-| `services/scheduling` | Candidate validation, optimization advice, booking, overlap protection, and cancellation. |
-| `services/workflows` | Versioned forms, stage transitions, SLA state, assistance, and supervisor decisions. |
-| `services/notifications` | Deduplicated alerts, acknowledgments, history, and SignalR updates. |
-| `services/reporting` | Warehouse metrics/exports and immutable replay investigation. |
-| `gateway` | Authenticated YARP ingress and readiness aggregation. |
-| `intelligence` | Synthetic SLA prediction and scheduling-optimization evaluation. |
+The full design, role matrix, and tradeoffs are in [System architecture](docs/SYSTEM_ARCHITECTURE.md).
 
 ## Technology
 
-- **Backend:** .NET 10 LTS, ASP.NET Core, EF Core, MassTransit/RabbitMQ, Quartz, PostgreSQL.
+- **Backend:** .NET 10, ASP.NET Core, EF Core, MassTransit/RabbitMQ, PostgreSQL.
 - **Web:** React 19, TypeScript, Vite, Fluent UI, TanStack Query, React Router, Recharts.
-- **Mobile:** Expo SDK 58, React Native 0.88, Expo Router, SecureStore, AsyncStorage persistence.
-- **Data and operations:** PostgreSQL, RabbitMQ, Keycloak, Docker Compose, Prometheus, Grafana, Jaeger.
-- **Intelligence:** Python 3.14, FastAPI, scikit-learn, OR-Tools, pytest.
+- **Mobile:** Expo SDK 58, React Native, Expo Router, SecureStore, AsyncStorage.
+- **Identity:** Keycloak 26 with OIDC Authorization Code + PKCE.
+- **Scheduling:** Python 3.14, FastAPI, OR-Tools CP-SAT.
+- **Operations:** Docker Compose, nginx, Prometheus, Grafana, Jaeger.
 
 ## Repository layout
 
 ```text
 apps/web/                  React operations portal
 apps/technician-mobile/    Expo technician application
-services/                  Six ASP.NET Core service hosts
+services/                  Eight ASP.NET Core service hosts
 building-blocks/           Shared domain, persistence, security, and host code
 gateway/                   Authenticated YARP ingress
 analytics/                 Warehouse migrations, ingestion, and quality tests
-intelligence/              SLA prediction and scheduling optimization
+optimizer/                 Deterministic OR-Tools scheduling service
+replay/                    Replay/event-store supporting code
 infrastructure/            Docker, Keycloak, PostgreSQL, and monitoring configuration
-tests/                     Backend, integration, mobile, security, and warehouse tests
-docs/                      Architecture, operations, security, UI/UX, and evidence
+scripts/                   Bootstrap, seeding, and verification scripts
+tests/                     Backend, integration, mobile, security, optimizer, and warehouse tests
+docs/                      Consolidated project documentation
+data/                      Data/schema reference material (release archive)
 ```
 
-## Quick start
+The release archive reorganizes this into the required four top-level directories: `docs/`, `client/`, `server/`, and `data/`.
 
-Prerequisites: Docker Compose v2 with Linux containers, Python 3.11+, and at least 8 GB available to Docker. Source development additionally uses .NET 10 LTS, Node 24, and Python 3.14.
+## Prerequisites
+
+- Docker Compose v2 with Linux containers.
+- Python 3.12+ for local bootstrap and verification.
+- At least 8 GB available to Docker.
+- Source development additionally uses .NET SDK 10.0.403 and Node.js 24.
+
+## Quick start
 
 ```bash
 python scripts/init-local.py
@@ -104,39 +97,64 @@ docker compose up -d --build
 python scripts/wait-local.py
 ```
 
-Open **http://localhost:8088** and choose **Continue to secure sign-in**. The generated local accounts are `technician`, `dispatcher`, `supervisor`, `manager`, `analyst`, and `administrator`. Their shared local password is the `DEMO_PASSWORD` value in the ignored root `.env`; it is never printed by the bootstrap or committed.
+Open **http://localhost:8088**. The generated local accounts are `technician`, `dispatcher`, `supervisor`, `manager`, `analyst`, and `administrator`. Their shared password is the `DEMO_PASSWORD` value in the ignored root `.env`; it is never printed or committed.
 
-The first build can take several minutes. For prerequisites, source-development commands, tests, upgrades, monitoring, and troubleshooting, read the **[installation and operations guide](docs/INSTALLATION.md)**. The deeper runbook remains [LOCAL_DEPLOYMENT.md](docs/operations/LOCAL_DEPLOYMENT.md).
+The first build can take several minutes. For prerequisites, archive startup, monitoring, source development, and troubleshooting, read [Installation and setup](docs/INSTALLATION_AND_SETUP.md).
 
-## Verification
+## Demonstration data
 
-| Check | Latest local result |
+The synthetic dataset is generated through authenticated APIs:
+
+```bash
+python scripts/seed-demo-data.py
+python scripts/seed-enterprise-history.py
+```
+
+These scripts create labeled synthetic customers, equipment, work orders, bookings, workflows, and completed stages. They do not insert fabricated rows directly into operational databases. Do not use real customer data.
+
+## Tests
+
+The release was verified on 13 November 2026 against the local Docker Compose stack:
+
+| Check | Result |
 |---|---|
-| .NET backend tests (including PostgreSQL Testcontainers) | **75/75** passed |
-| Web TypeScript, unit/component tests | Typecheck passed; **55/55** tests passed |
-| Web production build | Passed; no >500 kB chunk warning |
-| Expo TypeScript and tests | **34/34** tests passed |
-| Intelligence tests and Ruff | **18/18** passed; Ruff clean |
-| Live Playwright role/deep-link suite | **16/16** passed locally after the drawer fix |
-| Accessibility | Prior axe-core run: **0 violations across 30 signed-out and authenticated views**; a fresh assistive-technology audit remains open |
+| .NET backend tests | **75/75 passed** |
+| Web typecheck, tests, production build | **55/55 tests passed**; build passed |
+| Mobile typecheck and tests | **34/34 passed** |
+| Optimizer tests and Ruff | **10/10 passed**; Ruff clean |
+| Warehouse PostgreSQL tests | **32/32 passed** |
+| Gateway security tests | **7/7 passed** |
+| Live integration tests | **5/5 passed** |
+| Scoped authorization checks | **3/3 passed** |
+| Optimizer HTTP contract | **1/1 passed** |
+| Browser E2E | **27 passed, 11 intentionally skipped** |
+| Resilience demonstration | SLA restart, retry, breach, replay, and broker recovery passed |
 
-Commands and evidence boundaries are recorded in [testing/VERIFICATION.md](docs/testing/VERIFICATION.md) . Passing tests here are local evidence, not a claim of a remote CI run or production readiness.
+Commands and evidence boundaries are recorded in [Testing and validation](docs/TESTING_AND_VALIDATION.md). Passing local tests are not a remote CI result or a production certification.
 
 ## Documentation
 
-- [Installation, tests, and operations](docs/INSTALLATION.md)
-- [Documentation index](docs/INDEX.md)
-- [System architecture](docs/architecture/overview.md)
-- [Security and role boundaries](docs/security/threat-model.md)
-- [API and event contracts](docs/architecture/contracts.md)
-- [Workflow and SLA design](docs/workflows/design.md)
-- [Implementation status and open items](docs/IMPLEMENTATION_STATUS.md)
+- [Documentation index](docs/README.md)
+- [Project overview](docs/PROJECT_OVERVIEW.md)
+- [System architecture](docs/SYSTEM_ARCHITECTURE.md)
+- [Features](docs/FEATURES.md)
+- [Database design](docs/DATABASE_DESIGN.md)
+- [API reference](docs/API_REFERENCE.md)
+- [Installation and setup](docs/INSTALLATION_AND_SETUP.md)
+- [User guide](docs/USER_GUIDE.md)
+- [Testing and validation](docs/TESTING_AND_VALIDATION.md)
+- [Security](docs/SECURITY.md)
+- [Presentation guide](docs/PRESENTATION_GUIDE.md)
 
-## Security and limitations
+## Known limitations
 
-Local endpoints bind to loopback and use generated development credentials. Do not reuse them. Production requires TLS, managed secrets and rotation, MFA/device policy, retention and backup exercises, and a deployment-specific threat review. See [SECURITY.md](SECURITY.md).
-
-Known limits include: no remote CI run is claimed; guided stage submission and offline recovery were not completed on a native device; the native app has no physical-device certification; Jaeger retention is in-memory; the SLA model is trained and evaluated on synthetic data and is advisory only; and cross-service workflows are not distributed serializable transactions. The complete list is maintained in [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
+- Customer self-service login, customer-initiated booking, contract entitlement validation, and a customer portal are not implemented. Customer records are managed by the operational team.
+- No native Android emulator or physical-device run was completed for this release. The Expo app passed typechecking and its deterministic tests.
+- Dispatchers do not receive the Analytics navigation item; analytics is limited to Analysts, Supervisors, Operations Managers, and Administrators.
+- The warehouse and replay paths are eventually consistent.
+- The optimizer uses a straight-line travel proxy; it does not model traffic or between-job routing.
+- Jaeger retention is in-memory; the local stack uses HTTP and generated demonstration credentials.
+- No production deployment, billing, multi-tenant provisioning, or compliance certification is claimed.
 
 ## License
 

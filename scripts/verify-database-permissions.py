@@ -25,7 +25,10 @@ def main():
             AND NOT has_table_privilege(current_user,'fieldops_schema_migrations','UPDATE')
             AND has_table_privilege(current_user,'outbox_messages','INSERT')
             AND NOT has_database_privilege(current_user,'keycloak','CONNECT')""")
-        container = json.loads(subprocess.check_output(["docker", "inspect", "fieldops360-" + service + "-1"], cwd=ROOT, text=True))[0]
+        container_id = subprocess.check_output(["docker", "compose", "ps", "-q", service], cwd=ROOT, text=True).strip()
+        if not container_id:
+            raise RuntimeError("No running Compose container found for " + service)
+        container = json.loads(subprocess.check_output(["docker", "inspect", container_id], cwd=ROOT, text=True))[0]
         environment = dict(value.split("=", 1) for value in container["Config"]["Env"] if "=" in value)
         if "Username=" + role + ";" not in environment.get("ConnectionStrings__Database", "") or environment.get("Database__Initialize") != "false":
             raise RuntimeError("Runtime database identity/migration mode is incorrect for " + service)

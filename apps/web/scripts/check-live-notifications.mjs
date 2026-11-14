@@ -6,11 +6,16 @@ import {
   LogLevel,
 } from "@microsoft/signalr";
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 
-const root = fileURLToPath(new URL("../../../", import.meta.url));
+const checkoutRoot = fileURLToPath(new URL("../../../", import.meta.url));
+const root = existsSync(resolve(checkoutRoot, "scripts/local-auth.py"))
+  ? checkoutRoot
+  : resolve(checkoutRoot, "..", "server");
 const python = process.env.PYTHON ?? "python";
 const code = [
   "import importlib.util,json,pathlib",
@@ -82,6 +87,8 @@ try {
     serviceCategory: "HVAC",
     priority: "Normal",
     teamId: "north",
+    unregisteredCustomerReason:
+      "Synthetic live notification verification without a registry reference.",
   });
   expectedOrder = order.id;
   const start = new Date();

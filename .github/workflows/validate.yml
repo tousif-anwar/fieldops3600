@@ -55,16 +55,16 @@ jobs:
       - run: npx expo install --check
       - run: npm audit --audit-level=moderate
       - run: npx expo export --platform android --output-dir dist
-  intelligence:
+  optimizer:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with: {python-version: '3.14'}
-      - run: pip install -r intelligence/requirements.txt -r intelligence/requirements-dev.txt
-      - run: python -m pytest -c intelligence/pyproject.toml tests/intelligence -v
-        env: {PYTHONPATH: intelligence, PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'}
-      - run: ruff check --config intelligence/pyproject.toml intelligence/fieldops_intelligence tests/intelligence
+      - run: pip install -r optimizer/requirements.txt -r optimizer/requirements-dev.txt
+      - run: python -m pytest -c optimizer/pyproject.toml tests/optimizer -v
+        env: {PYTHONPATH: optimizer, PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'}
+      - run: ruff check --config optimizer/pyproject.toml optimizer/fieldops_optimizer tests/optimizer
   integrated:
     runs-on: ubuntu-latest
     timeout-minutes: 30

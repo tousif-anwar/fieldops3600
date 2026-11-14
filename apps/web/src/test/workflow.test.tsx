@@ -5,9 +5,51 @@ import { Status, ErrorState } from "../components/common";
 import { ApiError } from "../api";
 import { visibleFields } from "../pages/Workflow";
 import type { FormField } from "../types";
+import { answerError, WorkflowAnswer } from "../components/WorkflowAnswer";
 
 vi.mock("../auth", () => ({ manager: { getUser: vi.fn() }, useAuth: vi.fn() }));
 describe("guided service forms", () => {
+  it("captures bounded service notes and labor while retaining dropdown templates", () => {
+    const notes: FormField = {
+      key: "notes",
+      label: "Work performed",
+      options: [],
+      required: true,
+      inputType: "text",
+      maxLength: 1000,
+    };
+    const labor: FormField = {
+      key: "labor",
+      label: "Labor minutes",
+      options: [],
+      required: true,
+      inputType: "number",
+      minimum: 1,
+      maximum: 480,
+    };
+    render(
+      <>
+        <WorkflowAnswer
+          field={notes}
+          value="Replaced filter"
+          editable
+          onChange={() => {}}
+        />
+        <WorkflowAnswer field={labor} value="45" editable onChange={() => {}} />
+      </>,
+    );
+    expect(screen.getByRole("textbox", { name: /Work performed/ })).toHaveValue(
+      "Replaced filter",
+    );
+    expect(
+      screen.getByRole("spinbutton", { name: /Labor minutes/ }),
+    ).toHaveAttribute("max", "480");
+    expect(answerError(notes, " ")).toMatch(/required/);
+    expect(answerError(labor, "0")).toMatch(/at least 1/);
+    expect(answerError(labor, "481")).toMatch(/at most 480/);
+    expect(answerError(labor, "invalid")).toMatch(/number/);
+    expect(answerError(labor, "45")).toBeNull();
+  });
   it("only requires conditional answers when the controlling answer matches", () => {
     const fields: FormField[] = [
       {

@@ -471,7 +471,6 @@ def project(connection, event: dict) -> bool:
         "StagePaused.v1",
         "StageResumed.v1",
         "SupervisorOverrideApplied.v1",
-        "RecommendationDecisionRecorded.v1",
     }:
         supervisor_key = connection.execute(
             "INSERT INTO warehouse.dim_supervisor(supervisor_id,team_id) VALUES(%s,%s) ON CONFLICT(supervisor_id) DO UPDATE SET team_id=excluded.team_id RETURNING supervisor_key",

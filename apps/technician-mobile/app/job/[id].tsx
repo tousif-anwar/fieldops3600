@@ -18,6 +18,7 @@ import {
 import { colors, spacing, typography } from '../../src/ui/tokens';
 import { AssetServiceInfo } from '../../src/ui/asset-service-info';
 import { CustomerServiceInfo } from '../../src/ui/customer-service-info';
+import { DirectionsButton } from '../../src/ui/directions';
 
 export default function JobDetails() {
   const parameters = useLocalSearchParams<{ id: string; submitted?: string }>();
@@ -106,6 +107,7 @@ export default function JobDetails() {
             ) : (
               <Text style={styles.body}>No appointment window is available for this job. Confirm access with your supervisor before travelling.</Text>
             )}
+            <DirectionsButton address={job.siteAddress} />
           </Section>
           {!workflow && workflows.isPending ? <LoadingState label="Checking the service workflow…" /> : null}
           {workflows.error && !workflow ? (

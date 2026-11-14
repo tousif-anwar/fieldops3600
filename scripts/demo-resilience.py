@@ -94,21 +94,15 @@ def main():
         workflow = request("POST", path + "/pause", "supervisor", {"expectedVersion": workflow["version"], "reason": "Synthetic supervisor safety intervention"})
         workflow = request("POST", path + "/resume", "supervisor", {"expectedVersion": workflow["version"], "reason": "Synthetic safety review complete"})
         assert workflow["stages"][1]["slaStatus"] == "Breached", "Approved pause must preserve earlier breach evidence"
-        stage_start = datetime.fromisoformat(workflow["stages"][1]["startedAtUtc"])
-        features = {"serviceCategory": "HVAC", "stageIndex": 1, "technicianWorkload": 1,
-                    "historicalStageDurationMinutes": 30, "elapsedMinutes": (datetime.now(timezone.utc) - stage_start).total_seconds() / 60,
-                    "progress": 0.5, "priority": "High", "previousDelays": 1, "equipmentCategory": "Residential"}
-        prediction = request("POST", "/api/intelligence/predict", "supervisor", features)
-        workflow = request("POST", path + "/interventions", "supervisor", {"expectedVersion": workflow["version"], "modelVersion": prediction["modelVersion"],
-                           "breachRisk": prediction["breachRisk"], "decision": "Accepted", "reason": "Synthetic advisory review; contact technician",
-                           "predictedAtUtc": prediction["predictedAtUtc"], "features": {key: str(value) for key, value in features.items()}})
         for index in range(1, 8):
             workflow = request("GET", path, "technician")
             answers = {}
             choices = {"travelStatus": "Arrived", "partsRequired": "No", "partsStatus": "Not Required", "followUpRequired": "No"}
             for field in template["stages"][index]["fields"]:
                 if not field.get("conditionField") or answers.get(field["conditionField"]) == field.get("conditionValue"):
-                    answers[field["key"]] = choices.get(field["key"], field["options"][0])
+                    fallback = ("45" if field.get("inputType") == "number" else
+                        "Synthetic resilience service evidence." if field.get("inputType") == "text" else field["options"][0])
+                    answers[field["key"]] = choices.get(field["key"], fallback)
             workflow = request("POST", path + "/submit", "technician", {"expectedVersion": workflow["version"], "idempotencyKey": str(uuid4()), "answers": answers,
                                "offline": index == 2, "clientOccurredAtUtc": datetime.now(timezone.utc).isoformat()})
         replay_path = "/api/replay/" + order["id"]
@@ -122,9 +116,8 @@ def main():
         assert all(event["integrityVerified"] for event in events)
         evidence.update({"workOrderId": order["id"], "workflowId": workflow["id"], "stageDeadlineRecovered": True,
                          "controlledRetryVerified": True, "breachCount": replay["summary"]["breachCount"],
-                         "incidentSummary": replay["summary"], "distinctBusinessEvents": len(events),
-                         "prediction": {key: prediction[key] for key in ["modelVersion", "syntheticTraining", "advisory"]}})
-        print("Verified warning retry, breach, supervisor actions, advisory decision and completed immutable replay. Testing broker recovery.", flush=True)
+                         "incidentSummary": replay["summary"], "distinctBusinessEvents": len(events)})
+        print("Verified warning retry, breach, supervisor actions and completed immutable replay. Testing broker recovery.", flush=True)
         compose("stop", "rabbitmq")
         broker_stopped = True
         outage = new_order("Synthetic work order committed during broker outage")

@@ -11,7 +11,7 @@ import { cleanAnswers, validateField, visibleFields } from '../../../../src/offl
 import { useRuntime } from '../../../../src/runtime';
 import { useJob } from '../../../../src/use-job';
 import {
-  AssistanceSheet, Button, DropdownField, EmptyState, ErrorState, InlineNotice,
+  AssistanceSheet, Button, ServiceField, EmptyState, ErrorState, InlineNotice,
   LoadingState, Screen, Section, SLAIndicator, StageProgress, StatusBadge, SyncBadge, TextButton,
 } from '../../../../src/ui';
 import {
@@ -305,15 +305,13 @@ export default function StageForm() {
             </Section>
           ) : null}
           {current && definition ? (
-            <Section card title="Service checklist" description="Choose the answer that matches what you observed.">
+            <Section card title="Service checklist" description="Record the answers and service details that match what you observed.">
               <View style={styles.fields}>
                 {visibleFields(definition.fields, answers).map(field => (
-                  <DropdownField
+                  <ServiceField
                     key={field.key}
-                    label={field.label}
+                    field={field}
                     value={answers[field.key] ?? ''}
-                    options={field.options}
-                    required={field.required}
                     disabled={!!pending || saving || !!stage.pausedAtUtc}
                     error={fieldErrors[field.key]}
                     onChange={value => {

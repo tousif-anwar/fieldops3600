@@ -36,6 +36,7 @@ const knownRoles: Role[] = [
   "OperationsManager",
   "Analyst",
   "Administrator",
+  "Customer",
 ];
 
 export function rolesFromToken(accessToken?: string | null): Role[] {

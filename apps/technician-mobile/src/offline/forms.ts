@@ -5,9 +5,19 @@ export const visibleFields = (fields: FormField[], answers: Record<string, strin
 );
 
 export function validateField(field: FormField, answers: Record<string, string>): string | null {
-  const answer = answers[field.key];
-  if (!answer && field.required) return `Select ${field.label.toLowerCase()}.`;
-  if (answer && !field.options.includes(answer)) return `${field.label} contains an invalid selection.`;
+  const answer = answers[field.key]?.trim();
+  const inputType = field.inputType ?? 'choice';
+  if (!answer && field.required) return `${inputType === 'choice' ? 'Select' : 'Enter'} ${field.label.toLowerCase()}.`;
+  if (!answer) return null;
+  if (inputType === 'choice' && !field.options.includes(answer)) return `${field.label} contains an invalid selection.`;
+  if (inputType === 'text' && field.maxLength != null && answer.length > field.maxLength)
+    return `${field.label} must be at most ${field.maxLength} characters.`;
+  if (inputType === 'number') {
+    const number = Number(answer);
+    if (!/^-?\d+(\.\d+)?$/.test(answer) || !Number.isFinite(number)) return `${field.label} must be a valid number.`;
+    if (field.minimum != null && number < field.minimum) return `${field.label} must be at least ${field.minimum}.`;
+    if (field.maximum != null && number > field.maximum) return `${field.label} must be at most ${field.maximum}.`;
+  }
   return null;
 }
 
@@ -20,6 +30,6 @@ export function validateAnswers(fields: FormField[], answers: Record<string, str
 
 export function cleanAnswers(fields: FormField[], answers: Record<string, string>): Record<string, string> {
   return Object.fromEntries(visibleFields(fields, answers)
-    .filter(field => answers[field.key])
-    .map(field => [field.key, answers[field.key]!]));
+    .filter(field => answers[field.key]?.trim())
+    .map(field => [field.key, answers[field.key]!.trim()]));
 }

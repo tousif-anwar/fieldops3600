@@ -37,8 +37,9 @@ import {
   Status,
 } from "../components/common";
 import type { FormField, Template, WorkOrder, Workflow } from "../types";
-import { RiskAssessment } from "../components/RiskAssessment";
 import { completedStageCount } from "../workflow";
+import { answerError, WorkflowAnswer } from "../components/WorkflowAnswer";
+import { ServiceReport } from "../components/ServiceReport";
 
 export function visibleFields(
   fields: FormField[],
@@ -180,6 +181,8 @@ export function WorkflowPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [formError, setFormError] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
   const [action, setAction] = useState<
     null | "pause" | "resume" | "assistance" | "override"
   >(null);
@@ -201,6 +204,7 @@ export function WorkflowPage() {
   }, []);
   useEffect(() => {
     setMessage("");
+    setFormError("");
     if (stage) {
       let stored: Record<string, string> | null = null;
       try {
@@ -306,14 +310,21 @@ export function WorkflowPage() {
         }
         description={`Work order ${f.workOrderId.slice(0, 8)} · ${f.technicianId} · Version ${f.version}`}
         actions={
-          auth.can("Supervisor", "OperationsManager") && (
-            <Button
-              icon={<History size={17} />}
-              onClick={() => navigate(`/replay?workOrderId=${f.workOrderId}`)}
-            >
-              View operational replay
-            </Button>
-          )
+          <>
+            {f.status === "Completed" && (
+              <Button onClick={() => setReportOpen(true)}>
+                View service report
+              </Button>
+            )}
+            {auth.can("Supervisor", "OperationsManager") && (
+              <Button
+                icon={<History size={17} />}
+                onClick={() => navigate(`/replay?workOrderId=${f.workOrderId}`)}
+              >
+                View operational replay
+              </Button>
+            )}
+          </>
         }
       />
       <div className="workflow-layout">
@@ -419,7 +430,7 @@ export function WorkflowPage() {
                       <>
                         Deadline {dateTime(stage.deadlineUtc)}
                         <br />
-                        The server enforces the 30-minute stage SLA.
+                        The server records and enforces this stage deadline.
                       </>
                     )}
                   </p>
@@ -429,34 +440,34 @@ export function WorkflowPage() {
                 className="form-body"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  const error = visibleFields(fields, answers)
+                    .map((field) => answerError(field, answers[field.key]))
+                    .find(Boolean);
+                  if (error) {
+                    setFormError(error);
+                    return;
+                  }
+                  setFormError("");
                   submit.mutate();
                 }}
               >
                 {visibleFields(fields, answers).map((field) => (
-                  <Field
+                  <WorkflowAnswer
                     key={field.key}
-                    label={field.label}
-                    required={field.required && editable}
-                  >
-                    <Select
-                      value={answers[field.key] ?? ""}
-                      required={field.required && editable}
-                      disabled={!editable}
-                      onChange={(e) => {
-                        setAnswers((old) => ({
-                          ...old,
-                          [field.key]: e.target.value,
-                        }));
-                        setMessage("");
-                      }}
-                    >
-                      <option value="">Select an answer</option>
-                      {field.options.map((option) => (
-                        <option key={option}>{option}</option>
-                      ))}
-                    </Select>
-                  </Field>
+                    field={field}
+                    value={answers[field.key] ?? ""}
+                    editable={editable && !submit.isPending}
+                    onChange={(value) => {
+                      setAnswers((old) => ({
+                        ...old,
+                        [field.key]: value,
+                      }));
+                      setMessage("");
+                      setFormError("");
+                    }}
+                  />
                 ))}
+                {formError && <InlineMessage>{formError}</InlineMessage>}
                 {!fields.length && (
                   <InlineMessage>
                     Form definition is unavailable for this template version.
@@ -559,13 +570,14 @@ export function WorkflowPage() {
               </div>
             </Panel>
           )}
-          {isCurrent &&
-            stage &&
-            auth.can("Supervisor", "OperationsManager") && (
-              <RiskAssessment key={stage.id} stage={stage} workflow={f} />
-            )}
         </div>
       </div>
+      {reportOpen && (
+        <ServiceReport
+          workOrderId={f.workOrderId}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
       {action && (
         <Dialog
           open

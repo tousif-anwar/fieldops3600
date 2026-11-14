@@ -358,7 +358,7 @@ export function WarehousePatterns({ report }: { report: Reports }) {
         {view === "interventions" && (
           <Panel
             title="Recorded supervisor actions (UTC)"
-            description="Pause, resume, override and advisory-decision events grouped by their recorded UTC action date."
+            description="Pause, resume and override events grouped by their recorded UTC action date."
           >
             {interventions.length ? (
               <>
@@ -422,7 +422,7 @@ export function WarehousePatterns({ report }: { report: Reports }) {
             ) : (
               <Empty
                 title="No recorded supervisor actions"
-                description="No pause, resume, override or advisory-decision events have reached this selected order cohort."
+                description="No pause, resume or override events have reached this selected order cohort."
               />
             )}
             <p className="analytics-evidence-note">

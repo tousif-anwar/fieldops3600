@@ -1,10 +1,46 @@
 import { useState } from 'react';
 import {
-  Modal, Pressable, ScrollView, StyleSheet, Text, View,
+  Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radii, spacing, touch, typography } from './tokens';
 import { TextButton } from './components';
+import type { FormField } from '../contracts';
+
+export function ServiceField({
+  field, value, disabled, error, onChange,
+}: {
+  field: FormField;
+  value: string;
+  disabled?: boolean;
+  error?: string;
+  onChange(value: string): void;
+}) {
+  if (!field.inputType || field.inputType === 'choice') return (
+    <DropdownField label={field.label} value={value} options={field.options}
+      required={field.required} disabled={disabled} error={error} onChange={onChange} />
+  );
+  const numeric = field.inputType === 'number';
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{field.label}{field.required ? ' *' : ''}</Text>
+      <TextInput
+        accessibilityLabel={`${field.label}${field.required ? ', required' : ''}`}
+        accessibilityHint={numeric ? 'Enter a number' : 'Enter your service observations'}
+        editable={!disabled} value={value} onChangeText={onChange}
+        inputMode={numeric ? 'decimal' : 'text'} multiline={!numeric}
+        maxLength={field.maxLength ?? (numeric ? 32 : 2000)}
+        style={[styles.textInput, !numeric && styles.multiline, disabled && styles.disabled]}
+        placeholder={numeric ? 'Enter a number' : 'Enter service details'}
+        placeholderTextColor={colors.muted}
+      />
+      {numeric && (field.minimum != null || field.maximum != null) ? (
+        <Text style={styles.hint}>{field.minimum != null ? `Minimum ${field.minimum}` : ''}{field.minimum != null && field.maximum != null ? ' · ' : ''}{field.maximum != null ? `Maximum ${field.maximum}` : ''}</Text>
+      ) : null}
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+    </View>
+  );
+}
 
 export function DropdownField({
   label, value, options, placeholder = 'Select an answer', required = false,
@@ -106,6 +142,11 @@ export function DropdownField({
 }
 
 const styles = StyleSheet.create({
+  textInput: { ...typography.body, color: colors.ink, backgroundColor: colors.surface,
+    minHeight: touch.option, borderWidth: 1, borderColor: colors.borderStrong,
+    borderRadius: radii.md, padding: spacing.md },
+  multiline: { minHeight: 112, textAlignVertical: 'top' },
+  hint: { ...typography.small, color: colors.muted },
   field: { gap: 6 },
   label: { ...typography.label, color: colors.ink },
   control: {

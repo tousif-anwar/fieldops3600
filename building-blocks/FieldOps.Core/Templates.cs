@@ -3,6 +3,7 @@ namespace FieldOps.Core;
 /// <summary>Versioned, validated backend form configuration. Published versions remain immutable.</summary>
 public static class Templates
 {
+    public const int CurrentVersion = 2;
     private static readonly Lazy<IReadOnlyDictionary<int, WorkflowTemplate>> Definitions = new(Load);
     public static WorkflowTemplate Default => Get(1);
 
@@ -47,9 +48,13 @@ public static class Templates
             var previous = new Dictionary<string, FormField>(StringComparer.Ordinal);
             foreach (var field in stage.Fields)
             {
-                if (string.IsNullOrWhiteSpace(field.Key) || string.IsNullOrWhiteSpace(field.Label) || field.Options is not { Length: > 0 }
-                    || field.Options.Any(string.IsNullOrWhiteSpace) || field.Options.Distinct(StringComparer.Ordinal).Count() != field.Options.Length)
-                    throw new InvalidOperationException("Template fields require names and distinct nonempty options.");
+                if (string.IsNullOrWhiteSpace(field.Key) || string.IsNullOrWhiteSpace(field.Label) || field.Options is null ||
+                    field.InputType is not ("choice" or "text" or "number"))
+                    throw new InvalidOperationException("Template fields require names and a supported input type.");
+                if (field.InputType == "choice" && (field.Options.Length == 0 || field.Options.Any(string.IsNullOrWhiteSpace) || field.Options.Distinct(StringComparer.Ordinal).Count() != field.Options.Length))
+                    throw new InvalidOperationException("Choice fields require distinct nonempty options.");
+                if (field.InputType != "choice" && field.Options.Length > 0 || field.MaxLength is < 1 or > 4000 || field.Minimum > field.Maximum)
+                    throw new InvalidOperationException("Invalid field bounds or options.");
                 if (field.ConditionField is not null && (!previous.TryGetValue(field.ConditionField, out var parent) || !parent.Options.Contains(field.ConditionValue, StringComparer.Ordinal)))
                     throw new InvalidOperationException("A conditional field must refer to an earlier allowed option.");
                 if (!previous.TryAdd(field.Key, field)) throw new InvalidOperationException("Template field keys must be unique within a stage.");
@@ -63,6 +68,7 @@ public static class Templates
         var template = Get(templateVersion);
         if (stageIndex < 0 || stageIndex >= template.Stages.Length) throw new DomainException(409, "Invalid stage.");
         var fields = template.Stages[stageIndex].Fields;
+        if (answers is null) throw new DomainException(400, "Answers are required.");
         foreach (var key in answers.Keys)
             if (!fields.Any(field => field.Key == key)) throw new DomainException(400, $"Unknown form field: {key}.");
         foreach (var field in fields)
@@ -77,7 +83,15 @@ public static class Templates
             {
                 if (field.Required) throw new DomainException(400, $"Choose a value for {field.Label}.");
             }
-            else if (!field.Options.Contains(value, StringComparer.Ordinal)) throw new DomainException(400, $"Invalid option for {field.Label}.");
+            else if (field.InputType == "choice")
+            {
+                if (!field.Options.Contains(value, StringComparer.Ordinal)) throw new DomainException(400, $"Invalid option for {field.Label}.");
+            }
+            else if (string.IsNullOrWhiteSpace(value) || value.Length > (field.MaxLength ?? 2000))
+                throw new DomainException(400, $"Enter a value for {field.Label} within the allowed length.");
+            else if (field.InputType == "number" && (!decimal.TryParse(value, System.Globalization.NumberStyles.AllowDecimalPoint | System.Globalization.NumberStyles.AllowLeadingSign,
+                System.Globalization.CultureInfo.InvariantCulture, out var number) || field.Minimum.HasValue && number < field.Minimum.Value || field.Maximum.HasValue && number > field.Maximum.Value))
+                throw new DomainException(400, $"Enter a valid number within the allowed range for {field.Label}.");
         }
     }
 }

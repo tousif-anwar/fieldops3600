@@ -29,6 +29,8 @@ public sealed class WorkOrder
     public string Status { get; set; } = "Created";
     public string TeamId { get; set; } = "north";
     public string? TechnicianId { get; set; }
+    // Monotonic scheduling-owned revision prevents delayed booking events reverting assignment.
+    public long AssignmentRevision { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset? CompletedAtUtc { get; set; }
     public int Version { get; set; } = 1;

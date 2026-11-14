@@ -175,6 +175,9 @@ def main():
             for field in fields:
                 if field.get("conditionField") and answers.get(field["conditionField"]) != field.get("conditionValue"):
                     continue
+                if field.get("inputType") in ("number", "text"):
+                    answers[field["key"]] = "45" if field["inputType"] == "number" else "Synthetic demo service evidence. No real customer data."
+                    continue
                 choices = field["options"]
                 answers[field["key"]] = next((choice for choice in ["Accept", "Ready", "Arrived", "Accessible", "Good", "None", "Passed", "Confirmed", "Completed"] if choice in choices), choices[0])
             workflow = api.request("POST", f"/api/workflows/{workflow['id']}/submit", {"expectedVersion": workflow["version"], "idempotencyKey": f"demo-{state['batchId']}-{record['id']}-{index}", "answers": answers, "offline": False})

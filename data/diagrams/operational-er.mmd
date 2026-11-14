@@ -1,0 +1,15 @@
+erDiagram
+    CUSTOMERS ||--o{ CUSTOMER_CONTACTS : has
+    CUSTOMERS ||--o{ SERVICE_LOCATIONS : has
+    CUSTOMERS ||--o{ ASSETS : owns
+    SERVICE_LOCATIONS ||--o{ ASSETS : hosts
+    CUSTOMERS ||--o{ WORK_ORDERS : requests
+    SERVICE_LOCATIONS ||--o{ WORK_ORDERS : serves
+    ASSETS ||--o{ WORK_ORDERS : receives
+    WORK_ORDERS ||--o{ BOOKINGS : scheduled_as
+    WORK_ORDERS ||--o{ WORKFLOWS : executed_by
+    WORKFLOWS ||--o{ WORKFLOW_STAGES : contains
+    TECHNICIANS ||--o{ BOOKINGS : assigned
+    TECHNICIANS ||--o{ TIME_OFF : unavailable
+    WORK_ORDERS ||--o{ NOTIFICATIONS : raises
+    WORK_ORDERS ||--o{ AUDIT_EVENTS : produces

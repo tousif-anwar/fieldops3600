@@ -58,7 +58,7 @@ public static class SchedulingRecommendations
         var ranked = candidates.OrderByDescending(x => x.Score).ThenBy(x => x.TechnicianId, StringComparer.Ordinal).ToArray();
         if (request.Strategy == "baseline" || ranked.Length == 0) return Results.Ok(ranked);
         if (solverTechnicians.Count > 50) throw new DomainException(400, "Limit the team to at most 50 technicians for optimization.");
-        var endpoint = configuration["Services:Intelligence"];
+        var endpoint = configuration["Services:Optimizer"];
         if (string.IsNullOrWhiteSpace(endpoint)) throw new DomainException(503, "The optimizer is not configured. Choose the baseline strategy explicitly to continue.");
         var job = new SolverJob(order.Id.ToString(), [order.ServiceCategory], ["HVAC Safety"], (int)(start - day).TotalMinutes, (int)(end - day).TotalMinutes, request.DurationMinutes, order.Priority);
         SolverResponse? result;

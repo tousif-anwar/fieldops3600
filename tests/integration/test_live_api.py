@@ -101,7 +101,8 @@ class LiveIntegrationTests(unittest.TestCase):
             answers = {}
             for field in template["stages"][stage_index]["fields"]:
                 if not field.get("conditionField") or answers.get(field["conditionField"]) == field.get("conditionValue"):
-                    answers[field["key"]] = field["options"][0]
+                    answers[field["key"]] = ("45" if field.get("inputType") == "number" else
+                        "Synthetic integration service evidence." if field.get("inputType") == "text" else field["options"][0])
             submission = {"expectedVersion": workflow["version"], "idempotencyKey": str(uuid4()), "answers": answers, "clientOccurredAtUtc": datetime.now(timezone.utc).isoformat(), "offline": stage_index == 2}
             if stage_index == 0:
                 status, _ = self.request("POST", f"/api/workflows/{workflow_id}/submit", "technician", submission | {"answers": {"assignment": "Invented option", "readiness": "Ready"}})

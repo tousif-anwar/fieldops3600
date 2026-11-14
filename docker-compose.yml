@@ -19,7 +19,7 @@ x-backend-environment: &backend-environment
   Services__Technicians: http://technicians:8080
   Services__Scheduling: http://scheduling:8080
   Services__Workflows: http://workflows:8080
-  Services__Intelligence: http://intelligence:8000
+  Services__Optimizer: http://optimizer:8000
   Services__Jaeger: http://jaeger:16686
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
   Sla__DurationSeconds: "1800"
@@ -321,9 +321,9 @@ services:
     depends_on: {postgres: {condition: service_healthy}}
     restart: "no"
 
-  intelligence:
-    image: fieldops360-intelligence:local
-    build: {context: ., dockerfile: intelligence/Dockerfile}
+  optimizer:
+    image: fieldops360-optimizer:local
+    build: {context: ., dockerfile: optimizer/Dockerfile}
     expose: ["8000"]
     restart: unless-stopped
 
@@ -343,7 +343,7 @@ services:
       Services__workflows: http://workflows:8080
       Services__notifications: http://notifications:8080
       Services__reporting: http://reporting:8080
-      Services__intelligence: http://intelligence:8000
+      Services__optimizer: http://optimizer:8000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
     ports: ["127.0.0.1:5100:8080"]
     depends_on:
@@ -356,7 +356,7 @@ services:
       workflows: {condition: service_started}
       notifications: {condition: service_started}
       reporting: {condition: service_started}
-      intelligence: {condition: service_started}
+      optimizer: {condition: service_started}
     restart: unless-stopped
 
   web:
