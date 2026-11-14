@@ -101,6 +101,6 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: {fetch-depth: 0}
       - run: python scripts/check-secrets.py
-      - run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0 git /repo --redact
+      - run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0 git /repo --redact --gitleaks-ignore-path /repo/.gitleaksignore
       - run: docker run --rm -v "$PWD:/src" semgrep/semgrep:1.139.0 semgrep scan --config p/ci --config /src/.semgrep.yml --error /src
       - run: docker run --rm -v "$PWD:/repo" aquasec/trivy:0.67.2 fs --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 /repo
