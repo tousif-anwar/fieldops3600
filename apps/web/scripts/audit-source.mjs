@@ -108,6 +108,22 @@ result.totals = Object.fromEntries(
     "important",
   ].map((key) => [key, result.files.reduce((n, x) => n + (x[key] ?? 0), 0)]),
 );
+result.productTotals = Object.fromEntries(
+  [
+    "bytes",
+    "divs",
+    "views",
+    "fragments",
+    "elements",
+    "gradients",
+    "important",
+  ].map((key) => [
+    key,
+    result.files
+      .filter((file) => !file.file.includes("/src/test/"))
+      .reduce((sum, file) => sum + (file[key] ?? 0), 0),
+  ]),
+);
 // Deployed asset sizes are independent from concurrent working-tree edits.
 const base = process.env.WEB_BASE_URL ?? "http://localhost:8088";
 const html = await (await fetch(base)).text();

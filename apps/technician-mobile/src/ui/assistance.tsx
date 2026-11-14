@@ -1,10 +1,20 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, InlineNotice, TextButton } from './components';
-import { colors, radii, spacing, touch, typography } from './tokens';
+import { colors, spacing, typography } from './tokens';
+import { controlStyles, textStyles } from './styles';
 
 const reasons = [
   'Need supervisor assistance',
@@ -15,7 +25,12 @@ const reasons = [
 ];
 
 export function AssistanceSheet({
-  visible, online, submitting, error, onClose, onSubmit,
+  visible,
+  online,
+  submitting,
+  error,
+  onClose,
+  onSubmit,
 }: {
   visible: boolean;
   online: boolean;
@@ -27,20 +42,38 @@ export function AssistanceSheet({
   const [reason, setReason] = useState(reasons[0]!);
   const [detail, setDetail] = useState('');
   useEffect(() => {
-    if (visible) { setReason(reasons[0]!); setDetail(''); }
+    if (visible) {
+      setReason(reasons[0]!);
+      setDetail('');
+    }
   }, [visible]);
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.modalRoot}
+        style={controlStyles.modal}
       >
-        <Pressable accessibilityRole="button" accessibilityLabel="Close assistance request" onPress={onClose} style={styles.backdrop} />
-        <SafeAreaView edges={['bottom']} style={styles.sheet}>
-          <View style={styles.heading}>
-            <View style={styles.copy}>
-              <Text accessibilityRole="header" style={styles.title}>Request assistance</Text>
-              <Text style={styles.small}>Your supervisor is notified. The SLA continues unless they approve a pause.</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close assistance request"
+          onPress={onClose}
+          style={controlStyles.backdrop}
+        />
+        <SafeAreaView edges={['bottom']} style={controlStyles.sheet}>
+          <View style={controlStyles.sheetHeading}>
+            <View style={controlStyles.sheetCopy}>
+              <Text accessibilityRole="header" style={textStyles.heading}>
+                Request assistance
+              </Text>
+              <Text style={textStyles.secondary}>
+                The deadline continues unless your supervisor approves a pause.
+              </Text>
             </View>
             <TextButton title="Close" onPress={onClose} />
           </View>
@@ -53,17 +86,25 @@ export function AssistanceSheet({
                   key={option}
                   accessibilityRole="radio"
                   accessibilityLabel={option}
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ checked: selected }}
                   onPress={() => setReason(option)}
                   style={({ pressed }) => [
-                    styles.option,
-                    selected && styles.optionSelected,
-                    index < reasons.length - 1 && styles.optionBorder,
-                    pressed && styles.pressed,
+                    controlStyles.option,
+                    selected && controlStyles.selected,
+                    index < reasons.length - 1 && controlStyles.optionBorder,
+                    pressed && controlStyles.pressed,
                   ]}
                 >
-                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{option}</Text>
-                  <Text style={styles.check}>{selected ? '✓' : ''}</Text>
+                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                    {option}
+                  </Text>
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={spacing.xl}
+                    color={selected ? colors.primary : colors.borderStrong}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  />
                 </Pressable>
               );
             })}
@@ -76,10 +117,16 @@ export function AssistanceSheet({
               onChangeText={setDetail}
               placeholder="Add context for your supervisor"
               placeholderTextColor={colors.subtle}
-              style={styles.input}
+              style={[controlStyles.input, controlStyles.multiline]}
             />
-            {!online ? <InlineNotice tone="warning">Connect to request assistance.</InlineNotice> : null}
-            {error ? <InlineNotice tone="danger" title="Request not sent">{error}</InlineNotice> : null}
+            {!online ? (
+              <InlineNotice tone="warning">Connect to request assistance.</InlineNotice>
+            ) : null}
+            {error ? (
+              <InlineNotice tone="danger" title="Request not sent">
+                {error}
+              </InlineNotice>
+            ) : null}
             <Button
               title={submitting ? 'Sending request…' : 'Send assistance request'}
               loading={submitting}
@@ -95,35 +142,8 @@ export function AssistanceSheet({
 }
 
 const styles = StyleSheet.create({
-  modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(17, 35, 31, 0.4)' },
-  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  sheet: {
-    maxHeight: '88%', backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg,
-  },
-  heading: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    gap: spacing.md, paddingBottom: spacing.sm,
-  },
-  copy: { flex: 1, gap: spacing.xs },
-  title: { ...typography.section, color: colors.ink },
-  small: { ...typography.small, color: colors.muted },
   scroll: { gap: spacing.sm, paddingBottom: spacing.sm },
   label: { ...typography.label, color: colors.ink, marginTop: spacing.sm },
-  option: {
-    minHeight: touch.option, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.sm,
-  },
-  optionBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  optionSelected: { backgroundColor: colors.primaryWash },
   optionText: { ...typography.body, color: colors.ink, flex: 1 },
-  optionTextSelected: { color: colors.primary, fontWeight: '600' },
-  check: { ...typography.section, color: colors.primary, minWidth: 24, textAlign: 'right' },
-  input: {
-    minHeight: 96, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.md, color: colors.ink,
-    ...typography.body, textAlignVertical: 'top', backgroundColor: colors.surface,
-  },
-  pressed: { opacity: 0.76 },
+  optionTextSelected: { color: colors.primary, fontWeight: typography.label.fontWeight },
 });

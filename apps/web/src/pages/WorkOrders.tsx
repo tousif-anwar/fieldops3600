@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import {
   Button,
+  useRestoreFocusTarget,
   Checkbox,
   Field,
   Input,
@@ -18,7 +19,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarPlus,
-  ClipboardList,
   History,
   MapPin,
   Plus,
@@ -115,7 +115,6 @@ export function WorkOrders() {
         }
       />
       <Panel
-        title="All work orders"
         description={`${filtered.length} ${filtered.length === 1 ? "request" : "requests"} in your authorized scope`}
       >
         <div className="filter-bar">
@@ -385,271 +384,249 @@ export function CreateOrder() {
         Work orders
       </Link>
       <PageHeader title="Create a work order" />
-      <div className="form-layout">
-        <Panel title="Service details">
-          <form
-            className="form-body"
-            noValidate
-            onSubmit={handleSubmit((v) => {
-              if (
-                !unregistered &&
-                (!customerId || !locationId || !selectedCustomer.data)
-              ) {
-                setReferenceError(
-                  "Select a registered customer and an active service location.",
-                );
-                return;
-              }
-              if (unregistered && exceptionReason.trim().length < 8) {
-                setReferenceError(
-                  "Explain the unregistered customer exception using at least eight characters.",
-                );
-                return;
-              }
+      <Panel title="Service details">
+        <form
+          className="form-body"
+          noValidate
+          onSubmit={handleSubmit((v) => {
+            if (
+              !unregistered &&
+              (!customerId || !locationId || !selectedCustomer.data)
+            ) {
+              setReferenceError(
+                "Select a registered customer and an active service location.",
+              );
+              return;
+            }
+            if (unregistered && exceptionReason.trim().length < 8) {
+              setReferenceError(
+                "Explain the unregistered customer exception using at least eight characters.",
+              );
+              return;
+            }
+            setReferenceError("");
+            mutation.mutate(v);
+          })}
+        >
+          {" "}
+          <Checkbox
+            label="Use an unregistered customer exception"
+            checked={unregistered}
+            onChange={(_, d) => {
+              setUnregistered(d.checked === true);
+              setAssetId("");
               setReferenceError("");
-              mutation.mutate(v);
-            })}
-          >
-            {" "}
-            <Checkbox
-              label="Use an unregistered customer exception"
-              checked={unregistered}
-              onChange={(_, d) => {
-                setUnregistered(d.checked === true);
-                setAssetId("");
-                setReferenceError("");
-              }}
-            />
-            {!unregistered && (
-              <>
-                <Field label="Search registered customers">
-                  <Input
-                    name="search-registered-customers"
-                    autoComplete="off"
-                    value={customerSearch}
-                    onChange={(_, d) => setCustomerSearch(d.value)}
-                    placeholder="Search the customer registry…"
-                  />
-                </Field>
-                {customers.isPending ? (
-                  <Loading label="Loading customers…" />
-                ) : customers.isError ? (
-                  <ErrorState
-                    error={customers.error}
-                    retry={() => void customers.refetch()}
-                  />
-                ) : (
-                  <Field label="Registered customer" required>
-                    {" "}
-                    <Select
-                      name="registered-customer"
-                      value={customerId}
-                      onChange={(e) => {
-                        setCustomerId(e.target.value);
-                        setLocationId("");
-                        setAssetId("");
-                        setValue("customerName", "");
-                        setValue("siteAddress", "");
-                      }}
-                    >
-                      <option value="">Choose a customer</option>
-                      {selectedCustomer.data &&
-                        !customers.data.items.some(
-                          (c) => c.id === customerId,
-                        ) && (
-                          <option value={selectedCustomer.data.id}>
-                            {selectedCustomer.data.displayName}
-                          </option>
-                        )}
-                      {customers.data.items.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.displayName}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                )}
-                {selectedCustomer.isError && (
-                  <ErrorState
-                    error={selectedCustomer.error}
-                    retry={() => void selectedCustomer.refetch()}
-                  />
-                )}
-                <Field label="Registered service location" required>
-                  <Select
-                    name="registered-service-location"
-                    value={locationId}
-                    disabled={
-                      !selectedCustomer.data || selectedCustomer.isPending
-                    }
-                    onChange={(e) => {
-                      setLocationId(e.target.value);
-                      setAssetId("");
-                    }}
-                  >
-                    <option value="">Choose a service location</option>
-                    {selectedCustomer.data?.locations
-                      .filter((l) => l.status === "Active")
-                      .map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name} — {locationAddress(l)}
-                        </option>
-                      ))}
-                  </Select>
-                </Field>
-                <Field
-                  label="Equipment"
-                  hint="Optional: link one active registered asset at this location."
-                >
-                  <Select
-                    name="equipment"
-                    value={assetId}
-                    disabled={!locationId || assets.isPending}
-                    onChange={(e) => setAssetId(e.target.value)}
-                  >
-                    <option value="">No specific equipment</option>
-                    {assets.data?.items
-                      .filter((a) => a.serviceLocationId === locationId)
-                      .map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} — Serial {a.serialNumber}
-                        </option>
-                      ))}
-                  </Select>
-                  {assets.isError && (
-                    <InlineMessage>{assets.error.message}</InlineMessage>
-                  )}
-                </Field>
-                <Link to="/customers/new">
-                  Register a customer and location
-                </Link>
-              </>
-            )}
-            {unregistered && (
-              <Field
-                label="Unregistered customer reason"
-                required
-                hint="This exception is retained in the work order audit history."
-              >
-                <Textarea
-                  name="unregistered-customer-reason"
+            }}
+          />
+          {!unregistered && (
+            <>
+              <Field label="Search registered customers">
+                <Input
+                  name="search-registered-customers"
                   autoComplete="off"
-                  value={exceptionReason}
-                  maxLength={500}
-                  onChange={(_, d) => setExceptionReason(d.value)}
+                  value={customerSearch}
+                  onChange={(_, d) => setCustomerSearch(d.value)}
+                  placeholder="Search the customer registry…"
                 />
               </Field>
-            )}
+              {customers.isPending ? (
+                <Loading label="Loading customers…" />
+              ) : customers.isError ? (
+                <ErrorState
+                  error={customers.error}
+                  retry={() => void customers.refetch()}
+                />
+              ) : (
+                <Field label="Registered customer" required>
+                  {" "}
+                  <Select
+                    name="registered-customer"
+                    value={customerId}
+                    onChange={(e) => {
+                      setCustomerId(e.target.value);
+                      setLocationId("");
+                      setAssetId("");
+                      setValue("customerName", "");
+                      setValue("siteAddress", "");
+                    }}
+                  >
+                    <option value="">Choose a customer</option>
+                    {selectedCustomer.data &&
+                      !customers.data.items.some(
+                        (c) => c.id === customerId,
+                      ) && (
+                        <option value={selectedCustomer.data.id}>
+                          {selectedCustomer.data.displayName}
+                        </option>
+                      )}
+                    {customers.data.items.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.displayName}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+              {selectedCustomer.isError && (
+                <ErrorState
+                  error={selectedCustomer.error}
+                  retry={() => void selectedCustomer.refetch()}
+                />
+              )}
+              <Field label="Registered service location" required>
+                <Select
+                  name="registered-service-location"
+                  value={locationId}
+                  disabled={
+                    !selectedCustomer.data || selectedCustomer.isPending
+                  }
+                  onChange={(e) => {
+                    setLocationId(e.target.value);
+                    setAssetId("");
+                  }}
+                >
+                  <option value="">Choose a service location</option>
+                  {selectedCustomer.data?.locations
+                    .filter((l) => l.status === "Active")
+                    .map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} — {locationAddress(l)}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+              <Field
+                label="Equipment"
+                hint="Optional: link one active registered asset at this location."
+              >
+                <Select
+                  name="equipment"
+                  value={assetId}
+                  disabled={!locationId || assets.isPending}
+                  onChange={(e) => setAssetId(e.target.value)}
+                >
+                  <option value="">No specific equipment</option>
+                  {assets.data?.items
+                    .filter((a) => a.serviceLocationId === locationId)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} — Serial {a.serialNumber}
+                      </option>
+                    ))}
+                </Select>
+                {assets.isError && (
+                  <InlineMessage>{assets.error.message}</InlineMessage>
+                )}
+              </Field>
+              <Link to="/customers/new">Register a customer and location</Link>
+            </>
+          )}
+          {unregistered && (
             <Field
-              label="Work order title"
+              label="Unregistered customer reason"
               required
-              validationState={errors.title ? "error" : "none"}
-              validationMessage={errors.title?.message}
+              hint="This exception is retained in the work order audit history."
+            >
+              <Textarea
+                name="unregistered-customer-reason"
+                autoComplete="off"
+                value={exceptionReason}
+                maxLength={500}
+                onChange={(_, d) => setExceptionReason(d.value)}
+              />
+            </Field>
+          )}
+          <Field
+            label="Work order title"
+            required
+            validationState={errors.title ? "error" : "none"}
+            validationMessage={errors.title?.message}
+          >
+            <Input
+              autoComplete="off"
+              placeholder="e.g. Rooftop unit not cooling"
+              {...register("title")}
+            />
+          </Field>
+          <div className="form-two">
+            <Field
+              label="Customer name"
+              required
+              validationState={errors.customerName ? "error" : "none"}
+              validationMessage={errors.customerName?.message}
             >
               <Input
                 autoComplete="off"
-                placeholder="e.g. Rooftop unit not cooling"
-                {...register("title")}
-              />
-            </Field>
-            <div className="form-two">
-              <Field
-                label="Customer name"
-                required
-                validationState={errors.customerName ? "error" : "none"}
-                validationMessage={errors.customerName?.message}
-              >
-                <Input
-                  autoComplete="off"
-                  placeholder="Business or customer name"
-                  readOnly={!unregistered}
-                  {...register("customerName")}
-                />
-              </Field>
-              <Field label="Service category" required>
-                <Select {...register("serviceCategory")}>
-                  <option>HVAC</option>
-                  <option>Electrical</option>
-                  <option>Refrigeration</option>
-                  <option>Controls</option>
-                  <option>Mechanical</option>
-                  <option>Heating</option>
-                  <option>Cooling</option>
-                  <option>Ventilation</option>
-                </Select>
-              </Field>
-            </div>
-            <Field
-              label="Service address"
-              required
-              validationState={errors.siteAddress ? "error" : "none"}
-              validationMessage={errors.siteAddress?.message}
-            >
-              <Textarea
-                autoComplete="off"
-                placeholder="Street address, city, and access details"
+                placeholder="Business or customer name"
                 readOnly={!unregistered}
-                {...register("siteAddress")}
+                {...register("customerName")}
               />
             </Field>
-            <div className="form-two">
-              <Field label="Priority" required>
-                <Select {...register("priority")}>
-                  {["Low", "Normal", "High", "Critical"].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                label="Team"
-                hint="Assignment scope from your authenticated account"
-              >
-                <Input autoComplete="off" readOnly {...register("teamId")} />
-              </Field>
-            </div>
-            {mutation.isError && (
-              <InlineMessage>{mutation.error.message}</InlineMessage>
-            )}
-            {referenceError && <InlineMessage>{referenceError}</InlineMessage>}
-            <div className="form-actions">
-              <Button onClick={() => navigate("/work-orders")}>Cancel</Button>
-              <Button
-                appearance="primary"
-                type="submit"
-                disabled={mutation.isPending}
-                icon={<Plus aria-hidden="true" size={16} />}
-              >
-                {mutation.isPending ? "Creating…" : "Create work order"}
-              </Button>
-            </div>
-          </form>
-        </Panel>
-        <aside className="form-aside">
-          <span className="quick-icon">
-            <ClipboardList aria-hidden="true" size={23} />
-          </span>
-          <h3>A good start saves time in the field.</h3>
-          <p>
-            Give the request a clear title, confirm the location, and select the
-            right service category.
-          </p>
-          <ol>
-            <li>Create the service request</li>
-            <li>Review technician recommendations</li>
-            <li>Confirm a booking</li>
-            <li>Start the guided workflow</li>
-          </ol>
-          <small>
-            Customer information is restricted by role and team. Use synthetic
-            data for demonstrations.
-          </small>
-        </aside>
-      </div>
+            <Field label="Service category" required>
+              <Select {...register("serviceCategory")}>
+                <option>HVAC</option>
+                <option>Electrical</option>
+                <option>Refrigeration</option>
+                <option>Controls</option>
+                <option>Mechanical</option>
+                <option>Heating</option>
+                <option>Cooling</option>
+                <option>Ventilation</option>
+              </Select>
+            </Field>
+          </div>
+          <Field
+            label="Service address"
+            required
+            validationState={errors.siteAddress ? "error" : "none"}
+            validationMessage={errors.siteAddress?.message}
+          >
+            <Textarea
+              autoComplete="off"
+              placeholder="Street address, city, and access details"
+              readOnly={!unregistered}
+              {...register("siteAddress")}
+            />
+          </Field>
+          <div className="form-two">
+            <Field label="Priority" required>
+              <Select {...register("priority")}>
+                {["Low", "Normal", "High", "Critical"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              label="Team"
+              hint="Assignment scope from your authenticated account"
+            >
+              <Input autoComplete="off" readOnly {...register("teamId")} />
+            </Field>
+          </div>
+          {mutation.isError && (
+            <InlineMessage>{mutation.error.message}</InlineMessage>
+          )}
+          {referenceError && <InlineMessage>{referenceError}</InlineMessage>}
+          <div className="form-actions">
+            <Button onClick={() => navigate("/work-orders")}>Cancel</Button>
+            <Button
+              appearance="primary"
+              type="submit"
+              disabled={mutation.isPending}
+              icon={<Plus aria-hidden="true" size={16} />}
+            >
+              {mutation.isPending ? "Creating…" : "Create work order"}
+            </Button>
+          </div>
+        </form>
+      </Panel>
     </>
   );
 }
 export function OrderDetails() {
   const [editing, setEditing] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<WorkOrder | null>(null);
+  const restoreFocusTarget = useRestoreFocusTarget();
   const { id } = useParams();
   const navigate = useNavigate();
   const auth = useAuth();
@@ -697,7 +674,7 @@ export function OrderDetails() {
           <>
             <Status value={w.status} />
             {auth.can("Dispatcher", "OperationsManager") && (
-              <Button onClick={() => setEditing(true)}>Edit request</Button>
+              <Button {...restoreFocusTarget} onClick={() => {setEditingOrder(w); setEditing(true);}}>Edit request</Button>
             )}
           </>
         }
@@ -816,7 +793,7 @@ export function OrderDetails() {
         error={linkedAsset.error}
         retry={() => void linkedAsset.refetch()}
       />
-      {editing && <OrderEditor order={w} onClose={() => setEditing(false)} />}
+      <OrderEditor order={editingOrder ?? w} open={editing} onClose={() => setEditing(false)} />
     </>
   );
 }

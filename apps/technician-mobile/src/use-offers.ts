@@ -11,6 +11,7 @@ export function useOffers() {
     queryKey: ['assignment-offers'],
     meta: { persist: false },
     refetchInterval: online ? 15_000 : false,
-    queryFn: async () => (await requestApi<AssignmentOffer[]>('/api/assignment-offers', await getAccessToken())).data,
+    queryFn: async () =>
+      (await requestApi<AssignmentOffer[]>('/api/assignment-offers', await getAccessToken())).data,
   });
 }

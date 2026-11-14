@@ -88,7 +88,6 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
   return (
     <>
       <PageHeader
-        eyebrow={supervisor ? "REAL-TIME OPERATIONS" : "OPERATIONS AT A GLANCE"}
         title={supervisor ? "SLA monitoring" : "Operations overview"}
         description={
           supervisor
@@ -111,7 +110,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
           label="Active jobs"
           value={
             report.data?.activeJobs ??
-            (workflows.isSuccess ? active.length : "�")
+            (workflows.isSuccess ? active.length : "—")
           }
           note="Work currently in progress"
           icon={<ClipboardList aria-hidden="true" size={20} />}
@@ -120,7 +119,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
           label="At-risk stages"
           value={
             report.data?.atRiskStages ??
-            (workflows.isSuccess ? risk.length : "�")
+            (workflows.isSuccess ? risk.length : "—")
           }
           note="Approaching their SLA deadline"
           icon={<Clock3 aria-hidden="true" size={20} />}
@@ -130,7 +129,7 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
           label="Overdue stages"
           value={
             report.data?.overdueStages ??
-            (workflows.isSuccess ? overdue.length : "�")
+            (workflows.isSuccess ? overdue.length : "—")
           }
           note="Supervisor attention required"
           icon={<TriangleAlert aria-hidden="true" size={20} />}
@@ -366,7 +365,6 @@ export function Overview({ supervisor = false }: { supervisor?: boolean }) {
   );
 }
 function AnalystWelcome() {
-  const navigate = useNavigate();
   return (
     <>
       <PageHeader title="Reports" />

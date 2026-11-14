@@ -7,13 +7,39 @@ import { useRuntime } from './runtime';
 export function useJob(id: string) {
   const { getAccessToken } = useAuth();
   const { online } = useRuntime();
-  const workOrders = useQuery({ queryKey: ['work-orders'], queryFn: async () =>
-    (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data });
-  const workflows = useQuery({ queryKey: ['workflows', id], enabled: !!id, refetchInterval: online ? 15_000 : false, queryFn: async () =>
-    (await requestApi<Workflow[]>(`/api/workflows?workOrderId=${encodeURIComponent(id)}`, await getAccessToken())).data });
+  const workOrders = useQuery({
+    queryKey: ['work-orders'],
+    queryFn: async () =>
+      (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data,
+  });
+  const workflows = useQuery({
+    queryKey: ['workflows', id],
+    enabled: !!id,
+    refetchInterval: online ? 15_000 : false,
+    queryFn: async () =>
+      (
+        await requestApi<Workflow[]>(
+          `/api/workflows?workOrderId=${encodeURIComponent(id)}`,
+          await getAccessToken(),
+        )
+      ).data,
+  });
   const templateVersion = workflows.data?.[0]?.templateVersion;
-  const template = useQuery({ queryKey: ['template', templateVersion ?? 'default'], queryFn: async () =>
-    (await requestApi<WorkflowTemplate>(`/api/workflows/templates/${templateVersion ?? 'default'}`, await getAccessToken())).data });
-  return { workOrders, workflows, template,
-    job: workOrders.data?.find(job => job.id === id), workflow: workflows.data?.[0] };
+  const template = useQuery({
+    queryKey: ['template', templateVersion ?? 'default'],
+    queryFn: async () =>
+      (
+        await requestApi<WorkflowTemplate>(
+          `/api/workflows/templates/${templateVersion ?? 'default'}`,
+          await getAccessToken(),
+        )
+      ).data,
+  });
+  return {
+    workOrders,
+    workflows,
+    template,
+    job: workOrders.data?.find((job) => job.id === id),
+    workflow: workflows.data?.[0],
+  };
 }

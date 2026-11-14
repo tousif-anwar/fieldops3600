@@ -1,14 +1,18 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import {
-  Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radii, spacing, touch, typography } from './tokens';
+import { colors, spacing, typography } from './tokens';
+import { controlStyles, textStyles } from './styles';
 import { TextButton } from './components';
 import type { FormField } from '../contracts';
 
 export function ServiceField({
-  field, value, disabled, error, onChange,
+  field,
+  value,
+  disabled,
+  error,
+  onChange,
 }: {
   field: FormField;
   value: string;
@@ -16,35 +20,71 @@ export function ServiceField({
   error?: string;
   onChange(value: string): void;
 }) {
-  if (!field.inputType || field.inputType === 'choice') return (
-    <DropdownField label={field.label} value={value} options={field.options}
-      required={field.required} disabled={disabled} error={error} onChange={onChange} />
-  );
+  const [focused, setFocused] = useState(false);
+  if (!field.inputType || field.inputType === 'choice')
+    return (
+      <DropdownField
+        label={field.label}
+        value={value}
+        options={field.options}
+        required={field.required}
+        disabled={disabled}
+        error={error}
+        onChange={onChange}
+      />
+    );
   const numeric = field.inputType === 'number';
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{field.label}{field.required ? ' *' : ''}</Text>
+      <Text style={textStyles.label}>
+        {field.label}
+        {field.required ? ' *' : ''}
+      </Text>
       <TextInput
         accessibilityLabel={`${field.label}${field.required ? ', required' : ''}`}
         accessibilityHint={numeric ? 'Enter a number' : 'Enter your service observations'}
-        editable={!disabled} value={value} onChangeText={onChange}
-        inputMode={numeric ? 'decimal' : 'text'} multiline={!numeric}
+        editable={!disabled}
+        value={value}
+        onChangeText={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        inputMode={numeric ? 'decimal' : 'text'}
+        multiline={!numeric}
         maxLength={field.maxLength ?? (numeric ? 32 : 2000)}
-        style={[styles.textInput, !numeric && styles.multiline, disabled && styles.disabled]}
+        style={[
+          controlStyles.input,
+          !numeric && controlStyles.multiline,
+          disabled && controlStyles.disabled,
+          focused && controlStyles.focused,
+        ]}
         placeholder={numeric ? 'Enter a number' : 'Enter service details'}
         placeholderTextColor={colors.muted}
       />
       {numeric && (field.minimum != null || field.maximum != null) ? (
-        <Text style={styles.hint}>{field.minimum != null ? `Minimum ${field.minimum}` : ''}{field.minimum != null && field.maximum != null ? ' · ' : ''}{field.maximum != null ? `Maximum ${field.maximum}` : ''}</Text>
+        <Text style={textStyles.secondary}>
+          {field.minimum != null ? `Minimum ${field.minimum}` : ''}
+          {field.minimum != null && field.maximum != null ? ' · ' : ''}
+          {field.maximum != null ? `Maximum ${field.maximum}` : ''}
+        </Text>
       ) : null}
-      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 export function DropdownField({
-  label, value, options, placeholder = 'Select an answer', required = false,
-  disabled = false, error, onChange,
+  label,
+  value,
+  options,
+  placeholder = 'Select an answer',
+  required = false,
+  disabled = false,
+  error,
+  onChange,
 }: {
   label: string;
   value: string;
@@ -59,8 +99,9 @@ export function DropdownField({
   const close = () => setOpen(false);
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>
-        {label}{required ? ' *' : ''}
+      <Text style={textStyles.label}>
+        {label}
+        {required ? ' *' : ''}
       </Text>
       <Pressable
         accessibilityRole="button"
@@ -69,12 +110,20 @@ export function DropdownField({
         accessibilityState={{ disabled, expanded: open }}
         disabled={disabled}
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.control, disabled && styles.disabled, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.control,
+          disabled && controlStyles.disabled,
+          pressed && controlStyles.pressed,
+        ]}
       >
-        <Text style={[styles.value, !value && styles.placeholder]} numberOfLines={2}>
-          {value || placeholder}
-        </Text>
-        <Text style={styles.chevron}>▾</Text>
+        <Text style={[styles.value, !value && styles.placeholder]}>{value || placeholder}</Text>
+        <Ionicons
+          name="chevron-down"
+          size={spacing.xl}
+          color={colors.muted}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
       </Pressable>
       {error ? (
         <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.error}>
@@ -84,22 +133,24 @@ export function DropdownField({
       <Modal
         visible={open}
         transparent
-        animationType="fade"
+        animationType="none"
         statusBarTranslucent
         onRequestClose={close}
       >
-        <View style={styles.modalRoot}>
+        <View style={controlStyles.modal}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close answer list"
             onPress={close}
-            style={styles.backdrop}
+            style={controlStyles.backdrop}
           />
           <SafeAreaView edges={['bottom']} style={styles.sheet}>
-            <View style={styles.sheetHeading}>
-              <View style={styles.sheetCopy}>
-                <Text accessibilityRole="header" style={styles.sheetTitle}>{label}</Text>
-                <Text style={styles.sheetHint}>Choose one answer</Text>
+            <View style={controlStyles.sheetHeading}>
+              <View style={controlStyles.sheetCopy}>
+                <Text accessibilityRole="header" style={textStyles.heading}>
+                  {label}
+                </Text>
+                <Text style={textStyles.secondary}>Choose one answer</Text>
               </View>
               <TextButton title="Close" onPress={close} />
             </View>
@@ -112,27 +163,34 @@ export function DropdownField({
                       key={option}
                       accessibilityRole="radio"
                       accessibilityLabel={option}
-                      accessibilityState={{ selected }}
-                      onPress={() => { onChange(option); close(); }}
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => {
+                        onChange(option);
+                        close();
+                      }}
                       style={({ pressed }) => [
-                        styles.option,
-                        selected && styles.optionSelected,
-                        index < options.length - 1 && styles.optionBorder,
-                        pressed && styles.pressed,
+                        controlStyles.option,
+                        selected && controlStyles.selected,
+                        index < options.length - 1 && controlStyles.optionBorder,
+                        pressed && controlStyles.pressed,
                       ]}
                     >
                       <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                         {option}
                       </Text>
-                      <Text style={[styles.check, selected && styles.checkSelected]}>
-                        {selected ? '✓' : ''}
-                      </Text>
+                      <Ionicons
+                        name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={spacing.xl}
+                        color={selected ? colors.primary : colors.borderStrong}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no"
+                      />
                     </Pressable>
                   );
                 })}
               </ScrollView>
             ) : (
-              <Text style={styles.sheetHint}>No answers are configured for this field.</Text>
+              <Text style={textStyles.secondary}>No answers are configured for this field.</Text>
             )}
           </SafeAreaView>
         </View>
@@ -142,46 +200,12 @@ export function DropdownField({
 }
 
 const styles = StyleSheet.create({
-  textInput: { ...typography.body, color: colors.ink, backgroundColor: colors.surface,
-    minHeight: touch.option, borderWidth: 1, borderColor: colors.borderStrong,
-    borderRadius: radii.md, padding: spacing.md },
-  multiline: { minHeight: 112, textAlignVertical: 'top' },
-  hint: { ...typography.small, color: colors.muted },
-  field: { gap: 6 },
-  label: { ...typography.label, color: colors.ink },
-  control: {
-    minHeight: touch.option, borderWidth: 1, borderColor: colors.borderStrong,
-    borderRadius: radii.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md,
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-  },
+  field: { gap: spacing.sm },
+  control: { ...controlStyles.input, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   value: { ...typography.body, color: colors.ink, flex: 1 },
   placeholder: { color: colors.muted },
-  chevron: { ...typography.section, color: colors.muted, lineHeight: 20 },
   error: { ...typography.small, color: colors.danger },
-  disabled: { opacity: 0.45 },
-  pressed: { opacity: 0.76 },
-  modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(17, 35, 31, 0.4)' },
-  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  sheet: {
-    maxHeight: '82%', backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-  },
-  sheetHeading: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    gap: spacing.md, paddingBottom: spacing.md,
-  },
-  sheetCopy: { flex: 1, gap: 2 },
-  sheetTitle: { ...typography.section, color: colors.ink },
-  sheetHint: { ...typography.small, color: colors.muted },
-  option: {
-    minHeight: touch.option, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.sm,
-  },
-  optionBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  optionSelected: { backgroundColor: colors.primaryWash },
+  sheet: { ...controlStyles.sheet, paddingBottom: spacing.sm },
   optionText: { ...typography.body, color: colors.ink, flex: 1 },
-  optionTextSelected: { color: colors.primary, fontWeight: '600' },
-  check: { ...typography.section, color: colors.primary, minWidth: 24, textAlign: 'right' },
-  checkSelected: { color: colors.primary },
+  optionTextSelected: { color: colors.primary, fontWeight: typography.label.fontWeight },
 });

@@ -9,7 +9,10 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test ../../tests/mobile/*.test.ts",
-    "check": "npm run typecheck && npm test"
+    "lint": "eslint app src --max-warnings 0",
+    "format": "prettier --write app src ../../tests/mobile app.config.ts app.json tsconfig.json package.json eslint.config.mjs",
+    "format:check": "prettier --check app src ../../tests/mobile app.config.ts app.json tsconfig.json package.json eslint.config.mjs",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -40,10 +43,17 @@
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
+    "eslint": "10.15.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.10",
     "tsx": "^4.20.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "typescript-eslint": "8.72.2"
   },
   "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    },
     "@expo/cli": {
       "glob": "14.0.2"
     },

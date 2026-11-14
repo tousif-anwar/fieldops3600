@@ -80,7 +80,7 @@ export function Customers() {
           )
         }
       />
-      <Panel title="Customer registry">
+      <Panel>
         <div className="filter-bar">
           <Input
             name="search-customers"

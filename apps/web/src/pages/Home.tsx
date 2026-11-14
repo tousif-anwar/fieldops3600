@@ -331,7 +331,7 @@ export function Home() {
     primaryError
       ? {
           ...figure,
-          value: "�",
+          value: "—",
           detail: "Refresh to load this information.",
           tone: "default" as const,
         }
@@ -343,7 +343,7 @@ export function Home() {
     <div className="home-page">
       <PageHeader
         title="Home"
-        description={`${roleLabel(role)} � ${teamLabel(teamId)}`}
+        description={`${roleLabel(role)} · ${teamLabel(teamId)}`}
       />
       {otherRoles.length > 0 && (
         <p className="home-additional-roles">

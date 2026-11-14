@@ -35,7 +35,7 @@ export function Login() {
               Continue to secure sign-in
             </Button>
           ) : (
-            <Spinner size="small" label="Checking your session�" />
+            <Spinner size="small" label="Checking your session…" />
           )}
           <p className="login-assistance">
             For account access, contact your administrator.

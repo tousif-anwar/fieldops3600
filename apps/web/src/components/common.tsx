@@ -63,11 +63,7 @@ export function ErrorState({
     </div>
   );
 }
-export function Loading({
-  label = "Loading…",
-}: {
-  label?: string;
-}) {
+export function Loading({ label = "Loading…" }: { label?: string }) {
   return (
     <div className="loading-state" role="status">
       <Spinner size="small" label={label} />
@@ -130,17 +126,23 @@ export function Metric({
     <article className="metric">
       <div className="metric-top">
         <span>{label}</span>
-        {icon ? <span className={`metric-icon ${tone}`} aria-hidden="true">{icon}</span> : null}
+        {icon ? (
+          <span className={`metric-icon ${tone}`} aria-hidden="true">
+            {icon}
+          </span>
+        ) : null}
       </div>
       <strong className="metric-value">{value}</strong>
-      {(note || indicator) ? <div className="metric-note">
-        <span>{note}</span>
-        {indicator && (
-          <span className={`metric-indicator ${indicator.tone ?? "neutral"}`}>
-            {indicator.label}
-          </span>
-        )}
-      </div> : null}
+      {note || indicator ? (
+        <div className="metric-note">
+          <span>{note}</span>
+          {indicator && (
+            <span className={`metric-indicator ${indicator.tone ?? "neutral"}`}>
+              {indicator.label}
+            </span>
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -159,11 +161,13 @@ export function Panel({
 }) {
   return (
     <section className={`panel ${className}`}>
-      {(title || description || action) ? <header className="panel-heading">
+      {title || description || action ? (
+        <header className="panel-heading">
           {title ? <h2>{title}</h2> : null}
           {description && <p>{description}</p>}
-        {action}
-      </header> : null}
+          {action}
+        </header>
+      ) : null}
       {children}
     </section>
   );
@@ -180,7 +184,11 @@ export function InlineMessage({
       className={`inline-message ${success ? "positive" : ""}`}
       role={success ? "status" : "alert"}
     >
-      {success ? <CheckCircle2 size={17} aria-hidden="true" /> : <AlertCircle size={17} aria-hidden="true" />}
+      {success ? (
+        <CheckCircle2 size={17} aria-hidden="true" />
+      ) : (
+        <AlertCircle size={17} aria-hidden="true" />
+      )}
       <span>{children}</span>
     </div>
   );

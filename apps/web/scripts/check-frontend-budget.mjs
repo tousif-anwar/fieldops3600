@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const root = resolve(import.meta.dirname, "../../..");
-// Measured production assets before cleanup, commit20ee7d00. Durable values keep
+// Measured production assets before cleanup, commit 20ee7d00. Durable values keep
 // this gate runnable from a clean checkout without private screenshot artifacts.
 const baseline = [
   { name: "baseline.js", bytes: 1337484, gzipBytes: 402969 },
@@ -27,7 +27,7 @@ for (const extension of [".js", ".css"]) {
   for (const key of ["bytes", "gzipBytes"]) {
     const before = size(baseline, extension, key),
       after = size(current, extension, key);
-    // A 5% budget plus1KiB permits small correctness changes while catching unexplained growth.
+    // A 5% budget plus 1 KiB permits small correctness changes while catching unexplained growth.
     checks.push({
       extension,
       metric: key,

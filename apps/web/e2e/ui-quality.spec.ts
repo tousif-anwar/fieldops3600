@@ -69,7 +69,7 @@ test("work-order failures announce recovery and retry returns real records", asy
   await page.unroute("**/api/work-orders");
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(
-    page.getByRole("heading", { name: "All work orders", exact: true }),
+    page.getByRole("region", { name: "All work orders", exact: true }),
   ).toBeVisible();
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 });

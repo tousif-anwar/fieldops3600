@@ -8,7 +8,7 @@ import { Shell } from "./components/Shell";
 import { ErrorState, Loading } from "./components/common";
 import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
-import { lazy, Suspense, useMemo, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import type { Role } from "./types";
 import "./styles.css";
 import "./design-system/tokens.css";
@@ -83,9 +83,12 @@ const AssetDetails = lazy(() =>
 
 function SessionQueries() {
   const { user } = useAuth();
-  // A new authenticated identity receives a separate cache. A prior user's data
-  // cannot appear briefly while protected requests for the next user load.
-  const client = useMemo(
+  return <IdentityQueries key={user?.profile.sub ?? "signed-out"} />;
+}
+
+function IdentityQueries() {
+  // The identity key remounts this provider rather than sharing cached customer data.
+  const [client] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
@@ -101,7 +104,6 @@ function SessionQueries() {
           mutations: { retry: false },
         },
       }),
-    [user?.profile.sub],
   );
   return (
     <QueryClientProvider client={client}>

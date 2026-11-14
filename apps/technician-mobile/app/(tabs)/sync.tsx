@@ -1,129 +1,141 @@
 import { Link } from 'expo-router';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import type { Submission } from '../../src/offline/queue';
 import { useRuntime } from '../../src/runtime';
 import {
-  Button, EmptyState, InlineNotice, Screen, ScreenHeader, Section, StatusBadge, SyncBadge,
+  Button,
+  EmptyState,
+  InlineNotice,
+  Screen,
+  ScreenHeader,
+  StatusBadge,
+  SyncBadge,
   TextButton,
+  listStyles,
+  textStyles,
 } from '../../src/ui';
 import {
-  formatTimestamp, friendlySyncError, humanizeFieldKey, syncPresentation,
+  formatTimestamp,
+  friendlySyncError,
+  humanizeFieldKey,
+  syncPresentation,
 } from '../../src/ui/model';
-import { colors, spacing, typography } from '../../src/ui/tokens';
+import { spacing } from '../../src/ui/tokens';
 
 export default function Synchronization() {
   const { queue, submissions, synchronize, online, queueError } = useRuntime();
-  const pending = submissions.filter(item => item.status !== 'synced');
-  const synced = submissions.filter(item => item.status === 'synced').slice(-5).reverse();
-  return (
-    <Screen topInset>
-      <ScreenHeader
-        title="Sync"
-        description="See what is saved on this device and what the server has accepted."
-      />
-      <Section card title="Connection" description="The server remains authoritative for every submission.">
-        <View style={styles.badges}>
-          <StatusBadge label={online ? 'Online' : 'Offline'} tone={online ? 'success' : 'warning'} />
-          <StatusBadge
-            label={pending.length ? `${pending.length} waiting` : 'Everything synced'}
-            tone={pending.length ? 'warning' : 'success'}
-          />
-        </View>
-        <Text style={styles.body}>
-          A saved submission is not accepted until the server confirms the current
-          stage and version. The same idempotency key is reused on every retry.
-        </Text>
+  const pending = submissions.filter((item) => item.status !== 'synced');
+  const synced = submissions
+    .filter((item) => item.status === 'synced')
+    .slice(-5)
+    .reverse();
+  const header = (
+    <View style={listStyles.header}>
+      <ScreenHeader title="Sync" />
+      <View style={styles.badges}>
+        <StatusBadge label={online ? 'Online' : 'Offline'} tone={online ? 'success' : 'warning'} />
+        {pending.length > 0 ? (
+          <StatusBadge label={`${pending.length} queued`} tone="warning" />
+        ) : null}
+      </View>
+      <Text style={textStyles.body}>
+        Queued responses stay on this device until the server accepts them. Conflicts require
+        review.
+      </Text>
+      {pending.length > 0 ? (
         <Button
           title="Synchronize now"
           variant="secondary"
           disabled={!online}
-          onPress={() => { void synchronize(); }}
+          onPress={() => {
+            void synchronize();
+          }}
         />
-      </Section>
+      ) : null}
       {queueError ? (
         <InlineNotice tone="danger" title="Sync needs attention">
-          Your work is still on this device. Check your connection and try again. If
-          this persists, do not discard work until a supervisor confirms the server state.
+          Keep your local work until a supervisor confirms the server state. Reconnect and try
+          again.
         </InlineNotice>
       ) : null}
-      {!pending.length ? (
-        <EmptyState
-          title="Everything is synced"
-          description="There are no queued stage responses. Saved drafts remain available inside each job."
-        />
-      ) : (
-        <Section title="Waiting to sync" description="These responses are preserved locally until the server accepts them.">
-          <View style={styles.list}>
-            {pending.map((item, index) => {
-              const presentation = syncPresentation(item.status);
-              return (
-                <View key={item.id}>
-                  <View style={styles.record}>
-                    <View style={styles.metaRow}>
-                      <SyncBadge status={item.status} />
-                      <Text style={styles.small}>{formatTimestamp(item.clientOccurredAtUtc)}</Text>
-                    </View>
-                    <Text style={styles.title}>Stage {item.stageIndex + 1}</Text>
-                    <Text style={styles.body}>{presentation.detail}</Text>
-                    <View style={styles.answers}>
-                      {Object.entries(item.answers).map(([key, value]) => (
-                        <View key={key} style={styles.answerRow}>
-                          <Text style={styles.answerKey}>{humanizeFieldKey(key)}</Text>
-                          <Text style={styles.answerValue}>{value}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    {item.lastError ? (
-                      <InlineNotice
-                        tone={item.status === 'conflict' ? 'warning' : 'danger'}
-                        title={item.status === 'conflict' ? 'What changed' : 'What happened'}
-                      >
-                        {friendlySyncError(item.lastError)}
-                      </InlineNotice>
-                    ) : null}
-                    {item.status === 'conflict' ? (
-                      <View style={styles.actions}>
-                        <Link
-                          href={{ pathname: '/job/[id]', params: { id: item.workOrderId } }}
-                          style={styles.link}
-                        >
-                          Refresh job and review current stage
-                        </Link>
-                        <TextButton
-                          title="Discard local submission"
-                          danger
-                          onPress={() => confirmDiscard(queue, item.id)}
-                          hint="Only removes this local copy; server history is unchanged"
-                        />
-                      </View>
-                    ) : null}
-                    {item.status === 'failed' ? (
-                      <TextButton
-                        title="Discard local submission"
-                        danger
-                        onPress={() => confirmDiscard(queue, item.id)}
-                        hint="Only removes this local copy; server history is unchanged"
-                      />
-                    ) : null}
-                  </View>
-                  {index < pending.length - 1 ? <View style={styles.divider} /> : null}
-                </View>
-              );
-            })}
-          </View>
-        </Section>
-      )}
-      {synced.length ? (
-        <Section title="Recent receipts" description="Server acknowledgements for this session.">
-          <View style={styles.list}>
-            {synced.map(item => (
-              <Text key={item.id} style={styles.receipt}>
-                Stage {item.stageIndex + 1} accepted
-                {item.serverReceivedAtUtc ? ` · server ${formatTimestamp(item.serverReceivedAtUtc)}` : ''}
-              </Text>
-            ))}
-          </View>
-        </Section>
+      {!queueError && !pending.length ? (
+        <EmptyState title="No queued updates" description="Saved drafts remain inside each job." />
       ) : null}
+      {pending.length > 0 ? (
+        <Text accessibilityRole="header" style={textStyles.heading}>
+          Waiting to sync
+        </Text>
+      ) : null}
+    </View>
+  );
+  const footer = synced.length ? (
+    <View style={listStyles.footer}>
+      <Text accessibilityRole="header" style={textStyles.heading}>
+        Recent receipts
+      </Text>
+      {synced.map((item) => (
+        <Text key={item.id} style={textStyles.secondary}>
+          Stage {item.stageIndex + 1} accepted
+          {item.serverReceivedAtUtc ? ` · ${formatTimestamp(item.serverReceivedAtUtc)}` : ''}
+        </Text>
+      ))}
+    </View>
+  ) : null;
+  const renderSubmission = ({ item }: { item: Submission }) => {
+    const presentation = syncPresentation(item.status);
+    return (
+      <View style={listStyles.row}>
+        <View style={styles.metaRow}>
+          <SyncBadge status={item.status} />
+          <Text style={textStyles.secondary}>{formatTimestamp(item.clientOccurredAtUtc)}</Text>
+        </View>
+        <Text style={textStyles.heading}>Stage {item.stageIndex + 1}</Text>
+        <Text style={textStyles.body}>{presentation.detail}</Text>
+        <View style={styles.answers}>
+          {Object.entries(item.answers).map(([key, value]) => (
+            <Text key={key} style={textStyles.secondary}>
+              <Text style={textStyles.label}>{humanizeFieldKey(key)}: </Text>
+              {value}
+            </Text>
+          ))}
+        </View>
+        {item.lastError ? (
+          <InlineNotice
+            tone={item.status === 'conflict' ? 'warning' : 'danger'}
+            title={item.status === 'conflict' ? 'Job changed' : 'Update not accepted'}
+          >
+            {friendlySyncError(item.lastError)}
+          </InlineNotice>
+        ) : null}
+        {item.status === 'conflict' ? (
+          <Link
+            href={{ pathname: '/job/[id]', params: { id: item.workOrderId } }}
+            style={textStyles.link}
+          >
+            Review current job
+          </Link>
+        ) : null}
+        {item.status === 'conflict' || item.status === 'failed' ? (
+          <TextButton
+            title="Discard local submission"
+            danger
+            onPress={() => confirmDiscard(queue, item.id)}
+            hint="Only removes this local copy; server history is unchanged"
+          />
+        ) : null}
+      </View>
+    );
+  };
+  return (
+    <Screen topInset scrollable={false}>
+      <FlatList
+        data={pending}
+        renderItem={renderSubmission}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={listStyles.content}
+        ListHeaderComponent={header}
+        ListFooterComponent={footer ?? undefined}
+      />
     </Screen>
   );
 }
@@ -134,25 +146,25 @@ function confirmDiscard(queue: ReturnType<typeof useRuntime>['queue'], id: strin
     'This removes only the copy on this device. The server’s history is unchanged. Your current stage answers may need to be entered again.',
     [
       { text: 'Keep it', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => { void queue.discard(id); } },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => {
+          void queue.discard(id);
+        },
+      },
     ],
   );
 }
 
 const styles = StyleSheet.create({
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  body: { ...typography.body, color: colors.ink },
-  list: { gap: 0 },
-  record: { gap: spacing.sm, paddingVertical: spacing.lg },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  title: { ...typography.section, color: colors.ink },
-  small: { ...typography.small, color: colors.muted },
-  answers: { gap: 6, backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: spacing.md },
-  answerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  answerKey: { ...typography.label, color: colors.muted, minWidth: 120 },
-  answerValue: { ...typography.small, color: colors.ink, flex: 1 },
-  actions: { gap: spacing.sm, alignItems: 'flex-start' },
-  link: { ...typography.label, color: colors.primary, paddingVertical: spacing.sm },
-  receipt: { ...typography.small, color: colors.muted, paddingVertical: 6 },
-  divider: { height: 1, backgroundColor: colors.border },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  answers: { gap: spacing.xs },
 });

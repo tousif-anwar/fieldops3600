@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Button, Field, Input, Select } from "@fluentui/react-components";
@@ -29,6 +29,8 @@ import { AssignmentOffers } from "../components/AssignmentOffers";
 import type { AssignmentOffer } from "../assignment-contracts";
 
 export function Schedule() {
+  const [editorOpen, setEditorOpen] = useState(false);
+  const restoreFocusTarget = useRestoreFocusTarget();
   const [editing, setEditing] = useState<{
     booking: Booking;
     action: "reschedule" | "cancel";
@@ -69,13 +71,10 @@ export function Schedule() {
     queryFn: () => api<Booking[]>("/api/bookings"),
     refetchInterval: 10000,
   });
-  const startUtc = useMemo(
-    () =>
-      start && !Number.isNaN(Date.parse(start))
-        ? new Date(start).toISOString()
-        : "",
-    [start],
-  );
+  const startUtc =
+    start && !Number.isNaN(Date.parse(start))
+      ? new Date(start).toISOString()
+      : "";
   const endUtc = startUtc
     ? new Date(Date.parse(startUtc) + Number(duration) * 60000).toISOString()
     : "";
@@ -292,12 +291,15 @@ export function Schedule() {
                   ) : (
                     recommendations.data.map((r, index) => (
                       <label
+                        aria-label={r.technicianName ?? r.technicianId}
+                        htmlFor={`recommendation-${r.technicianId}`}
                         key={r.technicianId}
                         className={`recommendation ${selected === r.technicianId ? "selected" : ""}`}
                       >
                         <input
                           autoComplete="off"
                           type="radio"
+                          id={`recommendation-${r.technicianId}`}
                           name="technician"
                           checked={selected === r.technicianId}
                           disabled={busy}
@@ -532,18 +534,16 @@ export function Schedule() {
                           <div className="booking-actions">
                             <Button
                               size="small"
-                              onClick={() =>
-                                setEditing({ booking: b, action: "reschedule" })
-                              }
+                              {...restoreFocusTarget}
+                              onClick={() => {setEditing({ booking: b, action: "reschedule" }); setEditorOpen(true);}}
                             >
                               Reschedule
                             </Button>
                             <Button
                               size="small"
                               appearance="subtle"
-                              onClick={() =>
-                                setEditing({ booking: b, action: "cancel" })
-                              }
+                              {...restoreFocusTarget}
+                              onClick={() => {setEditing({ booking: b, action: "cancel" }); setEditorOpen(true);}}
                             >
                               Cancel booking
                             </Button>
@@ -563,8 +563,9 @@ export function Schedule() {
       {editing && (
         <BookingEditor
           booking={editing.booking}
+          open={editorOpen}
           action={editing.action}
-          onClose={() => setEditing(null)}
+          onClose={() => setEditorOpen(false)}
         />
       )}
     </>

@@ -158,7 +158,7 @@ class NativeCheck:
         self.call("shell", "svc", "wifi", "enable")
         self.wait(lambda: self.request("GET", "/api/workflows/" + workflow["id"])["currentStageIndex"] == 1,
             "automatic synchronization after Android reconnect", seconds=45)
-        self.find("Everything is synced", attempts=15)
+        self.find("No queued updates", attempts=15)
         updated = self.request("GET", "/api/workflows/" + workflow["id"])
         assert updated["stages"][0]["answers"] == {"assignment": "Accept", "readiness": "Ready"}
         self.record("Reconnected Android; automatic synchronization advanced exactly one stage and retained the original answers.")

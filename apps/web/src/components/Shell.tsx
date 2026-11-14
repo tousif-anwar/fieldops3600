@@ -1,5 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { OverlayDrawer } from "@fluentui/react-components";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Link,
   NavLink,
@@ -46,6 +51,8 @@ interface NavigationItem {
   roles: Role[] | null;
   end?: boolean;
 }
+
+const NavigationDrawer = lazy(() => import("./NavigationDrawer"));
 
 const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   {
@@ -196,7 +203,11 @@ export function Shell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const compact = useSyncExternalStore(subscribeCompactNavigation, compactNavigationSnapshot, () => false);
+  const compact = useSyncExternalStore(
+    subscribeCompactNavigation,
+    compactNavigationSnapshot,
+    () => false,
+  );
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem("fieldops.navigation.collapsed") === "1";
@@ -373,108 +384,115 @@ export function Shell() {
   }
 
   const navigation = (
-      <nav
-        id="primary-navigation"
-        aria-label="Main navigation"
-        className="sidebar"
-      >
-        <div className="sidebar-brand-row">
-          <Link
-            to={customerSurface ? "/portal" : "/"}
-            className="brand"
-            aria-label="FieldOps 360 home"
-            onClick={() => setOpen(false)}
-          >
-            <span className="brand-symbol">
-              <Compass size={23} aria-hidden="true" />
-            </span>
-            <span className="brand-copy">
-              FieldOps <b>360</b>
-            </span>
-          </Link>
-          <button
-            className="mobile-close icon-button"
-            aria-label="Close navigation"
-            onClick={() => setOpen(false)}
-          >
-            <X size={20} aria-hidden="true" />
-          </button>
-        </div>
-        <div
-          className="workspace-switch"
-          title={`${teamLabel(teamId)} workspace`}
+    <nav
+      id="primary-navigation"
+      aria-label="Main navigation"
+      className="sidebar"
+    >
+      <div className="sidebar-brand-row">
+        <Link
+          to={customerSurface ? "/portal" : "/"}
+          className="brand"
+          aria-label="FieldOps 360 home"
+          onClick={() => setOpen(false)}
         >
-          <Building2 size={18} aria-hidden="true" />
-          <span className="workspace-switch-copy">
-            {customerSurface ? "Your service account" : teamLabel(teamId)}
+          <span className="brand-symbol">
+            <Compass size={23} aria-hidden="true" />
           </span>
-        </div>
-        <div className="primary-navigation">
-          {visibleGroups.map((group) => (
-            <div className="nav-group" key={group.label}>
-              <div className="nav-group-label">{group.label}</div>
-              {group.items.map(({ to, label, icon: Icon, end }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  title={collapsed ? label : undefined}
-                  aria-label={collapsed && !compact ? label : undefined}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `nav-item ${isActive ? "active" : ""}`
-                  }
-                >
-                  <Icon size={19} aria-hidden="true" />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </div>
-          ))}
-          {!customerSurface && (
-            <div className="nav-group nav-group-tools">
-              <div className="nav-group-label">Directory</div>
+          <span className="brand-copy">
+            FieldOps <b>360</b>
+          </span>
+        </Link>
+        <button
+          className="mobile-close icon-button"
+          aria-label="Close navigation"
+          onClick={() => setOpen(false)}
+        >
+          <X size={20} aria-hidden="true" />
+        </button>
+      </div>
+      <div
+        className="workspace-switch"
+        title={`${teamLabel(teamId)} workspace`}
+      >
+        <Building2 size={18} aria-hidden="true" />
+        <span className="workspace-switch-copy">
+          {customerSurface ? "Your service account" : teamLabel(teamId)}
+        </span>
+      </div>
+      <div className="primary-navigation">
+        {visibleGroups.map((group) => (
+          <div className="nav-group" key={group.label}>
+            <div className="nav-group-label">{group.label}</div>
+            {group.items.map(({ to, label, icon: Icon, end }) => (
               <NavLink
-                to="/workspaces"
+                key={to}
+                to={to}
+                end={end}
+                title={collapsed ? label : undefined}
+                aria-label={collapsed && !compact ? label : undefined}
+                onClick={() => setOpen(false)}
                 className={({ isActive }) =>
                   `nav-item ${isActive ? "active" : ""}`
                 }
-                title={collapsed ? "All workspaces" : undefined}
-                aria-label={collapsed && !compact ? "All workspaces" : undefined}
-                onClick={() => setOpen(false)}
               >
-                <LayoutGrid size={19} aria-hidden="true" />
-                <span>All workspaces</span>
+                <Icon size={19} aria-hidden="true" />
+                <span>{label}</span>
               </NavLink>
-            </div>
+            ))}
+          </div>
+        ))}
+        {!customerSurface && (
+          <div className="nav-group nav-group-tools">
+            <div className="nav-group-label">Directory</div>
+            <NavLink
+              to="/workspaces"
+              className={({ isActive }) =>
+                `nav-item ${isActive ? "active" : ""}`
+              }
+              title={collapsed ? "All workspaces" : undefined}
+              aria-label={collapsed && !compact ? "All workspaces" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              <LayoutGrid size={19} aria-hidden="true" />
+              <span>All workspaces</span>
+            </NavLink>
+          </div>
+        )}
+      </div>
+      <div className="sidebar-bottom">
+        <button
+          className="sidebar-toggle"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          title={collapsed ? "Expand navigation" : "Collapse navigation"}
+        >
+          {collapsed ? (
+            <ChevronRight size={18} aria-hidden="true" />
+          ) : (
+            <ChevronLeft size={18} aria-hidden="true" />
           )}
-        </div>
-        <div className="sidebar-bottom">
-          <button
-            className="sidebar-toggle"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-            title={collapsed ? "Expand navigation" : "Collapse navigation"}
-          >
-            {collapsed ? <ChevronRight size={18} aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
-            <span>{collapsed ? "Expand" : "Collapse navigation"}</span>
-          </button>
-        </div>
-      </nav>
+          <span>{collapsed ? "Expand" : "Collapse navigation"}</span>
+        </button>
+      </div>
+    </nav>
   );
   return (
-    <div className={`app-layout ${collapsed && !compact ? "sidebar-collapsed" : ""}`}>
-      <a className="skip-link" href="#main">Skip to main content</a>
+    <div
+      className={`app-layout ${collapsed && !compact ? "sidebar-collapsed" : ""}`}
+    >
+      <a className="skip-link" href="#main">
+        Skip to main content
+      </a>
       {compact ? (
-        <OverlayDrawer
-          className="navigation-drawer"
-          position="start"
-          open={open}
-          onOpenChange={(_, data) => setOpen(data.open)}
-        >
-          {navigation}
-        </OverlayDrawer>
-      ) : navigation}
+        <Suspense fallback={null}>
+          <NavigationDrawer open={open} onOpenChange={setOpen}>
+            {navigation}
+          </NavigationDrawer>
+        </Suspense>
+      ) : (
+        navigation
+      )}
       <div className="workspace-main">
         <header className="topbar">
           <div className="topbar-left">
@@ -540,7 +558,11 @@ export function Shell() {
                   : "Offline"
               }
             >
-              {online ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}
+              {online ? (
+                <Wifi size={14} aria-hidden="true" />
+              ) : (
+                <WifiOff size={14} aria-hidden="true" />
+              )}
               <span>{online ? (live ? "Live" : "Online") : "Offline"}</span>
             </span>
             {notificationsAllowed && (

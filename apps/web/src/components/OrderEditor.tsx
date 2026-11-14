@@ -12,7 +12,21 @@ import { api } from "../api";
 import { InlineMessage } from "./common";
 import type { WorkOrder } from "../types";
 
-export function OrderEditor({
+export function OrderEditor({ order, open, onClose }: {
+  order: WorkOrder;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(_, data) => { if (!data.open) onClose(); }}>
+      <DialogSurface className="modal" aria-labelledby="order-edit-title">
+        <OrderEditorForm order={order} onClose={onClose} />
+      </DialogSurface>
+    </Dialog>
+  );
+}
+
+function OrderEditorForm({
   order,
   onClose,
 }: {
@@ -41,14 +55,8 @@ export function OrderEditor({
     },
   });
   return (
-    <Dialog
-      open
-      onOpenChange={(_, data) => {
-        if (!data.open) onClose();
-      }}
-    >
-      <DialogSurface className="modal" aria-labelledby="order-edit-title">
-        <span className="eyebrow">
+    <>
+        <span className="muted">
           {order.number} · VERSION {order.version}
         </span>
         <h2 id="order-edit-title">Update service request</h2>
@@ -113,7 +121,6 @@ export function OrderEditor({
             </Button>
           </div>
         </form>
-      </DialogSurface>
-    </Dialog>
+    </>
   );
 }

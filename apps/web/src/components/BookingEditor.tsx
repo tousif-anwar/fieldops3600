@@ -13,7 +13,22 @@ import { dateTime } from "../format";
 import { InlineMessage } from "./common";
 import type { Booking } from "../types";
 
-export function BookingEditor({
+export function BookingEditor({ booking, action, open, onClose }: {
+  booking: Booking;
+  action: "reschedule" | "cancel";
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(_, data) => { if (!data.open) onClose(); }}>
+      <DialogSurface className="modal" aria-labelledby="booking-edit-title">
+        <BookingEditorForm booking={booking} action={action} onClose={onClose} />
+      </DialogSurface>
+    </Dialog>
+  );
+}
+
+function BookingEditorForm({
   booking,
   action,
   onClose,
@@ -62,13 +77,7 @@ export function BookingEditor({
     },
   });
   return (
-    <Dialog
-      open
-      onOpenChange={(_, data) => {
-        if (!data.open) onClose();
-      }}
-    >
-      <DialogSurface className="modal" aria-labelledby="booking-edit-title">
+    <>
         <h2 id="booking-edit-title">
           {action === "cancel"
             ? "Cancel this booking?"
@@ -146,7 +155,6 @@ export function BookingEditor({
             </Button>
           </div>
         </form>
-      </DialogSurface>
-    </Dialog>
+    </>
   );
 }

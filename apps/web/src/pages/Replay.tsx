@@ -41,6 +41,8 @@ import type { Replay, WorkOrder } from "../types";
 import { TraceEvidence } from "../components/TraceEvidence";
 import { DeliveryEvidence } from "../components/DeliveryEvidence";
 
+const EMPTY_EVENTS: Replay["events"] = [];
+
 const initialFilters: ReplayFilters = {
   type: "",
   service: "",
@@ -73,7 +75,7 @@ export function ReplayPage() {
       api<Replay>(`/api/replay/${encodeURIComponent(workOrderId)}`),
     enabled: !!workOrderId,
   });
-  const events = replay.data?.events ?? [];
+  const events = replay.data?.events ?? EMPTY_EVENTS;
   const filtered = useMemo(
     () => filterEvents(events, filters),
     [events, filters],
@@ -85,7 +87,7 @@ export function ReplayPage() {
     setIndex(events.length ? 0 : -1);
     setPlaying(false);
     setFilters(initialFilters);
-  }, [workOrderId, replay.dataUpdatedAt]);
+  }, [workOrderId, replay.dataUpdatedAt, events.length]);
   useEffect(() => {
     if (!playing) return;
     const handle = window.setInterval(

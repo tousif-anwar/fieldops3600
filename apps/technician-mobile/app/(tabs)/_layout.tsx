@@ -1,22 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRuntime } from '../../src/runtime';
-import { colors, typography } from '../../src/ui';
+import { colors, spacing, touch, typography } from '../../src/ui';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 function icon(name: IconName) {
-  return ({ color, size }: { color: unknown; size: number }) => (
-    <Ionicons name={name} size={size} color={color as string | undefined} />
+  return ({ focused, size }: { focused: boolean; size: number }) => (
+    <Ionicons name={name} size={size} color={focused ? colors.primary : colors.subtle} />
   );
 }
 
 export default function TabsLayout() {
   const { submissions } = useRuntime();
   const insets = useSafeAreaInsets();
-  const pending = submissions.filter(item => item.status !== 'synced').length;
+  const { fontScale } = useWindowDimensions();
+  const pending = submissions.filter((item) => item.status !== 'synced').length;
   return (
     <Tabs
       screenOptions={{
@@ -26,19 +28,18 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 64 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: Math.max(insets.bottom, 8),
+          height:
+            touch.minimum + typography.caption.lineHeight * Math.max(1, fontScale) + insets.bottom,
+          paddingTop: spacing.xs,
+          paddingBottom: Math.max(insets.bottom, spacing.sm),
         },
-        tabBarItemStyle: { minHeight: 56 },
-        tabBarLabelStyle: { ...typography.label, fontSize: 11, lineHeight: 15 },
+        tabBarItemStyle: { minHeight: touch.minimum },
+        tabBarLabelStyle: { ...typography.caption },
+        tabBarAllowFontScaling: true,
         tabBarHideOnKeyboard: true,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ title: 'Home', tabBarIcon: icon('home-outline') }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home-outline') }} />
       <Tabs.Screen
         name="schedule"
         options={{ title: 'Schedule', tabBarIcon: icon('calendar-outline') }}
@@ -53,7 +54,11 @@ export default function TabsLayout() {
           title: 'Sync',
           tabBarIcon: icon('sync-outline'),
           tabBarBadge: pending || undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.danger, color: colors.onPrimary, fontSize: 10 },
+          tabBarBadgeStyle: {
+            backgroundColor: colors.danger,
+            color: colors.onPrimary,
+            fontSize: typography.caption.fontSize,
+          },
         }}
       />
       <Tabs.Screen

@@ -1,26 +1,12 @@
 import { Stack } from 'expo-router';
-import { Pressable, Text } from 'react-native';
+import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/auth';
 import { Login } from '../src/login';
 import { SessionRuntime } from '../src/runtime';
-import { colors, spacing, touch, typography } from '../src/ui';
+import { colors, typography } from '../src/ui';
 
 export const unstable_settings = { anchor: '(tabs)' };
-
-function SignOut() {
-  const { logout } = useAuth();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Sign out"
-      onPress={() => { void logout(); }}
-      style={{ minHeight: touch.minimum, justifyContent: 'center', paddingHorizontal: spacing.sm }}
-    >
-      <Text style={{ ...typography.label, color: colors.primary }}>Sign out</Text>
-    </Pressable>
-  );
-}
 
 function AuthenticatedApp() {
   const { session } = useAuth();
@@ -32,9 +18,8 @@ function AuthenticatedApp() {
           headerTintColor: colors.ink,
           headerTransparent: false,
           headerStyle: { backgroundColor: colors.surface },
-          headerTitleStyle: { fontWeight: '600', color: colors.ink },
+          headerTitleStyle: { ...typography.section, color: colors.ink },
           headerShadowVisible: true,
-          headerRight: () => <SignOut />,
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -50,6 +35,7 @@ function AuthenticatedApp() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
       <AuthProvider>
         <AuthenticatedApp />
       </AuthProvider>

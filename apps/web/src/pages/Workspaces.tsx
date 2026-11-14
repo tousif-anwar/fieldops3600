@@ -132,7 +132,7 @@ export function Workspaces() {
     <div className="workspaces-page">
       <PageHeader
         title="Workspaces"
-        description={`${roleLabel(role)} � ${teamLabel(String(auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? ""))}`}
+        description={`${roleLabel(role)} · ${teamLabel(String(auth.user?.profile.team_id ?? auth.user?.profile.teamId ?? ""))}`}
       />
       {groups.map((group) => (
         <section

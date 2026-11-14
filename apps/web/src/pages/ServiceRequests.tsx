@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Button,
+  useRestoreFocusTarget,
   Dialog,
   DialogSurface,
   Field,
@@ -210,7 +211,6 @@ function Qualification({
       }}
     >
       <DialogSurface className="modal" aria-labelledby="qualify-title">
-        <span className="eyebrow">AUDITED REQUEST DECISION</span>
         <h2 id="qualify-title">Qualify service request</h2>
         <p>
           <strong>{request.title}</strong> · {request.customerName}

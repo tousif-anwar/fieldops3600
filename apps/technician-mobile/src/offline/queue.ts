@@ -27,7 +27,10 @@ export interface QueueStorage {
 }
 
 export class SubmissionError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -40,9 +43,8 @@ export interface SubmissionTransport {
 // Backend idempotency protects delivery; this lock also prevents lost local writes.
 const ownerLocks = new Map<string, Promise<unknown>>();
 
-const orderedAnswers = (answers: Record<string, string>) => JSON.stringify(
-  Object.entries(answers).sort(([left], [right]) => left.localeCompare(right)),
-);
+const orderedAnswers = (answers: Record<string, string>) =>
+  JSON.stringify(Object.entries(answers).sort(([left], [right]) => left.localeCompare(right)));
 
 export class OfflineQueue {
   private listeners = new Set<() => void>();
@@ -56,22 +58,29 @@ export class OfflineQueue {
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
-  private notify() { this.listeners.forEach(listener => listener()); }
+  private notify() {
+    this.listeners.forEach((listener) => listener());
+  }
 
   private async serialized<T>(action: () => Promise<T>): Promise<T> {
     const previous = ownerLocks.get(this.ownerId) ?? Promise.resolve();
     const next = previous.then(action, action);
-    ownerLocks.set(this.ownerId, next.catch(() => undefined));
+    ownerLocks.set(
+      this.ownerId,
+      next.catch(() => undefined),
+    );
     return next;
   }
 
   async list(): Promise<Submission[]> {
     await ownerLocks.get(this.ownerId);
     const items = await this.storage.read();
-    if (items.some(item => item.ownerId !== this.ownerId)) {
+    if (items.some((item) => item.ownerId !== this.ownerId)) {
       throw new Error('Queue ownership mismatch. Sign in as the queue owner.');
     }
     return items;
@@ -81,20 +90,31 @@ export class OfflineQueue {
     return this.serialized(async () => {
       if (item.ownerId !== this.ownerId) throw new Error('Queue ownership mismatch.');
       const items = await this.storage.read();
-      if (items.some(existing => existing.ownerId !== this.ownerId)) throw new Error('Queue ownership mismatch.');
-      const existing = items.find(existing => existing.id === item.id);
+      if (items.some((existing) => existing.ownerId !== this.ownerId))
+        throw new Error('Queue ownership mismatch.');
+      const existing = items.find((existing) => existing.id === item.id);
       if (existing) {
-        if (orderedAnswers(existing.answers) !== orderedAnswers(item.answers)
-            || existing.workflowId !== item.workflowId || existing.workOrderId !== item.workOrderId
-            || existing.stageIndex !== item.stageIndex || existing.expectedVersion !== item.expectedVersion
-            || existing.clientOccurredAtUtc !== item.clientOccurredAtUtc || existing.createdOffline !== item.createdOffline) {
+        if (
+          orderedAnswers(existing.answers) !== orderedAnswers(item.answers) ||
+          existing.workflowId !== item.workflowId ||
+          existing.workOrderId !== item.workOrderId ||
+          existing.stageIndex !== item.stageIndex ||
+          existing.expectedVersion !== item.expectedVersion ||
+          existing.clientOccurredAtUtc !== item.clientOccurredAtUtc ||
+          existing.createdOffline !== item.createdOffline
+        ) {
           throw new Error('An idempotency key cannot be reused with different content.');
         }
         return;
       }
-      if (items.some(existing => existing.workflowId === item.workflowId
-          && existing.status !== 'synced')) {
-        throw new Error('A submission for this workflow is already queued. Review synchronization first.');
+      if (
+        items.some(
+          (existing) => existing.workflowId === item.workflowId && existing.status !== 'synced',
+        )
+      ) {
+        throw new Error(
+          'A submission for this workflow is already queued. Review synchronization first.',
+        );
       }
       items.push({ ...item, attempts: 0, nextAttemptAt: 0, status: 'pending' });
       await this.storage.write(items);
@@ -105,8 +125,9 @@ export class OfflineQueue {
   async discard(id: string): Promise<void> {
     return this.serialized(async () => {
       const items = await this.storage.read();
-      if (items.some(item => item.ownerId !== this.ownerId)) throw new Error('Queue ownership mismatch.');
-      await this.storage.write(items.filter(item => item.id !== id));
+      if (items.some((item) => item.ownerId !== this.ownerId))
+        throw new Error('Queue ownership mismatch.');
+      await this.storage.write(items.filter((item) => item.id !== id));
       this.notify();
     });
   }
@@ -115,7 +136,8 @@ export class OfflineQueue {
     if (!online) return;
     return this.serialized(async () => {
       const items = await this.storage.read();
-      if (items.some(item => item.ownerId !== this.ownerId)) throw new Error('Queue ownership mismatch.');
+      if (items.some((item) => item.ownerId !== this.ownerId))
+        throw new Error('Queue ownership mismatch.');
       for (const item of items) {
         // A crash during send leaves 'sending'. Retrying the same key is safe.
         if (!['pending', 'sending'].includes(item.status)) continue;
@@ -132,11 +154,18 @@ export class OfflineQueue {
         } catch (error) {
           const status = error instanceof SubmissionError ? error.status : 0;
           item.lastError = error instanceof Error ? error.message : 'Synchronization failed.';
-          item.status = status === 409 ? 'conflict'
-            : (status >= 400 && status < 500 && ![401, 408, 429].includes(status)) ? 'failed' : 'pending';
-          item.nextAttemptAt = this.now() + Math.min(60_000, 1000 * 2 ** Math.min(item.attempts - 1, 6));
+          item.status =
+            status === 409
+              ? 'conflict'
+              : status >= 400 && status < 500 && ![401, 408, 429].includes(status)
+                ? 'failed'
+                : 'pending';
+          item.nextAttemptAt =
+            this.now() + Math.min(60_000, 1000 * 2 ** Math.min(item.attempts - 1, 6));
         }
-        await this.storage.write(items.filter((entry, index) => entry.status !== 'synced' || index >= items.length - 20));
+        await this.storage.write(
+          items.filter((entry, index) => entry.status !== 'synced' || index >= items.length - 20),
+        );
         this.notify();
         // A failed connection/authentication should not generate a burst of retries.
         if (item.status === 'pending') break;

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Button,
+  useRestoreFocusTarget,
   Dialog,
   DialogSurface,
   Field,
@@ -88,12 +89,10 @@ export function MyJobs() {
           retry={() => void workflows.refetch()}
         />
       ) : assigned.length === 0 ? (
-        <Panel title="Assigned work">
-          <Empty
-            title="No assigned jobs yet"
-            description="Contact dispatch if you are expecting an assignment."
-          />
-        </Panel>
+        <Empty
+          title="No assigned jobs"
+          description="Contact dispatch if you are expecting an assignment."
+        />
       ) : (
         <div className="jobs-grid">
           {rows.items.map((w) => {
@@ -172,9 +171,10 @@ export function MyJobs() {
 }
 
 export function WorkflowPage() {
+  const [interventionOpen, setInterventionOpen] = useState(false);
+  const restoreFocusTarget = useRestoreFocusTarget();
   const { id } = useParams();
   const auth = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const workflow = useQuery({
     queryKey: ["workflow", id],
@@ -216,6 +216,8 @@ export function WorkflowPage() {
   const isCurrent =
     !!f && activeIndex === f.currentStageIndex && f.status !== "Completed";
   const editable = isCurrent && !stage?.pausedAtUtc;
+  const stageId = stage?.id;
+  const recordedAnswersJson = JSON.stringify(stage?.answers ?? {});
   const draftKey = `fieldops:draft:${auth.user?.profile.sub}:${id}:${activeIndex}`;
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -224,7 +226,7 @@ export function WorkflowPage() {
   useEffect(() => {
     setMessage("");
     setFormError("");
-    if (stage) {
+    if (stageId) {
       let stored: Record<string, string> | null = null;
       try {
         const raw = localStorage.getItem(draftKey);
@@ -232,12 +234,12 @@ export function WorkflowPage() {
       } catch {
         /* Invalid local draft is ignored; server history stays authoritative. */
       }
-      setAnswers(
-        isCurrent ? (stored ?? stage.answers ?? {}) : (stage.answers ?? {}),
-      );
+      const recordedAnswers: Record<string, string> =
+        JSON.parse(recordedAnswersJson);
+      setAnswers(isCurrent ? (stored ?? recordedAnswers) : recordedAnswers);
       requestKey.current = crypto.randomUUID();
     }
-  }, [draftKey, stage?.id, isCurrent]);
+  }, [draftKey, stageId, isCurrent, recordedAnswersJson]);
   const submit = useMutation({
     mutationFn: () =>
       post<Workflow>(`/api/workflows/${id}/submit`, {
@@ -279,7 +281,7 @@ export function WorkflowPage() {
           ? "Your assistance request has been recorded for the supervisor."
           : "Supervisor action recorded in the operational history.",
       );
-      setAction(null);
+      setInterventionOpen(false);
       setReason("");
     },
   });
@@ -319,7 +321,6 @@ export function WorkflowPage() {
         My workflow
       </Link>
       <PageHeader
-        eyebrow={`SERVICE WORKFLOW · TEMPLATE V${f.templateVersion}`}
         title={
           f.status === "Completed" ? "Service complete" : "Service workflow"
         }
@@ -327,7 +328,7 @@ export function WorkflowPage() {
         actions={
           <>
             {f.status === "Completed" && (
-              <Button onClick={() => setReportOpen(true)}>
+              <Button {...restoreFocusTarget} onClick={() => setReportOpen(true)}>
                 View service report
               </Button>
             )}
@@ -520,8 +521,10 @@ export function WorkflowPage() {
                         Need assistance?
                         <br />
                         <button
+                          {...restoreFocusTarget}
                           type="button"
                           onClick={() => {
+                            setInterventionOpen(true);
                             setAction("assistance");
                             setReason("");
                           }}
@@ -575,6 +578,7 @@ export function WorkflowPage() {
             >
               <div className="supervisor-controls">
                 <Button
+                  {...restoreFocusTarget}
                   icon={
                     stage?.pausedAtUtc ? (
                       <Play aria-hidden="true" size={16} />
@@ -583,6 +587,7 @@ export function WorkflowPage() {
                     )
                   }
                   onClick={() => {
+                    setInterventionOpen(true);
                     setAction(stage?.pausedAtUtc ? "resume" : "pause");
                     setReason("");
                   }}
@@ -590,7 +595,9 @@ export function WorkflowPage() {
                   {stage?.pausedAtUtc ? "Resume stage" : "Approve pause"}
                 </Button>
                 <Button
+                  {...restoreFocusTarget}
                   onClick={() => {
+                    setInterventionOpen(true);
                     setAction("override");
                     setReason("");
                   }}
@@ -607,11 +614,10 @@ export function WorkflowPage() {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
       />
-      {action && (
         <Dialog
-          open
+          open={interventionOpen}
           onOpenChange={(_, data) => {
-            if (!data.open) setAction(null);
+            if (!data.open) setInterventionOpen(false);
           }}
         >
           <DialogSurface className="modal" aria-labelledby="action-title">
@@ -657,7 +663,7 @@ export function WorkflowPage() {
               <InlineMessage>{intervention.error.message}</InlineMessage>
             )}
             <div className="form-actions">
-              <Button onClick={() => setAction(null)}>Cancel</Button>
+              <Button onClick={() => setInterventionOpen(false)}>Cancel</Button>
               <Button
                 appearance="primary"
                 disabled={reason.trim().length < 5 || intervention.isPending}
@@ -668,7 +674,6 @@ export function WorkflowPage() {
             </div>
           </DialogSurface>
         </Dialog>
-      )}
     </>
   );
 }

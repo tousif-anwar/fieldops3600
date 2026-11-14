@@ -10,6 +10,7 @@ export function useActivity() {
   return useQuery({
     queryKey: ['workflows', 'activity'],
     refetchInterval: online ? 30_000 : false,
-    queryFn: async () => (await requestApi<Workflow[]>('/api/workflows', await getAccessToken())).data,
+    queryFn: async () =>
+      (await requestApi<Workflow[]>('/api/workflows', await getAccessToken())).data,
   });
 }

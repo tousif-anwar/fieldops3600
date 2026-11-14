@@ -10,6 +10,7 @@ export function useBookings() {
   return useQuery({
     queryKey: ['bookings'],
     refetchInterval: online ? 30_000 : false,
-    queryFn: async () => (await requestApi<Booking[]>('/api/bookings', await getAccessToken())).data,
+    queryFn: async () =>
+      (await requestApi<Booking[]>('/api/bookings', await getAccessToken())).data,
   });
 }

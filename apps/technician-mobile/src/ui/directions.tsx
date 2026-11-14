@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Linking, Text } from 'react-native';
 import { directionsUrl } from '../itinerary';
 import { Button, InlineNotice } from './components';
-import { colors, typography } from './tokens';
+import { textStyles } from './styles';
 
 export function DirectionsButton({ address }: { address: string }) {
   const [error, setError] = useState(false);
@@ -21,8 +21,8 @@ export function DirectionsButton({ address }: { address: string }) {
       />
       {error ? (
         <InlineNotice tone="warning" title="Directions unavailable">
-          <Text selectable style={{ ...typography.body, color: colors.warning }}>
-            Open your preferred navigation app and enter: {address}. Your appointment remains available here.
+          <Text selectable style={textStyles.warning}>
+            Enter this address in your navigation app: {address}.
           </Text>
         </InlineNotice>
       ) : null}

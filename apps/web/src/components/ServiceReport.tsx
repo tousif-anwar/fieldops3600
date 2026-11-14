@@ -62,9 +62,6 @@ export function ServiceReport({
         <DialogBody>
           <DialogTitle id="service-report-title">Service report</DialogTitle>
           <DialogContent>
-            <span className="eyebrow">
-              FIELDOPS 360 · STORED SERVICE RECORD
-            </span>
             {report.isPending ? (
               <Loading />
             ) : report.isError ? (

@@ -39,8 +39,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
     "axe-core": "4.10.3",
-    "eslint": "9.39.5",
-    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint": "10.15.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "jsdom": "27.4.0",
     "prettier": "3.9.10",
@@ -50,6 +49,9 @@
     "vitest": "4.1.12"
   },
   "overrides": {
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
   }
 }

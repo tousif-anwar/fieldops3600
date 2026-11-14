@@ -27,6 +27,11 @@ const secret =
     .trim();
 if (!secret) throw new Error("Generated local demo credentials are required.");
 const axe = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+const baselinePath = `${root}/artifacts/frontend-cleanup/before/audit.json`;
+const baselineScreens =
+  phase === "after" && existsSync(baselinePath)
+    ? JSON.parse(readFileSync(baselinePath, "utf8")).screens
+    : [];
 const selectedRoles = (
   process.env.UI_AUDIT_ROLES ??
   "technician,dispatcher,supervisor,manager,analyst,administrator,customer"
@@ -37,7 +42,7 @@ const widths = (process.env.UI_AUDIT_WIDTHS ?? "1440,390")
 if (
   widths.some((width) => !Number.isFinite(width) || width < 280 || width > 3840)
 )
-  throw new Error("Audit widths must be between280 and3840 CSS pixels.");
+  throw new Error("Audit widths must be between 280 and 3840 CSS pixels.");
 const output = {
   phase,
   base,
@@ -134,6 +139,7 @@ const routeSets = {
 };
 function safe(value) {
   return value
+    .replaceAll(secret, "[redacted]")
     .replace(/\beyJ[A-Za-z0-9_.-]+/g, "[redacted]")
     .replace(/access_token=[^&\s]+/g, "access_token=[redacted]");
 }
@@ -300,6 +306,7 @@ async function roleAudit(role) {
     });
     await login.first().waitFor({ timeout: 20000 });
     if (role === "technician") await capture(page, "anonymous", "/login");
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await login.first().click();
     await page.locator("#username").fill(role);
     await page.locator("#password").fill(secret);
@@ -308,9 +315,16 @@ async function roleAudit(role) {
       .getByRole("navigation", { name: "Main navigation" })
       .waitFor({ timeout: 45000 });
     await settle(page);
-    const routes = process.env.UI_AUDIT_PATHS?.split(",") ?? [
-      ...routeSets[role],
+    const priorPaths = [
+      ...new Set(
+        baselineScreens
+          .filter((screen) => screen.role === role)
+          .map((screen) => screen.path),
+      ),
     ];
+    const routes =
+      process.env.UI_AUDIT_PATHS?.split(",") ??
+      (priorPaths.length ? priorPaths : [...routeSets[role]]);
     async function records(path) {
       if (!authorization) return [];
       const response = await page.request.get(`${base}${path}`, {
@@ -322,6 +336,7 @@ async function roleAudit(role) {
     }
     if (
       !process.env.UI_AUDIT_PATHS &&
+      !priorPaths.length &&
       !["customer", "analyst"].includes(role)
     ) {
       const orders = await records("/api/work-orders");

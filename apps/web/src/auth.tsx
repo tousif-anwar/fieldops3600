@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useEffectEvent,
   useState,
   type ReactNode,
 } from "react";
@@ -82,6 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const finishSignIn = useEffectEvent((returnTo: string) =>
+    navigate(returnTo, { replace: true }),
+  );
   useEffect(() => {
     let active = true;
     const loaded = (value: User) => {
@@ -108,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             !result.state.includes("\\")
               ? result.state
               : "/";
-          navigate(returnTo, { replace: true });
+          if (active) finishSignIn(returnTo);
         } else {
           const value = await manager.getUser();
           if (active && value && !value.expired) setUser(value);

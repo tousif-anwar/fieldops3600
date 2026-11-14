@@ -10,6 +10,7 @@ export function useWorkOrders() {
   return useQuery({
     queryKey: ['work-orders'],
     refetchInterval: online ? 30_000 : false,
-    queryFn: async () => (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data,
+    queryFn: async () =>
+      (await requestApi<WorkOrder[]>('/api/work-orders', await getAccessToken())).data,
   });
 }

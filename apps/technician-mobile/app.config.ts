@@ -6,8 +6,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'fieldops-technician',
   plugins: [
     ...(config.plugins ?? []),
-    ['expo-build-properties', {
-      android: { usesCleartextTraffic: process.env.FIELDOPS_ALLOW_HTTP === 'true' },
-    }],
+    [
+      'expo-build-properties',
+      {
+        android: { usesCleartextTraffic: process.env.FIELDOPS_ALLOW_HTTP === 'true' },
+      },
+    ],
   ],
 });

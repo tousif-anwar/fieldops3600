@@ -7,7 +7,7 @@
 export const colors = {
   ink: '#243447',
   muted: '#526174',
-  subtle: '#66758a',
+  subtle: '#617086',
   canvas: '#f4f6f8',
   surface: '#ffffff',
   surfaceMuted: '#edf1f5',
@@ -19,7 +19,7 @@ export const colors = {
   onPrimary: '#ffffff',
   success: '#247258',
   successWash: '#e9f4ee',
-  warning: '#9b6517',
+  warning: '#956013',
   warningWash: '#fff3dc',
   danger: '#b6403a',
   dangerPressed: '#932f2a',

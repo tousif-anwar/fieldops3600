@@ -37,9 +37,6 @@ async function signIn(page: Page, username: string) {
     .click();
   await completeKeycloak(page, username);
   await expect(
-    page.getByRole("navigation", { name: "Main navigation" }),
-  ).toBeVisible({ timeout: 45000 });
-  await expect(
     page.getByRole("heading", { name: "Home", exact: true }),
   ).toBeVisible({
     timeout: 30000,

@@ -5,8 +5,8 @@
   --color-surface-muted: #edf1f5;
   --color-text: #243447;
   --color-muted: #526174;
-  --color-subtle: #66758a;
-  --color-disabled: #66758a;
+  --color-subtle: #617086;
+  --color-disabled: #617086;
   --color-border: #dfe5ec;
   --color-border-strong: #7b899a;
   --color-hover: #edf1f5;
@@ -20,7 +20,7 @@
   --color-success: #247258;
   --color-success-surface: #eaf4ef;
   --color-success-border: #b4d3c5;
-  --color-warning: #9b6517;
+  --color-warning: #956013;
   --color-warning-surface: #fff4dc;
   --color-warning-border: #dec58f;
   --color-danger: #b6403a;
@@ -33,7 +33,8 @@
   --chart-4: #4b7b72;
   --chart-5: #92764b;
 
-  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-sans:
+    "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: Consolas, "Cascadia Code", ui-monospace, monospace;
   --font-size-12: 12px;
   --font-size-14: 14px;

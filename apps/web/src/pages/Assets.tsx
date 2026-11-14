@@ -78,10 +78,7 @@ export function Assets() {
           )
         }
       />
-      <Panel
-        title="Registered equipment"
-        description="Serial numbers and QR identities stay on authorized operational paths."
-      >
+      <Panel>
         <div className="filter-bar">
           <Input
             name="search-assets"

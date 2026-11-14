@@ -20,28 +20,31 @@ export function TraceEvidence({
     "restricted" | "expired_session" | "unknown" | null
   >(null);
   const [checking, setChecking] = useState(false);
-  const sequence = useRef(0);
+  const requestScope = useRef({ active: true, sequence: 0 });
   useEffect(() => {
-    sequence.current++;
+    const scope = { active: true, sequence: 0 };
+    requestScope.current = scope;
     setAvailability(null);
     setError(null);
     setChecking(false);
     return () => {
-      sequence.current++;
+      scope.active = false;
     };
   }, [workOrderId, traceId]);
   const jaeger = import.meta.env.VITE_JAEGER_URL ?? "http://localhost:16686";
   const check = async () => {
     if (!traceId) return;
-    const requestSequence = ++sequence.current;
+    const scope = requestScope.current;
+    const requestSequence = ++scope.sequence;
     setChecking(true);
     setAvailability(null);
     setError(null);
     try {
       const result = await getTraceAvailability(workOrderId, traceId);
-      if (sequence.current === requestSequence) setAvailability(result);
+      if (scope.active && scope.sequence === requestSequence)
+        setAvailability(result);
     } catch (failure) {
-      if (sequence.current === requestSequence)
+      if (scope.active && scope.sequence === requestSequence)
         setError(
           failure instanceof ApiError && [403, 404].includes(failure.status)
             ? "restricted"
@@ -50,7 +53,8 @@ export function TraceEvidence({
               : "unknown",
         );
     } finally {
-      if (sequence.current === requestSequence) setChecking(false);
+      if (scope.active && scope.sequence === requestSequence)
+        setChecking(false);
     }
   };
   return (

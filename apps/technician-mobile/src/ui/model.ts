@@ -29,7 +29,11 @@ export function greetingFor(now = new Date()): string {
 
 export function formatStatus(value: string): string {
   if (statusLabels[value]) return statusLabels[value];
-  const spaced = value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase();
+  const spaced = value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .toLowerCase();
   return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : value;
 }
 
@@ -37,7 +41,8 @@ export function statusTone(value: string): Tone {
   const normalized = value.toLowerCase();
   if (/breach|critical|overdue|failed|cancel|danger/.test(normalized)) return 'danger';
   if (/warning|risk|pending|paused|conflict|offline/.test(normalized)) return 'warning';
-  if (/complete|success|resolved|ontime|on time|confirmed|synced|active/.test(normalized)) return 'success';
+  if (/complete|success|resolved|ontime|on time|confirmed|synced|active/.test(normalized))
+    return 'success';
   return 'neutral';
 }
 
@@ -60,19 +65,20 @@ export function stageStatusTone(value: string): Tone {
 
 export function appointmentForJob(bookings: Booking[], workOrderId: string): Booking | undefined {
   return bookings
-    .filter(booking => booking.workOrderId === workOrderId && booking.status !== 'Cancelled')
+    .filter((booking) => booking.workOrderId === workOrderId && booking.status !== 'Cancelled')
     .sort((left, right) => left.startUtc.localeCompare(right.startUtc))[0];
 }
 
 const priorityRank: Record<string, number> = { Critical: 0, High: 1, Normal: 2, Low: 3 };
-const jobRank = (job: WorkOrder) => job.status === 'InProgress' ? 0 : job.status === 'Scheduled' ? 1 : 2;
+const jobRank = (job: WorkOrder) =>
+  job.status === 'InProgress' ? 0 : job.status === 'Scheduled' ? 1 : 2;
 
 export function sortJobs(jobs: WorkOrder[], bookings: Booking[] = []): WorkOrder[] {
   const starts = new Map<string, string>();
   bookings
-    .filter(booking => booking.status !== 'Cancelled')
+    .filter((booking) => booking.status !== 'Cancelled')
     .sort((left, right) => left.startUtc.localeCompare(right.startUtc))
-    .forEach(booking => {
+    .forEach((booking) => {
       if (!starts.has(booking.workOrderId)) starts.set(booking.workOrderId, booking.startUtc);
     });
   return [...jobs].sort((left, right) => {
@@ -99,15 +105,21 @@ export function formatAppointment(booking: Booking, now = new Date()): string {
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dayDifference = Math.round((startDay.getTime() - today.getTime()) / 86_400_000);
-  const day = dayDifference === 0 ? 'Today'
-    : dayDifference === 1 ? 'Tomorrow'
-      : start.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const day =
+    dayDifference === 0
+      ? 'Today'
+      : dayDifference === 1
+        ? 'Tomorrow'
+        : start.toLocaleDateString([], { month: 'short', day: 'numeric' });
   return `${day}, ${formatTime(booking.startUtc)}–${formatTime(booking.endUtc)}`;
 }
 
 export function formatTimestamp(value: string): string {
   return new Date(value).toLocaleString([], {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
@@ -124,9 +136,10 @@ export function remainingSeconds(stage: WorkflowStage, now: number): number | nu
 
 export function formatRemaining(seconds: number): string {
   const absoluteMinutes = Math.max(0, Math.ceil(Math.abs(seconds) / 60));
-  const duration = absoluteMinutes >= 60
-    ? `${Math.floor(absoluteMinutes / 60)} hr${absoluteMinutes % 60 ? ` ${absoluteMinutes % 60} min` : ''}`
-    : `${absoluteMinutes} min`;
+  const duration =
+    absoluteMinutes >= 60
+      ? `${Math.floor(absoluteMinutes / 60)} hr${absoluteMinutes % 60 ? ` ${absoluteMinutes % 60} min` : ''}`
+      : `${absoluteMinutes} min`;
   if (seconds < 0) return `Overdue by ${duration}`;
   if (seconds === 0) return 'Due now';
   return `${duration} remaining`;
@@ -138,7 +151,11 @@ export interface SlaPresentation {
   tone: Tone;
 }
 
-export function slaPresentation(stage: WorkflowStage, now: number, online: boolean): SlaPresentation {
+export function slaPresentation(
+  stage: WorkflowStage,
+  now: number,
+  online: boolean,
+): SlaPresentation {
   const seconds = remainingSeconds(stage, now);
   if (seconds === null) {
     return {
@@ -155,12 +172,17 @@ export function slaPresentation(stage: WorkflowStage, now: number, online: boole
     };
   }
   const normalized = stage.slaStatus.toLowerCase();
-  const tone: Tone = seconds <= 0 || normalized === 'breached' ? 'danger'
-    : normalized === 'warning' || seconds <= 300 ? 'warning'
-      : 'success';
+  const tone: Tone =
+    seconds <= 0 || normalized === 'breached'
+      ? 'danger'
+      : normalized === 'warning' || seconds <= 300
+        ? 'warning'
+        : 'success';
   return {
     label: formatRemaining(seconds),
-    detail: online ? `Server deadline ${formatClock(stage.deadlineUtc!)}` : 'Offline estimate. The server deadline continues.',
+    detail: online
+      ? `Server deadline ${formatClock(stage.deadlineUtc!)}`
+      : 'Offline estimate. The server deadline continues.',
     tone,
   };
 }
@@ -168,13 +190,29 @@ export function slaPresentation(stage: WorkflowStage, now: number, online: boole
 export function syncPresentation(status: string): { label: string; detail: string; tone: Tone } {
   switch (status) {
     case 'pending':
-      return { label: 'Waiting to sync', detail: 'Saved on this device. It will retry when the server is reachable.', tone: 'warning' };
+      return {
+        label: 'Waiting to sync',
+        detail: 'Saved on this device. It will retry when the server is reachable.',
+        tone: 'warning',
+      };
     case 'sending':
-      return { label: 'Syncing', detail: 'The server is checking this stage response now.', tone: 'info' };
+      return {
+        label: 'Syncing',
+        detail: 'The server is checking this stage response now.',
+        tone: 'info',
+      };
     case 'conflict':
-      return { label: 'Needs your review', detail: 'The job changed on the server before this response arrived.', tone: 'warning' };
+      return {
+        label: 'Needs your review',
+        detail: 'The job changed on the server before this response arrived.',
+        tone: 'warning',
+      };
     case 'failed':
-      return { label: 'Couldn’t sync', detail: 'The server did not accept this update. Your answers are still on this device.', tone: 'danger' };
+      return {
+        label: 'Couldn’t sync',
+        detail: 'The server did not accept this update. Your answers are still on this device.',
+        tone: 'danger',
+      };
     case 'synced':
       return { label: 'Synced', detail: 'The server accepted this update.', tone: 'success' };
     default:
@@ -200,6 +238,9 @@ export function friendlySyncError(error?: string): string {
 }
 
 export function humanizeFieldKey(key: string): string {
-  const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  const spaced = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
   return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase() : key;
 }

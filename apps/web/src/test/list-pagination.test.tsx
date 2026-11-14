@@ -61,7 +61,7 @@ describe("paginated operational lists", () => {
       ),
     );
     fireEvent.click(within(pages).getByRole("button", { name: "Previous" }));
-    expect(screen.getByText("Synthetic alert 1")).toBeVisible();
+    expect(await screen.findByText("Synthetic alert 1")).toBeVisible();
   });
   it("keeps visible records reachable when a refresh shrinks the current page", async () => {
     const client = mount();
@@ -70,7 +70,7 @@ describe("paginated operational lists", () => {
     await act(async () => {
       client.setQueryData(["notifications"], alerts.slice(0, 1));
     });
-    expect(screen.getByText("Synthetic alert 1")).toBeVisible();
+    expect(await screen.findByText("Synthetic alert 1")).toBeVisible();
     expect(
       screen.queryByRole("navigation", { name: "Notifications pages" }),
     ).not.toBeInTheDocument();

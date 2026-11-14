@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  useRestoreFocusTarget,
   Field,
   Input,
   Select,
@@ -86,6 +87,7 @@ export function CustomerPortal() {
         idempotencyKey: requestKey.current,
       }),
     onSuccess: () => {
+      setRequestPage(1);
       void qc.invalidateQueries({ queryKey: ["service-requests"] });
       requestKey.current = crypto.randomUUID();
       setTitle("");

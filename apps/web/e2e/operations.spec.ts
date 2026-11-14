@@ -30,7 +30,7 @@ async function signIn(page: Page, username: string) {
   await page.locator("#password").fill(demoPassword!);
   await page.locator("#kc-login").click();
   await expect(
-    page.getByRole("navigation", { name: "Main navigation" }),
+    page.getByRole("heading", { name: "Home", exact: true }),
   ).toBeVisible({ timeout: 30000 });
   await expect.poll(() => authorization).toBeTruthy();
   return authorization!;

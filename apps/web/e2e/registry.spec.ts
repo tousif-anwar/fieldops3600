@@ -58,9 +58,11 @@ async function navigate(page: Page, name: string) {
 }
 
 function panel(page: Page, title: string) {
-  return page
-    .locator("section.panel")
-    .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+  return page.locator("section.panel").filter({
+    has: page
+      .getByRole("heading", { name: title, exact: true })
+      .or(page.getByRole("region", { name: title, exact: true })),
+  });
 }
 
 async function get<T>(
