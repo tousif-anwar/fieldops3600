@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FieldOps.ServiceHost;
 
-public sealed record CreateOrder(string Title, string? CustomerName, string? SiteAddress, string ServiceCategory, string Priority, string TeamId, Guid? CustomerId = null, Guid? ServiceLocationId = null, string? UnregisteredCustomerReason = null, Guid? AssetId = null);
+public sealed record CreateOrder(string Title, string? CustomerName, string? SiteAddress, string ServiceCategory, string Priority, string TeamId, Guid? CustomerId = null, Guid? ServiceLocationId = null, string? UnregisteredCustomerReason = null, Guid? AssetId = null, string? ReportedProblem = null);
 public sealed record UpdateOrder(int ExpectedVersion, string Title, string Priority, string Status);
 public sealed record LinkOrderAsset(int ExpectedVersion, Guid? AssetId);
 public sealed record AssetReferenceView(Guid Id, string TeamId, Guid CustomerId, Guid ServiceLocationId, string Status);
@@ -154,8 +154,10 @@ public static class OperationsApi
             }
             if (!new[] { "HVAC", "Electrical", "Mechanical", "Refrigeration", "Controls", "Heating", "Cooling", "Ventilation" }.Contains(request.ServiceCategory)) throw new DomainException(400, "Unknown service category.");
             if (!new[] { "Low", "Normal", "High", "Critical" }.Contains(request.Priority)) throw new DomainException(400, "Unknown priority.");
+            var reportedProblem = string.IsNullOrWhiteSpace(request.ReportedProblem) ? request.Title.Trim() : request.ReportedProblem.Trim();
+            ValidateText(reportedProblem, 3, 4000, "reported problem");
             var now = clock.GetUtcNow();
-            var order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title.Trim(), CustomerName = customerName, SiteAddress = siteAddress, CustomerId = request.CustomerId, CustomerVersion = customerVersion, ServiceLocationId = request.ServiceLocationId, AssetId = request.AssetId, UnregisteredCustomerReason = unregisteredReason, ServiceCategory = request.ServiceCategory, Priority = request.Priority, TeamId = request.TeamId, CreatedAtUtc = now };
+            var order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title.Trim(), ReportedProblem = reportedProblem, CustomerName = customerName, SiteAddress = siteAddress, CustomerId = request.CustomerId, CustomerVersion = customerVersion, ServiceLocationId = request.ServiceLocationId, AssetId = request.AssetId, UnregisteredCustomerReason = unregisteredReason, ServiceCategory = request.ServiceCategory, Priority = request.Priority, TeamId = request.TeamId, CreatedAtUtc = now };
             db.WorkOrders.Add(order);
             // Customer and address are deliberately excluded from integration/audit events.
             db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderCreated.v1", order.Id, OrderPayload(order), order.Version, now));

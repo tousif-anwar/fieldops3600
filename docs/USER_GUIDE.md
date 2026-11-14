@@ -124,9 +124,15 @@ The Administration page explains identity/configuration boundaries and links to 
 
 Administrators can rebuild replay projections. This operation reads immutable audit events and refreshes the read projection; it does not rewrite history.
 
-## Customer portal status
+## Customer portal
 
-A customer login, customer-initiated request wizard, appointment tracking, contract entitlement validation, and customer notifications are **not implemented**. Customer and location records are maintained by the operational team. Do not demonstrate a customer portal as if it exists; use the dispatcher path for the service-request portion of a demonstration.
+Run `python scripts/seed-customer-portal.py` after local startup to provision the synthetic `customer` and `customer-other` accounts. Sign in as `customer` with the generated local demonstration password. The dedicated portal shows only the account's locations, equipment, requests, work orders, confirmed appointments and completed service reports.
+
+Choose an active location, optional equipment, service type, urgency, title and reported problem, then submit the request. Submission does not book a visit. Dispatch reviews it in **Service requests**, records a qualification reason/category/priority, and opens the linked work order in scheduling. Dispatch may confirm a direct assignment or issue an expiring offer; an offer becomes an appointment only after the offered technician accepts online.
+
+Technicians review offers in the mobile app, accept or decline with a reason, follow the daily itinerary and complete the guided forms. Template v2 requires diagnostic notes, work performed, labor minutes and recommendations; missing parts or failed checks require assistance and a recorded supervisor exception. Completed reports are available in the customer's service history.
+
+Direct customer booking, self-registration, contract entitlements, financial estimate approval and external customer message delivery remain unimplemented. See [reproducible demonstrations](OPERATIONS_VERIFICATION.md).
 
 ## Common messages
 

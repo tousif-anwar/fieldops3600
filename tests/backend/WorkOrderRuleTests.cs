@@ -51,6 +51,7 @@ public sealed class WorkOrderRuleTests
             Json.Options);
         Assert.Equal(assetId, payload.GetProperty("assetId").GetGuid());
         Assert.False(payload.TryGetProperty("serialNumber", out _));
+        Assert.False(payload.TryGetProperty("reportedProblem", out _));
     }
 
     [Theory]

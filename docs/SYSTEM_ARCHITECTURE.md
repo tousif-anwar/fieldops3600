@@ -1,5 +1,7 @@
 # System Architecture
 
+The current source extends these service boundaries with [customer intake, assignment offers and service execution integrity](BUSINESS_OPERATIONS.md). Customer membership is signed by Keycloak; scheduling owns durable service-start and cancellation fences; work-orders owns request qualification. No new service or Microsoft dependency was added.
+
 ## Topology
 
 ```mermaid
@@ -33,9 +35,9 @@ The gateway is the only public backend ingress in the Compose deployment. Each s
 |---|---|---|
 | `customers` | `fieldops_customers` | Customers, contacts, locations, consent, versioned change history. |
 | `assets` | `fieldops_assets` | Equipment hierarchy, serial/QR identity, warranty data, location history, asset changes. |
-| `work-orders` | `fieldops_work_orders` | Service-request lifecycle, assignment projection, customer/asset references, optimistic versions. |
+| `work-orders` | `fieldops_work_orders` | Customer service requests, atomic qualification, canonical work orders, assignment projection and optimistic versions. |
 | `technicians` | `fieldops_technicians` | Skills, certifications, working hours, availability, time off. |
-| `scheduling` | `fieldops_scheduling` | Candidate validation, recommendations, confirmed bookings, overlap protection, reschedule/cancel. |
+| `scheduling` | `fieldops_scheduling` | Recommendations, exclusive offers, confirmed bookings, durable assignment revisions, service-start claims, cancellation intent, overlap protection. |
 | `workflows` | `fieldops_workflows` | Versioned templates, stage state, answers, SLA milestones, pauses, overrides, assistance. |
 | `notifications` | `fieldops_notifications` | Deduplicated inbox records, retained alerts, acknowledgments, SignalR broadcasts. |
 | `reporting` | `fieldops_reporting` | Immutable audit evidence, delivery attempts, replay projections, warehouse queries, exports. |
@@ -69,7 +71,7 @@ Scheduling first applies hard rules in the service:
 - required skills and certifications match;
 - the appointment is inside the technician's local working hours;
 - approved time off and confirmed bookings do not overlap;
-- the appointment fits one UTC service day.
+- the appointment fits one technician-local day.
 
 The baseline strategy ranks feasible technicians by a deterministic workload/travel/delay score. The optimized strategy sends the bounded problem to the Python optimizer. OR-Tools CP-SAT uses optional intervals and `NoOverlap` constraints. It minimizes priority-weighted unassigned work, a straight-line depot travel proxy, start delay, and workload spread. The optimizer result is checked independently by the .NET service before it is shown.
 

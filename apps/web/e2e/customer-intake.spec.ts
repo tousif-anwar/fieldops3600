@@ -144,7 +144,19 @@ test("customer intake is isolated, qualified by dispatch, and offered without a 
     const qualifiedRequest: ServiceRequest = await qualifiedResponse.json();
     expect(qualifiedRequest.workOrderId).toBeTruthy();
     await dispatcher.getByLabel("Request status").selectOption("Qualified");
-    await requestCard.getByRole("link", { name: "Schedule service" }).click();
+    await requestCard.getByRole("link", { name: "View work order" }).click();
+    await expect(
+      dispatcher.getByRole("heading", { name: title, level: 1, exact: true }),
+    ).toBeVisible();
+    await expect(
+      dispatcher.getByText(request.description, {
+        exact: true,
+        selector: "dd",
+      }),
+    ).toBeVisible();
+    await dispatcher
+      .getByRole("button", { name: "Schedule service", exact: true })
+      .click();
     const next = new Date();
     next.setUTCDate(next.getUTCDate() + 7);
     next.setUTCHours(15, 0, 0, 0);

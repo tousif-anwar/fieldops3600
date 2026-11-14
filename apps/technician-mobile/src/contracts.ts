@@ -2,6 +2,7 @@ export interface WorkOrder {
   id: string;
   number: string;
   title: string;
+  reportedProblem?: string;
   customerName: string;
   siteAddress: string;
   customerId?: string | null;

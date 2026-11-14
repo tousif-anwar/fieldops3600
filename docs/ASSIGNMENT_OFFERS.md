@@ -73,8 +73,11 @@ If the work-order database write fails after the intent commits, the fence remai
 ```powershell
 .\.tools\dotnet\dotnet.exe test tests/backend/FieldOps.Tests.csproj --filter 'FullyQualifiedName~AssignmentOffer|FullyQualifiedName~BookingExecution'
 python tests/backend/verify_assignment_offers_http.py
+python tests/backend/verify_scheduling_races_http.py
 ```
 
 The first command runs domain transitions and real PostgreSQL concurrency, rollback, constraints, expiration, and service-start/cancellation race tests. The second requires a rebuilt local Compose stack and real generated Keycloak accounts. It checks authenticated offer creation, decline/reoffer, concurrent acceptance retries, operation-key misuse, direct booking revocation, expiration audit events, notification delivery, role isolation, and qualification rejection. Synthetic orders are labeled; bookings and unstarted test orders are released afterward.
+
+The third command runs real HTTP races for cancellation intent versus booking and service start versus appointment cancellation. When service start wins, it completes the eight-stage workflow through normal APIs and retains the labeled completed service evidence. It also verifies the deployed warehouse consumes a Pending offer's ledger/staging event while leaving the job unassigned with no booking. This local-stack check reads using the deployed analytics container's existing database identity and does not write database rows directly.
 
 Service-owned scheduling transactions protect allocation inside the scheduling database. Technician profile changes and approved time off reside in another service; they are rechecked over authenticated APIs but are not one distributed serializable transaction. A concurrent qualification/time-off change after validation is still a limitation. The work-order assignment display is eventually consistent through RabbitMQ. No claim is made for multi-technician broadcast offers, certification expiration dates, real-time travel estimates, parts readiness, paid compensation, or automatic customer appointment confirmation.

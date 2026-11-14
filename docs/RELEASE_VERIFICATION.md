@@ -1,5 +1,7 @@
 # Release Verification
 
+This file describes the earlier ZIP archive snapshot. The source has since added customer intake/offers, execution integrity and native Android verification. Those current changes and their evidence are documented in [Business operations](BUSINESS_OPERATIONS.md) and [Operational verification](OPERATIONS_VERIFICATION.md); the ZIP has not been regenerated.
+
 ## Release
 
 | Item | Value |

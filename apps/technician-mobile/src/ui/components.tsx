@@ -357,10 +357,11 @@ export function StageProgress({
   currentIndex: number;
 }) {
   const completed = stages.filter(stage => ['Completed', 'Overridden'].includes(stage.status)).length;
+  const finished = stages.length > 0 && completed === stages.length;
   return (
     <View
       accessible
-      accessibilityLabel={`${completed} of ${stages.length} stages complete. Stage ${currentIndex + 1} is current.`}
+      accessibilityLabel={`${completed} of ${stages.length} stages complete.${finished ? '' : ` Stage ${currentIndex + 1} is current.`}`}
       style={styles.progress}
     >
       <View style={styles.stageRailRow}>
@@ -379,7 +380,7 @@ export function StageProgress({
         ))}
       </View>
       <Text style={styles.small}>
-        {completed} of {stages.length} stages complete · Stage {currentIndex + 1}
+        {completed} of {stages.length} stages complete{finished ? '' : ` · Stage ${currentIndex + 1}`}
       </Text>
     </View>
   );

@@ -1,5 +1,7 @@
 # API Reference
 
+Current customer intake, assignment-offer, service-start/cancellation fencing and completed-report APIs are documented with ownership and permissions in [Business operations](BUSINESS_OPERATIONS.md#apis-and-events). Offer request/response examples are in [Assignment offers](ASSIGNMENT_OFFERS.md). These extend the earlier endpoint catalog below.
+
 ## Base URLs and authentication
 
 | Endpoint | URL |
@@ -27,6 +29,9 @@ The gateway adds or preserves `X-Correlation-ID`, strips spoofed internal identi
 | `replay` | Supervisor, Operations Manager, Administrator | Replay reads and exports. |
 | `admin` | Administrator | Replay projection rebuild. |
 | `optimizer` (gateway) | Dispatcher, Supervisor, Operations Manager, Administrator | `/api/optimizer/*`. |
+| `customer` | Customer | Exact signed organization account, equipment, requests, appointments and safe work-order views. |
+| `intake` | Customer, Dispatcher, Supervisor, Operations Manager, Administrator | Requests filtered by signed customer membership or office team. |
+| `service-report` | Customer plus operational roles | Completed reports; customer exact order ownership checked separately. |
 
 Resource-level checks further restrict teams and technicians. A valid role does not grant access to another team's order. Technicians see only their own assigned work and profile.
 

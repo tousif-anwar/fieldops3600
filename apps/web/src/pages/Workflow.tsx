@@ -177,6 +177,12 @@ export function WorkflowPage() {
     enabled: !!workflow.data,
     staleTime: 300000,
   });
+  const order = useQuery({
+    queryKey: ["work-order", workflow.data?.workOrderId],
+    queryFn: () =>
+      api<WorkOrder>(`/api/work-orders/${workflow.data!.workOrderId}`),
+    enabled: !!workflow.data?.workOrderId,
+  });
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
@@ -373,6 +379,34 @@ export function WorkflowPage() {
           </div>
         </aside>
         <div className="workflow-main">
+          <Panel
+            title="Job briefing"
+            description={
+              order.data
+                ? `${order.data.number} · ${order.data.customerName} · ${order.data.siteAddress}`
+                : "Customer-reported service details"
+            }
+          >
+            {order.isPending ? (
+              <Loading label="Loading job briefing…" />
+            ) : order.isError ? (
+              <ErrorState
+                error={order.error}
+                retry={() => void order.refetch()}
+              />
+            ) : (
+              order.data && (
+                <div className="form-body">
+                  <strong>Reported problem</strong>
+                  <p className="portal-notes">
+                    {order.data.reportedProblem?.trim()
+                      ? order.data.reportedProblem
+                      : order.data.title}
+                  </p>
+                </div>
+              )
+            )}
+          </Panel>
           {message && <InlineMessage success>{message}</InlineMessage>}
           {f.status === "Completed" && (
             <div className="completed-banner">

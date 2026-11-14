@@ -11,6 +11,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import time
 from uuid import uuid4
 
 SPEC = importlib.util.spec_from_file_location("native_offline", Path(__file__).with_name("verify-android-offline.py"))
@@ -94,6 +95,7 @@ class OperationsCheck(NATIVE.NativeCheck):
         # Advance a new v2 workflow using actual native template-driven forms.
         workflow = self.request("POST", "/api/workflows", data={"workOrderId": accepted_order["id"]})
         template = self.request("GET", "/api/workflows/templates/" + str(workflow["templateVersion"]))
+        self.open(f"job/{accepted_order['id']}/stage/{workflow['currentStageIndex']}")
         values = {
             "assignment": "Accept", "readiness": "Ready", "travelStatus": "Arrived", "siteAccess": "Accessible",
             "equipmentCondition": "Good", "visibleDamage": "None", "safetyConcern": "None",
@@ -107,8 +109,12 @@ class OperationsCheck(NATIVE.NativeCheck):
             "completionRecommendations": "Synthetic routine maintenance advised.",
         }
         for stage in template["stages"]:
-            self.open(f"job/{accepted_order['id']}/stage/{stage['index']}")
+            # The app navigates after its query refresh has finished. A competing
+            # deep link here can unmount a just-opened native dropdown.
+            self.find(stage["name"], attempts=20)
+            self.find(f"Stage {stage['index'] + 1} of {len(template['stages'])}", attempts=20)
             self.find("Service checklist", attempts=20)
+            time.sleep(.5)
             for field in stage["fields"]:
                 if field.get("conditionField") and values.get(field["conditionField"]) != field.get("conditionValue"):
                     continue
@@ -126,6 +132,8 @@ class OperationsCheck(NATIVE.NativeCheck):
                 and (current["currentStageIndex"] == target_index or current["status"] == "Completed") and current,
                 "native stage submission", seconds=45)
             print(f"Android stage {stage['index'] + 1} accepted by the server.", flush=True)
+            if target_index < len(template["stages"]):
+                self.find(template["stages"][target_index]["name"], attempts=20)
         assert workflow["status"] == "Completed"
         assert workflow["stages"][4]["answers"]["laborMinutes"] == "30.5"
         self.record("Completed all eight v2 stages through Android controls, including diagnosis text, service evidence, decimal labor, and final recommendations.")

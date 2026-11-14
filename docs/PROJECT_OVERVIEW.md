@@ -25,7 +25,7 @@ The release is a complete local engineering demonstration of the operational sid
 - append-only operational replay with CSV and PDF exports;
 - a React operations portal and an Expo technician application.
 
-The system is intentionally not a production SaaS deployment. There is no multi-tenant billing, no customer sign-in portal, no public cloud deployment, and no claim of regulatory certification.
+The system is a local engineering deployment with a scoped customer sign-in portal. Multi-tenant billing, public cloud deployment and regulatory certification remain outside the implemented scope.
 
 ## Roles
 
@@ -38,7 +38,7 @@ The system is intentionally not a production SaaS deployment. There is no multi-
 | Analyst | Read warehouse reports, data-quality indicators, and exports without operational mutation rights. |
 | Administrator | Manage identity/configuration access and perform privileged replay projection rebuilds. |
 
-Customers are represented in the registry but do not authenticate to this release. A customer portal is a documented future capability, not a hidden feature.
+Provisioned Customers authenticate to a separate portal and can request service, track their own appointments/work orders and read completed service reports. Membership is restricted by signed organization claims.
 
 ## Design principles
 
@@ -87,4 +87,4 @@ The release distinguishes four levels of status:
 - **Partial:** a workflow works through the operational UI/API but lacks a described external surface.
 - **Not implemented:** no claim is made and no placeholder screen is presented as complete.
 
-The customer portal and native emulator run are in the last category. The detailed status is maintained in [Testing and validation](TESTING_AND_VALIDATION.md).
+The current customer portal and Android offline runtime have been exercised. Detailed current status, remaining enterprise capabilities and exact results are maintained in [Business operations](BUSINESS_OPERATIONS.md) and [Operational verification](OPERATIONS_VERIFICATION.md). The older release ZIP retains its historical verification record.

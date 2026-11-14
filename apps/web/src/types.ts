@@ -10,6 +10,7 @@ export interface WorkOrder {
   id: string;
   number: string;
   title: string;
+  reportedProblem?: string;
   customerName: string;
   customerId?: string | null;
   serviceLocationId?: string | null;

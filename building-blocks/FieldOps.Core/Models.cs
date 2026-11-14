@@ -15,6 +15,7 @@ public sealed class WorkOrder
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Number { get; set; } = "";
     public string Title { get; set; } = "";
+    public string ReportedProblem { get; set; } = "";
     public string CustomerName { get; set; } = "";
     public string SiteAddress { get; set; } = "";
     // Logical references to the customer owner; snapshots preserve the original job context.

@@ -64,7 +64,7 @@ Dispatchers do not receive the Analytics navigation item. Reporting access is in
 
 ### A. Service request
 
-A dispatcher creates a work order for a registered customer/location/asset, or records an explicit reason when the customer is not yet registered. The work order starts in `Created`. Dispatchers can search, filter, update, and cancel eligible orders. Assignment is a projection of a confirmed booking, not an editable free-text field.
+A provisioned customer can submit a request for an owned location/equipment. Dispatch qualifies it with a retained reason and creates exactly one linked work order, preserving the reported problem. Office staff can also create a work order directly for a registered customer/location/asset, or record an explicit reason for unregistered customers. The order starts in `Created`; qualification does not promise an appointment. Assignment is a projection of a confirmed booking, not an editable free-text field.
 
 ### B. Qualified scheduling
 

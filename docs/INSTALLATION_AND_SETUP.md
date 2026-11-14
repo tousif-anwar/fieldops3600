@@ -35,7 +35,7 @@ What the bootstrap does:
 
 1. Generates a root `server/.env` with local-only passwords.
 2. Generates the ignored PostgreSQL initialization SQL and Keycloak realm import.
-3. Creates six demo users with one shared generated password.
+3. Creates operational demo users and a Customer role with one shared generated password. Existing identities are preserved on upgrades.
 4. Preserves existing generated values when re-run; it does not rotate deployed credentials silently.
 5. Prints the usernames but never prints the password.
 
@@ -79,6 +79,14 @@ docker compose --profile monitoring up -d
 The monitoring profile adds Prometheus, Grafana, and Jaeger. Grafana's local admin password is generated in `server/.env`. Jaeger retention is in-memory.
 
 ## Demo data
+
+The current source includes a separate customer-portal seed after the stack is ready:
+
+```powershell
+python scripts/seed-customer-portal.py
+```
+
+It provisions two isolated synthetic organizations and the `customer`/`customer-other` memberships through the actual service and Keycloak APIs. Existing passwords are preserved. The portal uses signed `customer_id` and `team_id` claims; users without provisioned membership receive an explicit error. This command is needed when upgrading an existing generated realm that predates the Customer role.
 
 The repository includes API-driven synthetic seeding scripts:
 

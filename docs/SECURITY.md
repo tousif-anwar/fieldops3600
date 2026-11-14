@@ -95,7 +95,7 @@ Resource checks are layered on top:
 
 - The local deployment uses HTTP and generated demo credentials. It is not safe for public exposure.
 - There is no production WAF, DDoS protection, managed secret store, MFA/device policy, or backup/restore exercise in this repository.
-- Customer self-service authentication and customer data isolation are not implemented.
+- Customer self-service uses provisioned signed `customer_id`/`team_id` membership and dedicated safe APIs. Self-registration, multi-organization membership management and production multi-tenant provisioning are not implemented. Customer isolation is covered by real PKCE HTTP and browser checks in [Operational verification](OPERATIONS_VERIFICATION.md).
 - The local PostgreSQL instance is shared physically even though databases and roles are isolated.
 - Jaeger trace storage is ephemeral.
 - Role policy changes require rebuilding the affected service images; the release documents the current policy rather than claiming dynamic administration.

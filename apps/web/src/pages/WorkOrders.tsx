@@ -703,6 +703,12 @@ export function OrderDetails() {
         >
           <dl className="detail-list">
             <div>
+              <dt>Reported problem</dt>
+              <dd className="portal-notes">
+                {w.reportedProblem?.trim() ? w.reportedProblem : w.title}
+              </dd>
+            </div>
+            <div>
               <dt>Customer</dt>
               <dd>{w.customerName}</dd>
             </div>

@@ -41,7 +41,8 @@ export default function JobDetails() {
     }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ['workflows', id] }); },
   });
-  const currentStage = workflow?.stages.find(stage => stage.index === workflow.currentStageIndex);
+  const currentStage = workflow?.status === 'Completed' ? undefined
+    : workflow?.stages.find(stage => stage.index === workflow.currentStageIndex);
   const completedCount = workflow?.stages.filter(stage => ['Completed', 'Overridden'].includes(stage.status)).length ?? 0;
   const booking = appointmentForJob(bookings.data ?? [], id);
   const showStart = !!workflows.data && !workflow && !workflows.error;
@@ -96,6 +97,11 @@ export default function JobDetails() {
             </View>
             <Text accessibilityRole="header" style={styles.title}>{job.title}</Text>
           </View>
+          {job.reportedProblem?.trim() ? (
+            <Section card title="Reported problem">
+              <Text selectable style={styles.body}>{job.reportedProblem}</Text>
+            </Section>
+          ) : null}
           <CustomerServiceInfo job={job} />
           <AssetServiceInfo job={job} />
           <Section card title="Appointment">

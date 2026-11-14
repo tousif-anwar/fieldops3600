@@ -1,5 +1,7 @@
 # Database Design
 
+New source migrations add `service_requests`, the order's monotonic `AssignmentRevision` and persisted `ReportedProblem` to work-orders; `assignment_offers`, `assignment_revisions`, `work_order_cancellations` and booking `ServiceStartedAtUtc` to scheduling; and informational notification severity. Ownership, validation and recovery are described in [Business operations](BUSINESS_OPERATIONS.md). Migration history is append-only; `data/schema/` contains reference copies.
+
 ## Ownership model
 
 FieldOps 360 uses one PostgreSQL instance for local deployment, but it is not a shared application schema. Each business service owns a separate database and a separate runtime identity:

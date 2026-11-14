@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -62,6 +63,13 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn('CREATE DATABASE "fieldops_reporting" OWNER "fieldops_reporting"', sql)
         self.assertIn('CREATE ROLE "fieldops_reporting_app"', sql)
         self.assertIn("fieldops_warehouse_reader", sql)
+        realm = json.loads((self.root / "infrastructure/keycloak/realm.generated.json").read_text())
+        self.assertIn("Customer", [role["name"] for role in realm["roles"]["realm"]])
+        for client in realm["clients"]:
+            if client["clientId"] in {"fieldops-web", "fieldops-mobile"}:
+                mapper = next(item for item in client["protocolMappers"] if item["name"] == "customer-membership")
+                self.assertEqual("customer_id", mapper["config"]["user.attribute"])
+                self.assertEqual("true", mapper["config"]["access.token.claim"])
 
     def test_legacy_upgrade_preserves_exact_existing_environment_prefix_and_realm(self):
         self.initialize()
@@ -107,14 +115,32 @@ class BootstrapTests(unittest.TestCase):
             realm, (self.root / "infrastructure/keycloak/realm.generated.json").read_bytes()
         )
 
-    def test_reconciliation_never_creates_or_drops_databases_or_changes_owner_passwords(self):
+    def test_reconciliation_only_adds_missing_contexts_and_preserves_existing_owners(self):
         self.initialize()
         values = read_environment(self.root / ".env")
         sql = reconciliation_sql(self.root, values)
-        self.assertNotIn("CREATE DATABASE", sql)
+        # Legacy installations may predate these two bounded contexts. Creation is
+        # additive and conditional; every pre-existing operational database is preserved.
+        self.assertEqual(
+            [("fieldops_customers", "fieldops_customers"), ("fieldops_assets", "fieldops_assets")],
+            re.findall(r"CREATE DATABASE (\w+) OWNER (\w+)", sql),
+        )
+        for context in ("customers", "assets"):
+            self.assertIn(
+                f"SELECT 'CREATE DATABASE fieldops_{context} OWNER fieldops_{context}'\n"
+                f"WHERE NOT EXISTS(SELECT 1 FROM pg_database WHERE datname='fieldops_{context}')\n\\gexec",
+                sql,
+            )
+            self.assertIn(
+                f"IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='fieldops_{context}') THEN\n"
+                f"  CREATE ROLE fieldops_{context}",
+                sql,
+            )
         self.assertNotIn("DROP ", sql)
         for name in SERVICES:
-            self.assertNotIn(values[f"{name.upper()}_DB_PASSWORD"], sql)
+            if name not in {"customers", "assets"}:
+                self.assertNotIn(values[f"{name.upper()}_DB_PASSWORD"], sql)
+            self.assertNotRegex(sql, rf'ALTER ROLE\s+"?fieldops_{name}"?\s+[^;]*PASSWORD')
         for name in OPERATIONAL_SERVICES:
             policy = operational_grants_sql(name)
             self.assertIn("REVOKE CREATE ON SCHEMA public FROM PUBLIC", policy)

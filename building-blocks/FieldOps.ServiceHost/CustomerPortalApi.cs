@@ -166,7 +166,7 @@ public static class CustomerPortalApi
                 if (asset.TeamId != request.TeamId || asset.CustomerId != customer.Id || asset.ServiceLocationId != location.Id || asset.Status != "Active")
                     throw new DomainException(409, "The equipment moved or is no longer active. Review the request with the customer.");
             }
-            order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title,
+            order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title, ReportedProblem = request.Description,
                 CustomerId = request.CustomerId, CustomerVersion = customer.Version, ServiceLocationId = request.ServiceLocationId, AssetId = request.AssetId,
                 CustomerName = customer.DisplayName, SiteAddress = string.Join(", ", new[] { location.AddressLine1, location.AddressLine2, location.City, location.Region, location.PostalCode, location.CountryCode }.Where(x => !string.IsNullOrWhiteSpace(x))),
                 TeamId = request.TeamId, ServiceCategory = input.ServiceCategory, Priority = input.Priority, CreatedAtUtc = now };

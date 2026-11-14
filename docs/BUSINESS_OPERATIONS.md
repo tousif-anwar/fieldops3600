@@ -83,6 +83,8 @@ Scheduling emits a durable, increasing per-order revision for booking creation, 
 
 ## Service execution version 2
 
+The work packet retains the customer's detailed reported problem when a request is qualified. Earlier qualified requests are backfilled by a forward migration. Technicians and office staff can read this authorized detail during preparation/execution; free text is excluded from the general work-order integration payload.
+
 New workflows use template v2; existing v1 instances retain their published configuration and behavior. The eight stage names stay stable for reporting. The form contract now supports bounded text and invariant-decimal number fields as well as choices and conditional fields.
 
 1. **Job accepted:** acceptance and readiness required. Missing equipment requires assistance rather than advancing.
