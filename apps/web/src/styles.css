@@ -1415,6 +1415,26 @@ tbody tr:hover {
   height: 6px;
   border-radius: var(--radius-sm);
 }
+.category-bars > div:nth-child(5n + 1) .category-swatch,
+.category-bars > div:nth-child(5n + 1) .category-fill {
+  background: var(--chart-1);
+}
+.category-bars > div:nth-child(5n + 2) .category-swatch,
+.category-bars > div:nth-child(5n + 2) .category-fill {
+  background: var(--chart-2);
+}
+.category-bars > div:nth-child(5n + 3) .category-swatch,
+.category-bars > div:nth-child(5n + 3) .category-fill {
+  background: var(--chart-3);
+}
+.category-bars > div:nth-child(5n + 4) .category-swatch,
+.category-bars > div:nth-child(5n + 4) .category-fill {
+  background: var(--chart-4);
+}
+.category-bars > div:nth-child(5n + 5) .category-swatch,
+.category-bars > div:nth-child(5n + 5) .category-fill {
+  background: var(--chart-5);
+}
 .category-bars strong {
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-medium);

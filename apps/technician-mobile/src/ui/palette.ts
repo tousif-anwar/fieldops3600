@@ -34,4 +34,6 @@ export const colors = {
   disabledSurface: '#e8edf3',
   backdrop: 'rgba(36, 52, 71, 0.4)',
   white: '#ffffff',
-} as const;
+} as const satisfies Record<string, string>;
+
+export type ColorRole = keyof typeof colors;

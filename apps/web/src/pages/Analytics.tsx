@@ -371,36 +371,20 @@ export function Analytics() {
               >
                 {r.categoryBreakdown.length ? (
                   <div className="category-bars">
-                    {r.categoryBreakdown.map((c, i) => (
+                    {r.categoryBreakdown.map((c) => (
                       <div key={c.category}>
                         <div>
                           <span>
-                            <i
-                              style={{
-                                background: [
-                                  "var(--chart-1)",
-                                  "var(--chart-2)",
-                                  "var(--chart-3)",
-                                  "var(--chart-4)",
-                                  "var(--chart-5)",
-                                ][i % 5],
-                              }}
-                            />
+                            <i className="category-swatch" />
                             {c.category}
                           </span>
                           <strong>{c.count}</strong>
                         </div>
                         <div className="category-track">
                           <span
+                            className="category-fill"
                             style={{
                               width: `${r.totalWorkOrders ? (c.count / r.totalWorkOrders) * 100 : 0}%`,
-                              background: [
-                                "var(--chart-1)",
-                                "var(--chart-2)",
-                                "var(--chart-3)",
-                                "var(--chart-4)",
-                                "var(--chart-5)",
-                              ][i % 5],
                             }}
                           />
                         </div>
