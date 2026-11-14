@@ -35,7 +35,7 @@ function AuthenticatedApp() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="dark-content" />
       <AuthProvider>
         <AuthenticatedApp />
       </AuthProvider>

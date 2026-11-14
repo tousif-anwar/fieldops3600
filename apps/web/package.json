@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
-    "lint": "eslint src e2e scripts --max-warnings 0",
+    "lint": "eslint src e2e scripts --max-warnings 0 && node scripts/lint-design-tokens.mjs",
     "test": "vitest run --maxWorkers=1",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 0.0.0.0",

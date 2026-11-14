@@ -53,6 +53,8 @@
   --line-height-28: 28px;
   --line-height-32: 32px;
 
+  --space-1: 1px;
+  --space-2: 2px;
   --space-4: 4px;
   --space-8: 8px;
   --space-12: 12px;
@@ -67,11 +69,14 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-pill: 999px;
+  --radius-round: 50%;
   --border-width: 1px;
   --control-height: 32px;
   --control-height-large: 40px;
   --touch-target: 44px;
   --navigation-width: 240px;
+  --navigation-width-wide: 260px;
+  --navigation-width-medium: 216px;
   --navigation-collapsed-width: 72px;
   --topbar-height: 56px;
   --shadow-focus: 0 0 0 2px var(--color-primary-surface);

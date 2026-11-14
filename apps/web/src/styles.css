@@ -75,7 +75,7 @@ pre {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: calc(-1 * var(--space-1));
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -184,7 +184,7 @@ pre {
   font-weight: var(--font-weight-regular);
   display: block;
   font-size: var(--font-size-12);
-  margin-top: 2px;
+  margin-top: var(--space-2);
   color: var(--color-muted);
 }
 .workspace-switch > svg {
@@ -197,7 +197,7 @@ pre {
   align-items: center;
   margin-bottom: var(--space-4);
   text-decoration: none;
-  margin: 1px 0;
+  margin: var(--space-1) 0;
   color: var(--color-muted);
   font-weight: var(--font-weight-medium);
   line-height: 1.333333;
@@ -212,7 +212,7 @@ pre {
   stroke-width: 2;
 }
 .avatar {
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,7 +298,7 @@ pre {
   font-size: var(--font-size-12);
   min-width: 16px;
   height: 16px;
-  padding-inline: 2px;
+  padding-inline: var(--space-2);
   border-radius: var(--radius-sm);
 }
 .page-content {
@@ -515,7 +515,7 @@ tbody tr:hover {
 .mini-avatar {
   width: 25px;
   height: 25px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -540,7 +540,7 @@ tbody tr:hover {
 }
 .status-dot {
   background: currentColor;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   width: 5px;
   height: 5px;
 }
@@ -556,7 +556,7 @@ tbody tr:hover {
   gap: var(--space-8);
   width: 100%;
   text-align: left;
-  padding: var(--space-12) 2px;
+  padding: var(--space-12) var(--space-2);
 }
 .quick-actions > button:last-child {
   border: 0;
@@ -725,7 +725,7 @@ tbody tr:hover {
 }
 .inline-message svg {
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: var(--space-1);
 }
 .inline-message.positive {
   background: var(--color-success-surface);
@@ -882,7 +882,7 @@ tbody tr:hover {
   flex-direction: column;
   gap: var(--space-4);
   align-items: center;
-  padding-top: 2px;
+  padding-top: var(--space-2);
   border-right: 1px solid var(--color-border);
   padding-right: var(--space-16);
   color: var(--color-muted);
@@ -1152,7 +1152,7 @@ tbody tr:hover {
 }
 .stepper-heading small {
   width: 100%;
-  margin-top: 2px;
+  margin-top: var(--space-2);
   margin-left: var(--space-24);
   color: var(--color-muted);
   font-size: var(--font-size-12);
@@ -1202,7 +1202,7 @@ tbody tr:hover {
   border: 1px solid var(--color-border);
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   font-size: var(--font-size-12);
   background: var(--color-surface);
   flex-shrink: 0;
@@ -1264,7 +1264,7 @@ tbody tr:hover {
   font-weight: var(--font-weight-semibold);
   color: var(--color-muted);
   letter-spacing: normal;
-  margin-top: 2px;
+  margin-top: var(--space-2);
 }
 .countdown-bar > p {
   margin-left: auto;
@@ -1385,7 +1385,7 @@ tbody tr:hover {
 .chart-key i {
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--color-primary);
   margin-left: var(--space-4);
 }
@@ -1482,7 +1482,7 @@ tbody tr:hover {
 }
 .metric-definitions > svg {
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: var(--space-2);
 }
 .metric-definitions p {
   line-height: 1.5;
@@ -1511,7 +1511,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   flex-shrink: 0;
 }
 .notification-list article > div {
@@ -1836,9 +1836,9 @@ tbody tr:hover {
   height: 20px;
   flex-shrink: 0;
   border: 5px solid var(--color-border);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--color-primary-surface);
-  margin-top: 1px;
+  margin-top: var(--space-1);
   position: relative;
   z-index: 1;
   display: flex;
@@ -2264,9 +2264,9 @@ tbody tr:hover {
   margin-bottom: var(--space-16);
   display: flex;
   align-items: stretch;
-  gap: 2px;
+  gap: var(--space-2);
   border-bottom: 1px solid var(--color-border);
-  padding: 0 2px;
+  padding: 0 var(--space-2);
 }
 .analytics-evidence-note {
   font-size: var(--font-size-12);
@@ -2474,7 +2474,7 @@ summary:focus-visible {
   justify-content: center;
   width: 44px;
   padding: 0;
-  margin: 2px auto;
+  margin: var(--space-2) auto;
 }
 .sidebar-collapsed .sidebar-bottom {
   padding: var(--space-8);
@@ -2551,7 +2551,7 @@ summary:focus-visible {
 .global-search kbd {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 1px var(--space-4);
+  padding: var(--space-1) var(--space-4);
   background: var(--color-surface);
   font-size: var(--font-size-12);
   white-space: nowrap;
@@ -2603,7 +2603,7 @@ summary:focus-visible {
   white-space: nowrap;
 }
 .user-summary-copy small {
-  margin-top: 1px;
+  margin-top: var(--space-1);
   color: var(--color-muted);
   font-size: var(--font-size-12);
   line-height: 1.333333;
@@ -2637,7 +2637,7 @@ summary:focus-visible {
 .user-popover-identity span {
   display: block;
   font-size: var(--font-size-12);
-  margin-top: 2px;
+  margin-top: var(--space-2);
   overflow-wrap: anywhere;
   color: var(--color-muted);
 }
@@ -2802,7 +2802,7 @@ summary:focus-visible {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: calc(-1 * var(--space-1));
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -2922,7 +2922,7 @@ summary:focus-visible {
   text-decoration: underline;
 }
 .home-attention-list {
-  padding: 2px 0;
+  padding: var(--space-2) 0;
 }
 .attention-row {
   display: grid;
@@ -2976,7 +2976,7 @@ summary:focus-visible {
   display: block;
   font-size: var(--font-size-12);
   line-height: 1.5;
-  margin-top: 2px;
+  margin-top: var(--space-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3001,7 +3001,7 @@ summary:focus-visible {
 .home-empty > svg {
   color: var(--color-success);
   flex: 0 0 22px;
-  margin-top: 1px;
+  margin-top: var(--space-1);
 }
 .home-empty strong {
   display: block;
@@ -3061,7 +3061,7 @@ summary:focus-visible {
 .home-action small {
   display: block;
   line-height: 1.333333;
-  margin-top: 2px;
+  margin-top: var(--space-2);
   font-size: var(--font-size-12);
   color: var(--color-muted);
 }
@@ -3069,7 +3069,7 @@ summary:focus-visible {
   color: var(--color-muted);
 }
 .home-work-list {
-  padding: 2px 0;
+  padding: var(--space-2) 0;
 }
 .home-work-row {
   display: grid;
@@ -3104,7 +3104,7 @@ summary:focus-visible {
   color: var(--color-muted);
   font-size: var(--font-size-12);
   line-height: 1.333333;
-  margin-top: 2px;
+  margin-top: var(--space-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3157,7 +3157,7 @@ summary:focus-visible {
   display: block;
   color: var(--color-muted);
   font-size: var(--font-size-12);
-  margin-top: 1px;
+  margin-top: var(--space-1);
 }
 .home-capacity-track {
   height: 6px;
@@ -3354,7 +3354,7 @@ summary:focus-visible {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: calc(-1 * var(--space-1));
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -3365,7 +3365,7 @@ summary:focus-visible {
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-16);
-  margin: 2px 0 var(--space-12);
+  margin: var(--space-2) 0 var(--space-12);
 }
 .analytics-scorecard-heading .eyebrow {
   margin-bottom: var(--space-4);
@@ -3386,7 +3386,7 @@ summary:focus-visible {
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-semibold);
   letter-spacing: normal;
-  margin-right: 2px;
+  margin-right: var(--space-2);
 }
 .report-scope-chip {
   border: 1px solid var(--color-border);
@@ -3419,7 +3419,7 @@ summary:focus-visible {
   content: "";
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: currentColor;
 }
 .metric-indicator.green {
@@ -3634,12 +3634,12 @@ td small,
     grid-template-columns: minmax(0, 1fr) 320px;
   }
   .sidebar {
-    width: 260px;
-    flex-basis: 260px;
+    width: var(--navigation-width-wide);
+    flex-basis: var(--navigation-width-wide);
   }
   .workspace-main {
-    margin-left: 260px;
-    width: calc(100% - 260px);
+    margin-left: var(--navigation-width-wide);
+    width: calc(100% - var(--navigation-width-wide));
   }
   th {
     font-size: var(--font-size-12);
@@ -3670,12 +3670,12 @@ td small,
 }
 @media (max-width: 1200px) {
   .sidebar {
-    width: 216px;
-    flex-basis: 216px;
+    width: var(--navigation-width-medium);
+    flex-basis: var(--navigation-width-medium);
   }
   .workspace-main {
-    margin-left: 216px;
-    width: calc(100% - 216px);
+    margin-left: var(--navigation-width-medium);
+    width: calc(100% - var(--navigation-width-medium));
   }
   .brand {
     font-size: var(--font-size-20);
@@ -3802,7 +3802,7 @@ td small,
   .home-quick .home-actions {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2px;
+    gap: var(--space-2);
     padding: var(--space-8);
   }
   .home-action {
@@ -3934,7 +3934,7 @@ td small,
     grid-template-columns: 0.9fr 1fr;
   }
   .login-form-side {
-    padding: 65px var(--space-32);
+    padding: calc(var(--space-64) + var(--space-1)) var(--space-32);
   }
   .login-brand {
     font-size: var(--font-size-20);
@@ -4013,7 +4013,7 @@ td small,
     justify-content: flex-start;
     width: auto;
     padding: var(--space-8) var(--space-8);
-    margin: 1px 0;
+    margin: var(--space-1) 0;
   }
   .sidebar-collapsed .sidebar-toggle {
     justify-content: flex-start;
@@ -4520,7 +4520,7 @@ td small,
     justify-content: flex-start;
     width: auto;
     padding: var(--space-8) var(--space-8);
-    margin: 1px 0;
+    margin: var(--space-1) 0;
   }
   .sidebar-collapsed .sidebar-toggle {
     justify-content: flex-start;
@@ -4720,7 +4720,7 @@ td small,
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 2px var(--space-12);
+    gap: var(--space-2) var(--space-12);
   }
   .home-figure > span {
     grid-column: 1;
@@ -4829,7 +4829,7 @@ td small,
     padding: var(--space-20);
   }
   .quick-actions {
-    padding: 2px var(--space-16);
+    padding: var(--space-2) var(--space-16);
   }
   .recent-cards {
     grid-template-columns: 1fr;
