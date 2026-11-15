@@ -87,7 +87,7 @@ builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddSe
 
 var servicePaths = new Dictionary<string, string[]>
 {
-    ["customers"] = ["/api/customers/{**remaining}", "/api/customer-portal/account"],
+    ["customers"] = ["/api/customers/{**remaining}", "/api/contracts/{**remaining}", "/api/customer-portal/account", "/api/customer-portal/agreements"],
     ["assets"] = ["/api/assets/{**remaining}", "/api/customer-portal/equipment"],
     ["work-orders"] = ["/api/work-orders/{**remaining}", "/api/service-requests/{**remaining}", "/api/customer-portal/work-orders/{**remaining}"],
     ["technicians"] = ["/api/technicians/{**remaining}"],

@@ -57,7 +57,13 @@ def main():
     sql("fieldops_customers", "fieldops_customers_app", """SELECT
         has_table_privilege(current_user,'customer_changes','SELECT') AND has_table_privilege(current_user,'customer_changes','INSERT')
         AND NOT has_table_privilege(current_user,'customer_changes','UPDATE') AND NOT has_table_privilege(current_user,'customer_changes','DELETE')
-        AND NOT has_table_privilege(current_user,'customer_changes','TRUNCATE')""")
+        AND NOT has_table_privilege(current_user,'customer_changes','TRUNCATE')
+        AND has_table_privilege(current_user,'contract_events','SELECT') AND has_table_privilege(current_user,'contract_events','INSERT')
+        AND NOT has_table_privilege(current_user,'contract_events','UPDATE') AND NOT has_table_privilege(current_user,'contract_events','DELETE')
+        AND NOT has_table_privilege(current_user,'contract_events','TRUNCATE')
+        AND has_table_privilege(current_user,'contract_usage','SELECT') AND has_table_privilege(current_user,'contract_usage','INSERT')
+        AND NOT has_table_privilege(current_user,'contract_usage','UPDATE') AND NOT has_table_privilege(current_user,'contract_usage','DELETE')
+        AND NOT has_table_privilege(current_user,'contract_usage','TRUNCATE')""")
     sql("fieldops_assets", "fieldops_assets_app", """SELECT
         has_table_privilege(current_user,'asset_changes','SELECT') AND has_table_privilege(current_user,'asset_changes','INSERT')
         AND NOT has_table_privilege(current_user,'asset_changes','UPDATE') AND NOT has_table_privilege(current_user,'asset_changes','DELETE')

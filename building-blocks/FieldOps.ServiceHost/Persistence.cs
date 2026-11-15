@@ -31,15 +31,27 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
     public DbSet<ReplayProjection> ReplayProjections => Set<ReplayProjection>();
     public DbSet<WorkOrderFact> WorkOrderFacts => Set<WorkOrderFact>();
     public DbSet<StageFact> StageFacts => Set<StageFact>();
+    public DbSet<MaintenanceContract> Contracts => Set<MaintenanceContract>();
+    public DbSet<ContractLine> ContractLines => Set<ContractLine>();
+    public DbSet<CoveredAsset> CoveredAssets => Set<CoveredAsset>();
+    public DbSet<ContractExclusion> ContractExclusions => Set<ContractExclusion>();
+    public DbSet<MaintenancePlan> MaintenancePlans => Set<MaintenancePlan>();
+    public DbSet<MaintenanceVisit> MaintenanceVisits => Set<MaintenanceVisit>();
+    public DbSet<ContractUsage> ContractUsage => Set<ContractUsage>();
+    public DbSet<ContractEvent> ContractEvents => Set<ContractEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
         if (identity.Name == "inventory") InventoryPersistence.Configure(b);
         else InventoryPersistence.Ignore(b);
+        if (identity.Name == "customers") ContractPersistence.Configure(b);
+        else ContractPersistence.Ignore(b);
         var owned = identity.Name switch
         {
             "work-orders" => new[] { typeof(WorkOrder), typeof(ServiceRequest) },
-            "customers" => [typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange)],
+            "customers" => [typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange),
+                typeof(MaintenanceContract), typeof(ContractLine), typeof(CoveredAsset), typeof(ContractExclusion), typeof(MaintenancePlan),
+                typeof(MaintenanceVisit), typeof(ContractUsage), typeof(ContractEvent)],
             "assets" => [typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange)],
             "technicians" => [typeof(Technician), typeof(TimeOff)],
             "scheduling" => [typeof(Booking), typeof(AssignmentOffer)],
@@ -48,7 +60,7 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
             "reporting" => [typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact)],
             _ => []
         };
-        foreach (var type in new[] { typeof(WorkOrder), typeof(ServiceRequest), typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange), typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange), typeof(Technician), typeof(TimeOff), typeof(Booking), typeof(AssignmentOffer), typeof(Workflow), typeof(Notification), typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact) })
+        foreach (var type in new[] { typeof(WorkOrder), typeof(ServiceRequest), typeof(Customer), typeof(CustomerContact), typeof(ServiceLocation), typeof(CustomerChange), typeof(Asset), typeof(AssetLocationChange), typeof(AssetChange), typeof(Technician), typeof(TimeOff), typeof(Booking), typeof(AssignmentOffer), typeof(Workflow), typeof(Notification), typeof(StoredEvent), typeof(DeliveryAttempt), typeof(ReplayProjection), typeof(WorkOrderFact), typeof(StageFact), typeof(MaintenanceContract), typeof(ContractLine), typeof(CoveredAsset), typeof(ContractExclusion), typeof(MaintenancePlan), typeof(MaintenanceVisit), typeof(ContractUsage), typeof(ContractEvent) })
             if (!owned.Contains(type)) b.Ignore(type);
         b.Entity<OutboxMessage>().ToTable("outbox_messages").HasKey(x => x.Id);
         b.Entity<OutboxMessage>().HasIndex(x => new { x.PublishedAtUtc, x.NextAttemptAtUtc });
@@ -153,7 +165,8 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
             ChangeTracker.Entries<DeliveryAttempt>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
             ChangeTracker.Entries<CustomerChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
             ChangeTracker.Entries<AssetChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
-            ChangeTracker.Entries<AssetLocationChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
+            ChangeTracker.Entries<AssetLocationChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<ContractEvent>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Audit evidence is append-only.");
         return base.SaveChangesAsync(cancellationToken);
     }

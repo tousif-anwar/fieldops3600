@@ -108,6 +108,7 @@ public static class Bootstrap
         app.MapMetrics();
         OperationsApi.Map(app, service);
         CustomerPortalApi.Map(app, service);
+        if (service == "customers") ContractApi.Map(app);
         if (service == "inventory") InventoryApi.Map(app);
         if (service == "workflows") ServiceReportApi.Map(app);
         if (service == "notifications") { ReportingApi.Map(app); app.MapHub<NotificationHub>("/hubs/notifications"); }
