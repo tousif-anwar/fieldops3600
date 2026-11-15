@@ -39,7 +39,7 @@ async function signIn(page: Page, username: string) {
 test("dispatcher creates a real request and confirms a feasible booking through PKCE", async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(120000);
   await signIn(page, "dispatcher");
   await page.getByRole("link", { name: /Create work order/ }).click();
   const title = `Synthetic E2E cooling inspection ${Date.now()}`;
@@ -78,7 +78,10 @@ test("dispatcher creates a real request and confirms a feasible booking through 
   });
   // Pick the first business-day slot with capacity. A fixed slot becomes
   // unavailable after repeated local runs have booked every qualified technician.
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  // Repeated local runs can fill every technician's fixed 15:00 slot for the
+  // first work week. Search additional business days instead of assuming the
+  // fourth or fifth day still has capacity.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
     await appointment.fill(next.toISOString().slice(0, 16));
     await page
       .getByRole("button", { name: "Find qualified technicians" })

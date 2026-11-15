@@ -81,6 +81,7 @@ Commands used in this batch:
 python tests/backend/verify_contracts_http.py -v
 cd apps/web && npm run typecheck && npm run lint
 cd apps/web && npm run test
+cd apps/web && WEB_BASE_URL=http://localhost:8088 FIELDOPS_LIVE_E2E=1 npx playwright test e2e/contracts.spec.ts --reporter=list
 ```
 
 Results at this checkpoint:
@@ -90,12 +91,18 @@ Results at this checkpoint:
 - Live contract HTTP verification: **1/1 passed** with a fresh synthetic customer, real
   Keycloak login, gateway routing, plan generation, entitlement exhaustion, append-only usage, and
   cancellation.
+- Live contract browser smoke: **1/1 desktop test passed**; mobile intentionally skipped.
 - Web: **78/78 tests passed**, typecheck, lint, and production build passed.
+- Existing live Playwright suite: **39 passed, 0 failed, 13 intentionally skipped** after
+  rebuilding the web image.
 
 ## Explicit remaining gates
 
 - Generated visits are not yet converted into work orders or dispatched through the existing
   scheduling owner. They remain pending agreement records for a controlled scheduling integration.
+- The agreement currently has no explicit service-location binding; a visit cannot yet target a
+  specific customer site when creating a work order. Add and validate that binding before enabling
+  automatic visit-to-work-order creation.
 - Entitlement evaluation is exposed but not yet called by the work-order creation/classification
   path, so a work order cannot yet rely on it to block uncovered chargeable work automatically.
 - Contract renewal, automatic expiration, background missed-visit handling, and customer-visible

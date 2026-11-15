@@ -4,7 +4,7 @@ Updated: 15 November 2026, America/New_York. Active request: nine enterprise cap
 
 ## Current phase
 
-Foundation baseline verified; inventory is the first implementation slice. Work is on `codex/enterprise-completion`, based on `1ea2dffb0bc476326faadb9db3832b1f6733ec0e` (current main after the public website release). The original working tree was on an older security branch. Its untracked landing implementation was preserved in `stash@{0}` with message `Preserve original landing implementation before enterprise feature work`; do not apply that stash over newer website sources blindly.
+Inventory is implemented and verified. Maintenance contracts now have a working vertical slice in the existing customer context: agreement lifecycle, coverage, entitlements, exclusions, recurrence, usage evidence, authorized APIs, migration, operator workspace, and customer-portal read. Work is on `codex/enterprise-completion`, based on `1ea2dffb0bc476326faadb9db3832b1f6733ec0e`.
 
 The user chose **local/test foundations** for external services. Use synthetic local notification sinks and contract-tested Microsoft adapters. Real delivery, an authorized Dataverse tenant, staging hosting, legal assessment, and production certification are not available evidence. Continue independent work rather than inventing credentials or claiming these gates passed.
 
@@ -12,9 +12,9 @@ The user chose **local/test foundations** for external services. Use synthetic l
 
 | Capability | Status | Next gate |
 |---|---|---|
-| Inventory/reservations/transfers/consumption | Implementation in progress | Atomic stock rules, migration, authorized API, web/mobile forms, race/failure tests, actual workflow |
-| Maintenance contracts/entitlements/recurrence | Not implemented | Begin after inventory baseline is integrated |
-| Customer appointment options/self-booking | Not implemented | Extend authoritative scheduling and constraints, no duplicate booking state |
+| Inventory/reservations/transfers/consumption | Implemented and verified; dedicated browser journey and real broker/mobile runtime acceptance remain | Add a focused Inventory E2E journey, then run outbox delivery against RabbitMQ and mobile runtime |
+| Maintenance contracts/entitlements/recurrence | Core vertical slice implemented and live-verified; scheduling conversion and automatic work-order entitlement guard remain | Convert pending visits into work orders through scheduling and call entitlement evaluation from work-order creation/classification |
+| Customer appointment options/self-booking | Not implemented | Extend authoritative scheduling and constraints; no duplicate booking state |
 | Estimates/e-signature/financial authorization | Not implemented | Decimal policy, immutable approved revision/hash/intent evidence, work authorization guard |
 | Billing/job costing/internal invoices | Not implemented | Consume actual stock/labor and contract/estimate facts; immutable issued snapshot |
 | External notifications/preferences | Not implemented | Extend notifications; durable local delivery sink and preferences/retry states |
@@ -27,45 +27,66 @@ Do not promote a row to complete until its applicable definition-of-done gates i
 ## Architecture decisions
 
 - Keep the eight existing service-owned contexts and canonical work-order lifecycle. Preserve customer intake, assignment offers, service reports, SLA, and replay.
-- Add inventory as one justified bounded context: stock balances, reservations, transfer receipts, consumption, and an immutable ledger must commit atomically. Do not create a service for every requested capability.
+- Inventory is a justified bounded context because stock balances, reservations, transfer receipts, consumption, and an immutable ledger must commit atomically.
+- Contracts extend `customers` because it owns customer identity, locations, contacts, and consent. Equipment remains owned by `assets` and is validated over its reference API. Do not duplicate equipment rows.
 - Reuse PostgreSQL migrations/checksums, per-service EF models, actor-scoped request hashes/receipts, transactional outbox, inbox deduplication, signed role/team claims, and authoritative remote resource checks.
-- Reuse the existing Fluent UI and React Native design tokens/components. Inventory mutations initially require a connection; never silently queue optimistic stock balances.
-- Proposed later commercial context groups contracts, estimates, and invoices with explicit modules rather than three independent financial ledgers. Validate this decision before implementation.
+- Reuse the existing Fluent UI and React Native design tokens/components. Inventory mutations require a connection; never silently queue optimistic stock balances.
+- Contract mutations use team-scoped PostgreSQL advisory locks, version concurrency tokens, and append-only event/usage tables. Generated visits use database uniqueness including a NULL-safe equipment expression.
+- Estimates, billing, and invoices remain a later commercial context; do not create three independent financial ledgers.
 - New production or legal compliance claims require independent evidence. Deterministic monetary rules are application policy, not tax/legal advice.
 
-## Active ownership
+## Commits in this run
 
-- Root: integration, shared conventions, persistent handoff, next phases.
-- `inventory_backend`: inventory domain, persistence mapping, API/service/migration, business tests. Shared host registration stays with root.
-- `inventory_clients`: API-backed web/mobile inventory screens and component/client tests, minimal route/navigation integration.
-- `enterprise_foundation`: architecture audit, baseline commands/results, infrastructure findings in `docs/enterprise/`.
+- `a2bceef` — inventory domain, persistence, API, immutable ledger migration, host/gateway/Compose wiring, clients, tests.
+- `66ef07e` — technician-mobile Expo dependency alignment.
+- `aaef565` — contract domain, persistence, API, migration, gateway/schema/local-role integration.
+- `edc6764` — contract domain, migration, and API PostgreSQL tests.
+- `b2fa6f1` — contract operator workspace, customer-portal agreement view, live HTTP verification, append-only usage fix, integration documentation.
 
-All agents share the same working directory. No agent should stage, commit, push, alter old migrations, reset a database, or deploy production as part of this implementation run.
+The original landing implementation remains in `stash@{0}`; do not apply it over newer website sources blindly.
 
-## Verification so far
+## Verification
 
-- Read the current enterprise brief and inspected actual current-main architecture.
-- No repository AGENTS.md files found at task start.
-- Pinned SDK `.tools/dotnet/dotnet.exe` reports .NET 10.0.403. The system SDK is a different preview; use the pinned executable.
-- Baseline backend build: passed, zero warnings/errors (foundation agent, 29.37 seconds).
-- Initial baseline test selection exposed a stopped Docker engine. After starting installed Docker Desktop hidden, the full pre-change compiled backend suite passed **118/118, zero skips**, including actual PostgreSQL Testcontainers (11 seconds). No volumes were reset. Use the default Docker context; do not set a custom DOCKER_HOST. Exact commands/results are in `docs/enterprise/BASELINE.md`.
-- Web/mobile baseline checks are in progress with client agent. Mobile dependencies initially lacked ESLint; install from the current lockfile without scripts before judging source correctness.
-- No enterprise migration has been applied or capability certified complete yet.
+- Backend build: `./.tools/dotnet/dotnet.exe build services/FieldOps.Backend.slnx -c Release --no-restore -m:1 -p:UseSharedCompilation=false` — passed, one NU1900 warning when the NuGet vulnerability feed is unreachable.
+- Full backend tests: `./.tools/dotnet/dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore` — **155/155 passed, zero skips**, including real PostgreSQL Testcontainers.
+- Contract-selected tests: `./.tools/dotnet/dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~Contract'` — **9/9 passed**.
+- Live contract HTTP workflow: `python tests/backend/verify_contracts_http.py -v` — **1/1 passed** against real Keycloak/gateway/customers/work-orders. It creates a uniquely labelled synthetic customer/agreement, verifies replay and changed-command conflicts, authorization denials, plan creation, activation, idempotent visit generation, entitlement exhaustion after usage, append-only usage, and cancellation.
+- Inventory HTTP workflow: `python tests/backend/verify_inventory_http.py -v` — **1/1 passed** earlier in the run, including reservation races, transfer receipt, consumption/return, unauthorized access, and replay.
+- Web: `cd apps/web && npm run typecheck && npm run lint` passed; `npm run test` — **78/78 passed**; `npm run build` passed.
+- Mobile: `npm run check` — **48/48 passed**; `npx expo install --check` reports dependencies up to date.
+- Local bootstrap: `python scripts/test-local-bootstrap.py` — **6/6 passed** earlier.
+- Database permissions: `python scripts/verify-database-permissions.py` — passed earlier; the customers role now has SELECT/INSERT only on `customer_changes`, `contract_events`, and `contract_usage`.
+- Live Playwright suite after rebuilding the web image: **39 passed, 0 failed, 13 intentionally skipped**. The Keycloak form wait was widened to 15 seconds. The booking journey now searches up to 12 business days because repeated local runs had filled the fixed 15:00 slot on the first work week.
+- Dedicated contract browser smoke: `cd apps/web && WEB_BASE_URL=http://localhost:8088 FIELDOPS_LIVE_E2E=1 npx playwright test e2e/contracts.spec.ts --reporter=list` — **1/1 desktop test passed**, mobile intentionally skipped.
+- Containers were rebuilt for customers and gateway and the contract migration job exited 0. No volumes were reset.
 
 ## Current implementation batch
 
-- Inventory agent has created `Core/Inventory.cs`, `ServiceHost/InventoryPersistence.cs`, `services/inventory` and immutable-ledger migration `001_initial.sql`; API and tests are in progress. The API file may not exist until the batch is saved, so host registration temporarily references a pending module; do not misclassify that as the pre-change build baseline.
-- Root made ServiceDb partial and registered its Configure/Ignore mapping, inventory authorization policies, endpoint map, embedded SQL, solution project, gateway prefix, Compose runtime/migration job, Prometheus target, database bootstrap/reconciliation, and explicit ledger ACLs. Inventory runtime owns no schema objects; movement access is SELECT/INSERT only.
-- `scripts/test-local-bootstrap.py`: **6/6 pass** after adding a non-destructive pre-inventory upgrade regression. The upgrade test preserves the exact prior environment prefix, existing passwords, and realm bytes while adding inventory credentials.
-- Root added `Core/MonetaryPolicy.cs` and `tests/backend/MonetaryPolicyTests.cs` for deterministic decimal rounding, configured currency precision, discounts/taxes, and minute-based internal labor cost. Tests have not yet run; this foundation is not an estimate/invoice implementation.
-- Foundation agent now owns safe non-order event reporting projection, gateway readiness and its tests, and relevant inventory CI hooks. Other shared host/Compose/schema integration stays with root.
+- Inventory files remain as recorded in earlier handoffs; the full backend suite includes its PostgreSQL, HTTP, and client checks.
+- Contracts:
+  - `building-blocks/FieldOps.Core/Contracts.cs`
+  - `building-blocks/FieldOps.ServiceHost/ContractPersistence.cs`
+  - `building-blocks/FieldOps.ServiceHost/ContractApi.cs`
+  - `services/customers/migrations/002_contracts.sql` (immutable, applied once)
+  - `apps/web/src/pages/Contracts.tsx`, `apps/web/src/components/PortalAgreements.tsx`, `apps/web/src/contract-contracts.ts`
+  - `tests/backend/ContractTests.cs`, `ContractPostgresTests.cs`, `ContractApiTests.cs`, `verify_contracts_http.py`
+  - `apps/web/e2e/contracts.spec.ts`
+  - `docs/enterprise/CONTRACTS_INTEGRATION.md`
+- The contract web route is `/contracts`; customer agreement data is read at `/api/customer-portal/agreements`. The new page was smoke-tested through the live gateway after rebuilding the web image.
+- The customer service runtime role has append-only access to `contract_events` and `contract_usage`; the live test caught and now verifies the EF navigation-add/update mistake that initially caused a 42501 permission error.
+- Rebuild the web image (`docker compose build web`, then recreate `web`) before expecting the new contracts screen at `http://localhost:8088`.
 
-## Skills and provenance
+## Known gaps and blockers
 
-Read applicable installed React, React Native, .NET security, and code-simplifier instructions. The installed API-testing reference is MCP-specific; retain its behavior/isolation principles without adding MCP framework abstractions to this application.
-
-The additional official OpenAI ASP.NET Core skill was inspected at commit `49f948faa9258a0c61caceaf225e179651397431`: instructions, ownership, file inventory, and permissions. It contains Markdown references/assets and no executable install scripts. The trusted local skill-installer acquired it into ignored `.local/enterprise-skills/aspnet-core`. Read stack selection, host/pipeline, Minimal APIs, data/state, security, and testing/operations references. Apply the repository's .NET 10 Minimal API/EF/PostgreSQL patterns; no framework rewrite.
+- Generated maintenance visits are not yet turned into work orders or booked through scheduling. They are pending agreement records with `WorkOrderId = null`; dispatch remains responsible for the next integration.
+- The work-order creation/classification path does not yet call the entitlement endpoint to block uncovered chargeable work. The endpoint exists and is authorized but is not the authority in that workflow yet.
+- Contract renewal, automatic expiry/missed-visit processing, contract documents, and per-asset effective-date/exclusion editing are not implemented.
+- No dedicated Inventory browser journey exists. Contracts now has a desktop smoke journey (`apps/web/e2e/contracts.spec.ts`); its create/activate controls are covered by API and component tests but not a second live write journey.
+- Contracts do not yet store an explicit service-location reference. A generated visit therefore cannot safely create a work order for a specific site until that contract/site binding is added and validated.
+- Real RabbitMQ outbox delivery and mobile runtime acceptance remain unverified (inventory and contract events are queued in the transactional outbox).
+- Warehouse tests could not run on host Python without `psycopg`; previous documented result is 44/44 in a provisioned environment.
+- No external notification delivery, e-signature provider, Dataverse tenant, staging deployment, or certification assessment has been performed or claimed.
 
 ## Next action
 
-Finish the baseline and integrate inventory registration, service routing, least-privilege database roles, non-destructive upgrade, and Compose/CI. Verify the real inventory slice before advancing to contracts. Update this handoff after every significant batch with exact changed files, migration names, tests, limitations, and next action.
+Integrate generated maintenance visits with the existing work-order and scheduling owners: create exactly one work order per pending visit, preserve source/correlation/idempotency, link the visit's `WorkOrderId`, and schedule through the existing booking/assignment rules rather than silently assigning technicians. Then call entitlement evaluation during work-order creation/classification and add the focused contract and inventory browser journeys. After that, begin customer appointment options/self-booking without duplicating the authoritative booking state.

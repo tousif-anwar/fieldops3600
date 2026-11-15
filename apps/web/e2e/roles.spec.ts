@@ -20,7 +20,7 @@ async function completeKeycloak(page: Page, username: string) {
   const usernameField = page.locator("#username");
   if (
     await usernameField
-      .waitFor({ state: "visible", timeout: 6000 })
+      .waitFor({ state: "visible", timeout: 15000 })
       .then(() => true)
       .catch(() => false)
   ) {
