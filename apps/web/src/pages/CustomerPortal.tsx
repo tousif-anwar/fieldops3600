@@ -35,6 +35,7 @@ import {
 } from "../components/common";
 import { ListPagination, pageSlice } from "../components/ListPagination";
 import { ServiceReport } from "../components/ServiceReport";
+import { PortalAgreements } from "../components/PortalAgreements";
 
 export function CustomerPortal() {
   const qc = useQueryClient();
@@ -477,6 +478,7 @@ export function CustomerPortal() {
           />
         )}
       </Panel>
+      <PortalAgreements />
       <Panel title="Service history">
         {orders.isPending ? (
           <Loading />

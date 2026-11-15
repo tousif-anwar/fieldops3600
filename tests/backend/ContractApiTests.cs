@@ -1,5 +1,5 @@
-using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 using FieldOps.Core;
 using FieldOps.ServiceHost;
 using Microsoft.AspNetCore.Http;
@@ -51,33 +51,47 @@ public sealed class ContractApiTests(PostgresFixture fixture)
             activated = Body<ContractView>(await ContractApi.ChangeStatus(created.Id,
                 new(Guid.NewGuid(), created.Id, created.Version, "Active", "Agreement executed"), db, Actor(), TimeProvider.System, default));
         Assert.Equal("Active", activated.Status);
+        await using (var versionCheck = PostgresFixture.Db(connection, "customers"))
+            Assert.Equal(2, await versionCheck.Contracts.Where(x => x.Id == created.Id).Select(x => x.Version).SingleAsync());
 
         var start = DateOnly.FromDateTime(now.UtcDateTime);
         ContractView planned;
         await using (var db = PostgresFixture.Db(connection, "customers"))
-            planned = Body<ContractView>(await ContractApi.CreatePlan(new(Guid.NewGuid(), created.Id, created.Lines[0].Id, null,
-                "Quarterly", start, null), db, Actor(), TimeProvider.System, default));
+        {
+            try
+            {
+                planned = Body<ContractView>(await ContractApi.CreatePlan(new(Guid.NewGuid(), created.Id, created.Lines[0].Id, null,
+                    "Quarterly", start, null), db, remote, Actor(), TimeProvider.System, default));
+            }
+            catch (DbUpdateConcurrencyException exception)
+            {
+                foreach (var entry in exception.Entries)
+                    Console.WriteLine($"CONCURRENCY {entry.Metadata.Name} {entry.State} {entry.Property("Version").CurrentValue} {entry.Property("Version").OriginalValue}");
+                throw;
+            }
+        }
         Assert.Single(planned.Plans);
 
         await using (var db = PostgresFixture.Db(connection, "customers"))
         {
-            var generated = Body<object>(await ContractApi.Generate(created.Id,
+            var generated = Body<JsonElement>(await ContractApi.Generate(created.Id,
                 new(Guid.NewGuid(), created.Id, start.AddMonths(6)), db, Actor(), TimeProvider.System, default));
-            Assert.Contains("generated", Json.Write(generated));
+            Assert.Equal(3, generated.GetProperty("generated").GetInt32());
         }
 
         EntitlementDecision decision;
         await using (var db = PostgresFixture.Db(connection, "customers"))
-            decision = Body<EntitlementDecision>(await ContractApi.Evaluate(db, Actor(), default, customerId, "HVAC"));
+            decision = Assert.IsType<Ok<EntitlementDecision>>(await ContractApi.Evaluate(db, Actor(), default, customerId, "HVAC")).Value!;
         Assert.True(decision.Covered);
         Assert.Equal(created.Id, decision.ContractId);
         Assert.Equal(2, decision.VisitsRemaining);
 
         await using var verify = PostgresFixture.Db(connection, "customers");
         Assert.Equal(1, await verify.Contracts.CountAsync());
-        Assert.Equal(2, await verify.MaintenancePlans.CountAsync() - 1 + 1 - 1 + 1 - 1 + 1);
+        Assert.Equal(1, await verify.MaintenancePlans.CountAsync());
         Assert.Equal(3, await verify.MaintenanceVisits.CountAsync());
-        Assert.Equal(1, await verify.Receipts.CountAsync() - 3 + 3);
+        Assert.Equal(4, await verify.Receipts.CountAsync());
+        Assert.Equal(4, await verify.ContractEvents.CountAsync());
     }
 
     private static T Body<T>(IResult result) => Json.Read<T>(Assert.IsType<ContentHttpResult>(result).ResponseContent!);

@@ -69,7 +69,7 @@ public static class ContractApi
             http.Response.Headers.CacheControl = "no-store";
             return Results.Ok(contracts.Select(contract => new PortalContractView(contract.Id, contract.Status,
                 contract.EffectiveFromUtc, contract.ExpiresAtUtc, LineViews(contract),
-                contract.Visits.Where(x => x.DueDate >= DateOnly.FromDateTime(now.UtcDateTime) && x.Status is "Pending" or "Scheduled")
+                contract.Visits.Where(x => x.DueDate >= DateOnly.FromDateTime(now.UtcDateTime) && (x.Status is "Pending" or "Scheduled"))
                     .OrderBy(x => x.DueDate).Take(50).Select(VisitView).ToArray())));
         }).RequireAuthorization("customer");
     }
@@ -134,14 +134,22 @@ public static class ContractApi
         }, ct);
     }
 
-    public static async Task<IResult> CreatePlan(CreateMaintenancePlan request, ServiceDb db, HttpContext http, TimeProvider clock,
-        CancellationToken ct)
+    public static async Task<IResult> CreatePlan(CreateMaintenancePlan request, ServiceDb db, RemoteServices remote,
+        HttpContext http, TimeProvider clock, CancellationToken ct)
     {
         var contract = await Find(request.ContractId, db, http, true, ct);
+        if (request.AssetId is { } assetId)
+        {
+            var reference = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId:D}/reference", http, ct);
+            if (reference.CustomerId != contract.CustomerId || reference.TeamId != contract.TeamId || reference.Status == "Retired")
+                throw new DomainException(404, "The selected equipment was not found for this customer.");
+        }
         return await Commit(request.OperationId, request, "contract-plan-create", contract.TeamId, db, http, clock, now =>
         {
             var line = contract.Lines.SingleOrDefault(x => x.Id == request.ContractLineId && x.Active)
                 ?? throw new DomainException(404, "Coverage line not found.");
+            if (request.AssetId is null && !contract.CoversAllAssets)
+                throw new DomainException(400, "Select covered equipment for this plan.");
             if (request.AssetId is not null && !contract.CoversAllAssets &&
                 contract.CoveredAssets.All(x => x.AssetId != request.AssetId || !x.Active))
                 throw new DomainException(404, "The selected equipment is not covered.");
@@ -156,7 +164,11 @@ public static class ContractApi
                 NextDueDate = request.StartDate,
                 EndsOn = request.EndsOn
             };
+            // Explicit state avoids treating a client-generated key added through a tracked
+            // navigation as an existing row during change detection. Do not call DbSet.Add
+            // here: relationship fixup would add the plan to the collection a second time.
             contract.Plans.Add(plan);
+            db.Entry(plan).State = EntityState.Added;
             contract.UpdatedAtUtc = now;
             contract.Version++;
             ContractRules.Validate(contract, now);
@@ -173,7 +185,10 @@ public static class ContractApi
         var contract = await Find(id, db, http, true, ct);
         return await Commit(request.OperationId, request, "contract-visits-generate:" + id, contract.TeamId, db, http, clock, now =>
         {
+            var existing = contract.Visits.Select(x => x.Id).ToHashSet();
             var generated = ContractRules.GenerateVisits(contract, request.ThroughDate, now);
+            foreach (var visit in contract.Visits.Where(x => !existing.Contains(x.Id)))
+                db.Entry(visit).State = EntityState.Added;
             AddEvent(db, http, contract, "MaintenanceVisitsGenerated.v1", now,
                 new { contract.Id, generated, request.ThroughDate });
             return Task.FromResult<object>(new { contractId = contract.Id, generated, throughDate = request.ThroughDate, visits = contract.Visits.OrderBy(x => x.DueDate).Select(VisitView).ToArray() });
@@ -190,8 +205,13 @@ public static class ContractApi
         if (order.CustomerId != contract.CustomerId) throw new DomainException(404, "The work order belongs to another customer.");
         return await Commit(request.OperationId, request, "contract-usage:" + id, contract.TeamId, db, http, clock, now =>
         {
+            if (!ContractRules.IsEffective(contract, now))
+                throw new DomainException(409, "Usage can only be recorded against an active, effective contract.");
             var usage = ContractRules.RecordUsage(contract, request.ContractLineId, order.Id, request.VisitsUsed,
                 request.PartsCost, now);
+            // Usage is append-only and has a client-generated key: a navigation add can
+            // otherwise be detected as an update, which the runtime role must not perform.
+            db.Entry(usage).State = EntityState.Added;
             AddEvent(db, http, contract, "ContractUsageRecorded.v1", now,
                 new { contractId = contract.Id, usageId = usage.Id, usage.ContractLineId, usage.WorkOrderId, usage.VisitsUsed, usage.PartsCost });
             return Task.FromResult<object>(View(contract));

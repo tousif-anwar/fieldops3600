@@ -64,7 +64,9 @@ public sealed class CustomerPostgresTests(PostgresFixture fixture)
         db.CustomerContacts.Add(new() { CustomerId = customer.Id, FullName = "Synthetic Contact", Email = "contact@example.invalid", IsPrimary = true, ConsentUpdatedAtUtc = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
         var foreignKeys = await db.Database.SqlQueryRaw<int>("SELECT count(*)::integer AS \"Value\" FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace").SingleAsync();
-        Assert.Equal(3, foreignKeys);
+        // The original customer relations remain, and the contract migration adds its own
+        // customer/agreement foreign keys. ContractPostgresTests covers those explicitly.
+        Assert.True(foreignKeys >= 3);
         var orphan = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("""
             INSERT INTO customer_contacts("Id","CustomerId","FullName","Phone","IsPrimary","EmailConsent","PhoneConsent","ConsentUpdatedAtUtc")
             VALUES(gen_random_uuid(),gen_random_uuid(),'Synthetic Orphan','5550101',false,false,false,now())

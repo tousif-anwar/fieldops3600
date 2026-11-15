@@ -77,6 +77,9 @@ const Assets = lazy(() =>
 const Inventory = lazy(() =>
   import("./pages/Inventory").then((m) => ({ default: m.Inventory })),
 );
+const Contracts = lazy(() =>
+  import("./pages/Contracts").then((m) => ({ default: m.Contracts })),
+);
 const AssetEditor = lazy(() =>
   import("./pages/Assets").then((m) => ({ default: m.AssetEditor })),
 );
@@ -168,6 +171,16 @@ function App() {
                 ]}
               >
                 <Inventory />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="contracts"
+            element={
+              <RequireRole
+                roles={["Dispatcher", "Supervisor", "OperationsManager", "Administrator"]}
+              >
+                <Contracts />
               </RequireRole>
             }
           />
