@@ -1,0 +1,13 @@
+{
+  "name": "fieldops360-public-site-qa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development-only browser checks for the static GitHub Pages artifact.",
+  "scripts": {
+    "check": "node ../scripts/check-public-site.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.57.0",
+    "axe-core": "4.10.3"
+  }
+}
