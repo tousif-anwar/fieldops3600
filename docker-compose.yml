@@ -16,6 +16,7 @@ x-backend-environment: &backend-environment
   Services__WorkOrders: http://work-orders:8080
   Services__Customers: http://customers:8080
   Services__Assets: http://assets:8080
+  Services__Inventory: http://inventory:8080
   Services__Technicians: http://technicians:8080
   Services__Scheduling: http://scheduling:8080
   Services__Workflows: http://workflows:8080
@@ -119,6 +120,21 @@ services:
     depends_on:
       <<: *backend-dependencies
       migrate-assets: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  inventory:
+    image: fieldops360-inventory:local
+    build: &inventory-build
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args: {SERVICE_PROJECT: services/inventory/FieldOps.Inventory.csproj, SERVICE_ASSEMBLY: FieldOps.Inventory.dll}
+    environment:
+      <<: *backend-environment
+      Inventory__Currency: ${INVENTORY_CURRENCY:-USD}
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_inventory;Username=fieldops_inventory_app;Password=${INVENTORY_APP_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on:
+      <<: *backend-dependencies
+      migrate-inventory: {condition: service_completed_successfully}
     restart: unless-stopped
 
   work-orders:
@@ -243,6 +259,17 @@ services:
     depends_on: {postgres: {condition: service_healthy}}
     restart: "no"
 
+  migrate-inventory:
+    image: fieldops360-inventory:local
+    build: *inventory-build
+    command: [--migrate-only]
+    environment:
+      <<: *migration-environment
+      Database__RuntimeRole: fieldops_inventory_app
+      ConnectionStrings__Database: Host=postgres;Database=fieldops_inventory;Username=fieldops_inventory;Password=${INVENTORY_DB_PASSWORD:?Run python scripts/init-local.py}
+    depends_on: {postgres: {condition: service_healthy}}
+    restart: "no"
+
   migrate-work-orders:
     image: fieldops360-work-orders:local
     build: *work-orders-build
@@ -343,6 +370,7 @@ services:
       Services__workflows: http://workflows:8080
       Services__notifications: http://notifications:8080
       Services__reporting: http://reporting:8080
+      Services__inventory: http://inventory:8080
       Services__optimizer: http://optimizer:8000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
     ports: ["127.0.0.1:5100:8080"]
@@ -356,6 +384,7 @@ services:
       workflows: {condition: service_started}
       notifications: {condition: service_started}
       reporting: {condition: service_started}
+      inventory: {condition: service_started}
       optimizer: {condition: service_started}
     restart: unless-stopped
 

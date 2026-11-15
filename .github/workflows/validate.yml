@@ -39,6 +39,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: {node-version: '24', cache: npm, cache-dependency-path: apps/web/package-lock.json}
       - run: npm ci
+      - run: npm run lint
       - run: npm run build
       - run: npm test
       - run: npm run format:check
@@ -87,6 +88,7 @@ jobs:
       - run: python -m unittest discover -s tests/integration -v
       - run: python tests/backend/verify_resource_authorization_http.py -v
       - run: python tests/backend/verify_optimizer_http.py -v
+      - run: python tests/backend/verify_inventory_http.py -v
       - run: npm ci && npx playwright install --with-deps chromium && npm run test:e2e
         working-directory: apps/web
         env: {WEB_BASE_URL: 'http://localhost:8088', FIELDOPS_LIVE_E2E: '1'}

@@ -99,6 +99,11 @@ public static class SchemaMigrator
             REVOKE UPDATE,DELETE,TRUNCATE ON asset_location_history FROM PUBLIC,{role};
             GRANT SELECT,INSERT ON asset_location_history TO {role};
             """;
+        if (service == "inventory") grants += $"""
+
+            REVOKE ALL ON inventory_movements FROM PUBLIC,{role};
+            GRANT SELECT,INSERT ON inventory_movements TO {role};
+            """;
         await using var apply = new NpgsqlCommand(grants, connection, transaction); await apply.ExecuteNonQueryAsync();
     }
 }

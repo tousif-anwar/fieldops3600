@@ -320,9 +320,9 @@ def project(connection, event: dict) -> bool:
     team = payload.get("teamId")
     technician = payload.get("technicianId")
     occurred_at = _utc(occurred)
-    # Invitations are communications, not booked work or technician assignments.
+    # Invitations and stock activity are not booked work or technician assignments.
     # Retain deduplicated ledger/staging evidence without inventing operational facts.
-    if kind.startswith("AssignmentOffer"):
+    if kind.startswith("AssignmentOffer") or event["sourceService"] == "inventory":
         return True
     if kind in customers.EVENTS:
         if event["sourceService"] != "customers" or UUID(order_id).int != 0:

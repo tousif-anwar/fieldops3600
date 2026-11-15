@@ -5,7 +5,7 @@ namespace FieldOps.ServiceHost;
 
 public sealed record ServiceIdentity(string Name);
 
-public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdentity identity) : DbContext(options)
+public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdentity identity) : DbContext(options)
 {
     public string ServiceName => identity.Name;
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
@@ -34,6 +34,8 @@ public sealed class ServiceDb(DbContextOptions<ServiceDb> options, ServiceIdenti
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        if (identity.Name == "inventory") InventoryPersistence.Configure(b);
+        else InventoryPersistence.Ignore(b);
         var owned = identity.Name switch
         {
             "work-orders" => new[] { typeof(WorkOrder), typeof(ServiceRequest) },

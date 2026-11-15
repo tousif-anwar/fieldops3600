@@ -94,19 +94,23 @@ var servicePaths = new Dictionary<string, string[]>
     ["scheduling"] = ["/api/bookings/{**remaining}", "/api/scheduling/{**remaining}", "/api/assignment-offers/{**remaining}", "/api/customer-portal/appointments"],
     ["workflows"] = ["/api/workflows/{**remaining}"],
     ["notifications"] = ["/api/notifications/{**remaining}", "/hubs/notifications/{**remaining}"],
-    ["reporting"] = ["/api/reports/{**remaining}", "/api/replay/{**remaining}"]
+    ["reporting"] = ["/api/reports/{**remaining}", "/api/replay/{**remaining}"],
+    ["inventory"] = ["/api/inventory/{**remaining}"]
 };
 var routes = new List<RouteConfig>();
 var clusters = new List<ClusterConfig>();
+var businessAddresses = new Dictionary<string, string>();
 var port = 5101;
 foreach (var (service, paths) in servicePaths)
 {
+    var address = builder.Configuration[$"Services:{service}"] ?? $"http://localhost:{port}";
+    businessAddresses.Add(service, address);
     clusters.Add(new ClusterConfig
     {
         ClusterId = service,
         Destinations = new Dictionary<string, DestinationConfig>
         {
-            ["primary"] = new() { Address = builder.Configuration[$"Services:{service}"] ?? $"http://localhost:{port}" }
+            ["primary"] = new() { Address = address }
         },
         HttpRequest = new ForwarderRequestConfig { ActivityTimeout = TimeSpan.FromSeconds(45) }
     });
@@ -114,6 +118,7 @@ foreach (var (service, paths) in servicePaths)
     foreach (var path in paths)
         routes.Add(new RouteConfig { RouteId = $"{service}-{routes.Count}", ClusterId = service, Match = new RouteMatch { Path = path } });
 }
+builder.Services.AddSingleton(new BusinessServiceEndpoints(businessAddresses));
 clusters.Add(new ClusterConfig
 {
     ClusterId = "optimizer",
@@ -163,14 +168,14 @@ app.MapGet("/api/session", (ClaimsPrincipal user) => Results.Ok(new
 app.MapReverseProxy();
 app.Run();
 
-public sealed class UpstreamReadiness(IHttpClientFactory clients, IConfiguration configuration) : IHealthCheck
+public sealed record BusinessServiceEndpoints(IReadOnlyDictionary<string, string> Addresses);
+
+public sealed class UpstreamReadiness(IHttpClientFactory clients, BusinessServiceEndpoints services) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var names = new[] { "work-orders", "customers", "assets", "technicians", "scheduling", "workflows", "notifications", "reporting" };
-        var checks = names.Select(async (name, index) =>
+        var checks = services.Addresses.Values.Select(async address =>
         {
-            var address = configuration[$"Services:{name}"] ?? $"http://localhost:{5101 + index}";
             try
             {
                 using var response = await clients.CreateClient("readiness").GetAsync(address.TrimEnd('/') + "/health/ready", cancellationToken);

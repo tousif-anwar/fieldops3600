@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/inventory/">
+    <Project Path="inventory/FieldOps.Inventory.csproj" />
+  </Folder>
   <Folder Name="/assets/">
     <Project Path="assets/FieldOps.Assets.csproj" />
   </Folder>

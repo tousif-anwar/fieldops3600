@@ -119,13 +119,13 @@ class BootstrapTests(unittest.TestCase):
         self.initialize()
         values = read_environment(self.root / ".env")
         sql = reconciliation_sql(self.root, values)
-        # Legacy installations may predate these two bounded contexts. Creation is
+        # Legacy installations may predate these bounded contexts. Creation is
         # additive and conditional; every pre-existing operational database is preserved.
         self.assertEqual(
-            [("fieldops_customers", "fieldops_customers"), ("fieldops_assets", "fieldops_assets")],
+            [("fieldops_customers", "fieldops_customers"), ("fieldops_assets", "fieldops_assets"), ("fieldops_inventory", "fieldops_inventory")],
             re.findall(r"CREATE DATABASE (\w+) OWNER (\w+)", sql),
         )
-        for context in ("customers", "assets"):
+        for context in ("customers", "assets", "inventory"):
             self.assertIn(
                 f"SELECT 'CREATE DATABASE fieldops_{context} OWNER fieldops_{context}'\n"
                 f"WHERE NOT EXISTS(SELECT 1 FROM pg_database WHERE datname='fieldops_{context}')\n\\gexec",
@@ -138,7 +138,7 @@ class BootstrapTests(unittest.TestCase):
             )
         self.assertNotIn("DROP ", sql)
         for name in SERVICES:
-            if name not in {"customers", "assets"}:
+            if name not in {"customers", "assets", "inventory"}:
                 self.assertNotIn(values[f"{name.upper()}_DB_PASSWORD"], sql)
             self.assertNotRegex(sql, rf'ALTER ROLE\s+"?fieldops_{name}"?\s+[^;]*PASSWORD')
         for name in OPERATIONAL_SERVICES:
@@ -149,6 +149,26 @@ class BootstrapTests(unittest.TestCase):
         policy = operational_grants_sql("reporting")
         self.assertIn('GRANT SELECT, INSERT ON TABLE public."audit_events"', policy)
         self.assertIn('GRANT SELECT ON TABLE public."fieldops_schema_migrations"', policy)
+        self.assertIn('GRANT SELECT, INSERT ON TABLE public."inventory_movements"', operational_grants_sql("inventory"))
+
+    def test_inventory_upgrade_adds_only_missing_credentials_and_keeps_existing_data_configuration(self):
+        self.initialize()
+        env = self.root / ".env"
+        before = read_environment(env)
+        new_keys = {"INVENTORY_DB_PASSWORD", "INVENTORY_APP_DB_PASSWORD"}
+        legacy = "\n".join(f"{key}={value}" for key, value in before.items() if key not in new_keys) + "\n"
+        env.write_text(legacy, encoding="utf-8")
+        realm = (self.root / "infrastructure/keycloak/realm.generated.json").read_bytes()
+        output = self.initialize()
+        updated = read_environment(env)
+        self.assertTrue(env.read_text().startswith(legacy))
+        self.assertEqual(realm, (self.root / "infrastructure/keycloak/realm.generated.json").read_bytes())
+        self.assertTrue(all(updated.get(key) for key in new_keys))
+        for key, value in before.items():
+            if key not in new_keys:
+                self.assertEqual(value, updated[key])
+        for key in new_keys:
+            self.assertNotIn(updated[key], output)
 
     def test_sql_names_are_safelisted_and_password_literals_are_escaped(self):
         with self.assertRaises(ValueError):

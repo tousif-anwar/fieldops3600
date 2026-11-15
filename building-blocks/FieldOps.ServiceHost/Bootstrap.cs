@@ -54,6 +54,9 @@ public static class Bootstrap
             options.AddPolicy("report", p => p.RequireAuthenticatedUser().RequireRole("Analyst", "Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("replay", p => p.RequireAuthenticatedUser().RequireRole("Supervisor", "OperationsManager", "Administrator"));
             options.AddPolicy("admin", p => p.RequireAuthenticatedUser().RequireRole("Administrator"));
+            options.AddPolicy("inventory-read", p => p.RequireAuthenticatedUser().RequireRole("Technician", "Dispatcher", "Supervisor", "OperationsManager", "Administrator"));
+            options.AddPolicy("inventory-manage", p => p.RequireAuthenticatedUser().RequireRole("Supervisor", "OperationsManager", "Administrator"));
+            options.AddPolicy("inventory-adjust", p => p.RequireAuthenticatedUser().RequireRole("OperationsManager", "Administrator"));
         });
         builder.Services.AddOpenTelemetry().ConfigureResource(r => r.AddService($"fieldops-{service}")).WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddSource("MassTransit", "FieldOps").AddOtlpExporter());
         var messagingEnabled = builder.Configuration.GetValue("Messaging:Enabled", true);
@@ -105,6 +108,7 @@ public static class Bootstrap
         app.MapMetrics();
         OperationsApi.Map(app, service);
         CustomerPortalApi.Map(app, service);
+        if (service == "inventory") InventoryApi.Map(app);
         if (service == "workflows") ServiceReportApi.Map(app);
         if (service == "notifications") { ReportingApi.Map(app); app.MapHub<NotificationHub>("/hubs/notifications"); }
         if (service == "reporting") ReportingApi.MapReporting(app);

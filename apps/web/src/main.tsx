@@ -74,6 +74,9 @@ const RegistryInsights = lazy(() =>
 const Assets = lazy(() =>
   import("./pages/Assets").then((m) => ({ default: m.Assets })),
 );
+const Inventory = lazy(() =>
+  import("./pages/Inventory").then((m) => ({ default: m.Inventory })),
+);
 const AssetEditor = lazy(() =>
   import("./pages/Assets").then((m) => ({ default: m.AssetEditor })),
 );
@@ -152,6 +155,22 @@ function App() {
         <Route element={<Shell />}>
           <Route index element={<Home />} />
           <Route path="workspaces" element={<Workspaces />} />
+          <Route
+            path="inventory"
+            element={
+              <RequireRole
+                roles={[
+                  "Technician",
+                  "Dispatcher",
+                  "Supervisor",
+                  "OperationsManager",
+                  "Administrator",
+                ]}
+              >
+                <Inventory />
+              </RequireRole>
+            }
+          />
           <Route
             path="service-requests"
             element={

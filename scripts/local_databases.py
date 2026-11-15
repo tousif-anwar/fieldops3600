@@ -21,6 +21,7 @@ OPERATIONAL_SERVICES = (
     "workflows",
     "notifications",
     "reporting",
+    "inventory",
 )
 SERVICES = (*OPERATIONAL_SERVICES, "warehouse")
 
@@ -119,9 +120,11 @@ END;""")
         protected.append("customer_changes")
     if service == "assets":
         protected.extend(["asset_changes", "asset_location_history"])
+    if service == "inventory":
+        protected.append("inventory_movements")
     protection = []
     for table in protected:
-        rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts", "customer_changes", "asset_changes", "asset_location_history"} else "SELECT"
+        rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts", "customer_changes", "asset_changes", "asset_location_history", "inventory_movements"} else "SELECT"
         protection.append(
             block(f"""BEGIN
  IF to_regclass('public.{table}') IS NOT NULL THEN
@@ -188,6 +191,7 @@ def reconciliation_sql(root: Path, values: dict[str, str]) -> str:
         "-- Add application roles/permissions; never drop data or change owner passwords.",
         customer_context_sql(values),
         asset_context_sql(values),
+        inventory_context_sql(values),
         runtime_roles_sql(values),
     ]
     for service in OPERATIONAL_SERVICES:
@@ -209,6 +213,21 @@ WHERE NOT EXISTS(SELECT 1 FROM pg_database WHERE datname='fieldops_assets')
 \\gexec
 REVOKE ALL ON DATABASE fieldops_assets FROM PUBLIC;
 GRANT CONNECT ON DATABASE fieldops_assets TO fieldops_assets;
+"""
+
+
+def inventory_context_sql(values: dict[str, str]) -> str:
+    """Provision the new inventory owner/database without changing existing data or credentials."""
+    password = literal(values["INVENTORY_DB_PASSWORD"])
+    return block(f"""BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='fieldops_inventory') THEN
+  CREATE ROLE fieldops_inventory LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {password};
+ END IF;
+END;""") + "\n" + """SELECT 'CREATE DATABASE fieldops_inventory OWNER fieldops_inventory'
+WHERE NOT EXISTS(SELECT 1 FROM pg_database WHERE datname='fieldops_inventory')
+\\gexec
+REVOKE ALL ON DATABASE fieldops_inventory FROM PUBLIC;
+GRANT CONNECT ON DATABASE fieldops_inventory TO fieldops_inventory;
 """
 
 

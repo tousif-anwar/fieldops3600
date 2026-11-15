@@ -24,6 +24,7 @@ function AuthenticatedApp() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="job/[id]" options={{ title: 'Job details' }} />
+        <Stack.Screen name="job/[id]/inventory" options={{ title: 'Job parts' }} />
         <Stack.Screen name="offer/[id]" options={{ title: 'Assignment offer' }} />
         <Stack.Screen name="job/[id]/stage/[stage]" options={{ title: 'Guided service' }} />
         <Stack.Screen name="oauth/callback" options={{ headerShown: false }} />

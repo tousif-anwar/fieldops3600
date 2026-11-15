@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-SERVICES = {"customers": "customers", "assets": "assets", "work-orders": "work_orders", "technicians": "technicians", "scheduling": "scheduling", "workflows": "workflows", "notifications": "notifications", "reporting": "reporting"}
+SERVICES = {"customers": "customers", "assets": "assets", "work-orders": "work_orders", "technicians": "technicians", "scheduling": "scheduling", "workflows": "workflows", "notifications": "notifications", "reporting": "reporting", "inventory": "inventory"}
 
 
 def sql(database, role, expression):
@@ -64,7 +64,12 @@ def main():
         AND NOT has_table_privilege(current_user,'asset_changes','TRUNCATE')
         AND NOT has_table_privilege(current_user,'asset_location_history','UPDATE')
         AND has_table_privilege(current_user,'assets','UPDATE')""")
-    print("Verified eight isolated runtime identities, append-only customer/asset/audit history grants, warehouse writer/reader boundaries, and absence of owner DSNs in business containers.")
+    sql("fieldops_inventory", "fieldops_inventory_app", """SELECT
+        has_table_privilege(current_user,'inventory_movements','SELECT') AND has_table_privilege(current_user,'inventory_movements','INSERT')
+        AND NOT has_table_privilege(current_user,'inventory_movements','UPDATE') AND NOT has_table_privilege(current_user,'inventory_movements','DELETE')
+        AND NOT has_table_privilege(current_user,'inventory_movements','TRUNCATE') AND NOT has_table_privilege(current_user,'inventory_movements','TRIGGER')
+        AND has_table_privilege(current_user,'stock_balances','UPDATE')""")
+    print("Verified nine isolated runtime identities, append-only inventory/customer/asset/audit history grants, warehouse writer/reader boundaries, and absence of owner DSNs in business containers.")
 
 
 if __name__ == "__main__":

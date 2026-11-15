@@ -17,7 +17,7 @@ def main() -> None:
         values = read_environment(env_path)
         # A newly added bounded context gets its own credentials. Existing owners
         # remain mandatory so upgrades never silently rotate deployed passwords.
-        required = [f"{name.upper()}_DB_PASSWORD" for name in SERVICES if name != "customers"] + ["KEYCLOAK_DB_PASSWORD"]
+        required = [f"{name.upper()}_DB_PASSWORD" for name in SERVICES if name not in {"customers", "inventory"}] + ["KEYCLOAK_DB_PASSWORD"]
         missing = [name for name in required if not values.get(name)]
         if missing:
             raise SystemExit(
@@ -25,7 +25,7 @@ def main() -> None:
                 "without resetting identities: " + ", ".join(missing)
             )
         runtime_keys = [f"{name.upper()}_APP_DB_PASSWORD" for name in SERVICES] + [
-            "WAREHOUSE_READ_DB_PASSWORD", "CUSTOMERS_DB_PASSWORD"
+            "WAREHOUSE_READ_DB_PASSWORD", "CUSTOMERS_DB_PASSWORD", "INVENTORY_DB_PASSWORD"
         ]
         empty = [name for name in runtime_keys if name in values and not values[name]]
         if empty:

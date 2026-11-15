@@ -96,6 +96,24 @@ class WarehouseTests(unittest.TestCase):
         WORKER.project(self.db, self.event("AssignmentOfferRevoked.v1", sequence=2, source="scheduling"))
         self.assertEqual(assigned_technician, self.db.execute("SELECT t.technician_id FROM warehouse.fact_work_order o JOIN warehouse.dim_technician t USING(technician_key) WHERE o.work_order_id=%s", (self.order,)).fetchone()[0])
 
+    def test_inventory_events_retain_evidence_without_inventing_operational_facts(self):
+        for kind in ["InventoryMovementRecorded.v1", "PartConsumed.v1", "PartReturned.v1"]:
+            event = self.event(kind, stage=True, source="inventory", payload={"quantity": "2.000"})
+            self.assertTrue(WORKER.project(self.db, event))
+            self.assertFalse(WORKER.project(self.db, event))
+            self.assertEqual(1, self.db.execute("SELECT count(*) FROM warehouse.ingestion_ledger WHERE event_id=%s", (event["eventId"],)).fetchone()[0])
+        self.assertEqual(3, self.db.execute("SELECT count(*) FROM warehouse.staging_event WHERE work_order_id=%s", (self.order,)).fetchone()[0])
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.fact_work_order WHERE work_order_id=%s", (self.order,)).fetchone())
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.fact_workflow_stage WHERE stage_instance_id=%s", (self.stage,)).fetchone())
+        self.assertIsNone(self.db.execute("SELECT 1 FROM warehouse.dim_technician WHERE technician_id=%s", ("tech-" + self.order,)).fetchone())
+
+    def test_inventory_activity_does_not_change_existing_order_assignment_or_freshness(self):
+        WORKER.project(self.db, self.event("WorkOrderCreated.v1", payload={"technicianId": None, "createdAtUtc": self.now.isoformat()}))
+        before = self.db.execute("SELECT technician_key,last_occurrence_utc FROM warehouse.fact_work_order WHERE work_order_id=%s", (self.order,)).fetchone()
+        WORKER.project(self.db, self.event("PartConsumed.v1", minutes=20, source="inventory"))
+        after = self.db.execute("SELECT technician_key,last_occurrence_utc FROM warehouse.fact_work_order WHERE work_order_id=%s", (self.order,)).fetchone()
+        self.assertEqual(before, after)
+
     def test_work_order_asset_reference_is_projected_and_preserved(self):
         asset = str(uuid4())
         created = self.event(

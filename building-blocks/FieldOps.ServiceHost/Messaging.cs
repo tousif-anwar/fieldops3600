@@ -201,8 +201,9 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         var priorEvents = await db.Events.AsNoTracking().Where(x => x.WorkOrderId == e.WorkOrderId).Select(x => x.Body).ToListAsync(ct);
         var history = priorEvents.Select(Json.Read<AuditEvent>).Append(e).GroupBy(x => x.EventId).Select(g => g.First()).ToArray();
         projection.StateJson = Json.Write(ReplayEngine.Reconstruct(history)); projection.EventCount = history.Length; projection.UpdatedAtUtc = now;
-        // Offers preserve replay evidence, but only confirmed bookings establish assignment facts.
-        if (e.EventType.StartsWith("AssignmentOffer", StringComparison.Ordinal)) return;
+        // Related stock activity and offers belong in replay, but are not evidence
+        // that a work order was created, assigned, or advanced through a service stage.
+        if (e.SourceService == "inventory" || e.EventType.StartsWith("AssignmentOffer", StringComparison.Ordinal)) return;
         var order = await db.WorkOrderFacts.FindAsync([e.WorkOrderId], ct);
         if (order is null) { order = new WorkOrderFact { WorkOrderId = e.WorkOrderId, CreatedAtUtc = e.OccurredAtUtc, TeamId = GetString(e, "teamId") ?? "" }; db.WorkOrderFacts.Add(order); }
         // Late creation enriches a pre-existing fact without erasing already observed completion.

@@ -7,6 +7,7 @@ import {
   ClipboardList,
   History,
   LayoutGrid,
+  Package,
   Settings2,
   TriangleAlert,
   Wrench,
@@ -26,6 +27,21 @@ interface Workspace {
 }
 
 const workspaces: Workspace[] = [
+  {
+    to: "/inventory",
+    title: "Inventory",
+    description:
+      "Review stock, job reservations, transfers, and recorded parts use.",
+    group: "Operations",
+    roles: [
+      "Technician",
+      "Dispatcher",
+      "Supervisor",
+      "OperationsManager",
+      "Administrator",
+    ],
+    icon: <Package aria-hidden="true" size={22} />,
+  },
   {
     to: "/service-requests",
     title: "Service requests",

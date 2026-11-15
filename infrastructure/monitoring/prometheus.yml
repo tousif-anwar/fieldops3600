@@ -9,6 +9,7 @@ scrape_configs:
           - work-orders:8080
           - customers:8080
           - assets:8080
+          - inventory:8080
           - technicians:8080
           - scheduling:8080
           - workflows:8080

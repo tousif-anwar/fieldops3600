@@ -92,6 +92,18 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
         roles: ["Dispatcher", "Supervisor", "OperationsManager"],
       },
       {
+        to: "/inventory",
+        label: "Inventory",
+        icon: Package,
+        roles: [
+          "Technician",
+          "Dispatcher",
+          "Supervisor",
+          "OperationsManager",
+          "Administrator",
+        ],
+      },
+      {
         to: "/work-orders",
         label: "Work orders",
         icon: ClipboardList,

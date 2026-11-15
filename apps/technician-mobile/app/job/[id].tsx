@@ -141,6 +141,12 @@ export default function JobDetails() {
           ) : null}
           <CustomerServiceInfo job={job} />
           <AssetServiceInfo job={job} />
+          <Section title="Parts">
+            <TextButton
+              title="Open job inventory"
+              onPress={() => router.push({ pathname: '/job/[id]/inventory', params: { id } })}
+            />
+          </Section>
           <Section title="Appointment">
             {booking ? (
               <>
