@@ -42,6 +42,7 @@ Do not promote a row to complete until its applicable definition-of-done gates i
 - `aaef565` — contract domain, persistence, API, migration, gateway/schema/local-role integration.
 - `edc6764` — contract domain, migration, and API PostgreSQL tests.
 - `b2fa6f1` — contract operator workspace, customer-portal agreement view, live HTTP verification, append-only usage fix, integration documentation.
+- `ddc6eec` — contract browser smoke, Keycloak/booking test hardening, final handoff evidence.
 
 The original landing implementation remains in `stash@{0}`; do not apply it over newer website sources blindly.
 
