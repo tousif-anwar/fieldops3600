@@ -20,6 +20,7 @@ public static class ContractPlanApi
     {
         if (request.OperationId == Guid.Empty || request.ServiceLocationId == Guid.Empty)
             throw new DomainException(400, "A nonempty operation ID and service location are required.");
+        if (request.FirstNewDue == default) throw new DomainException(400, "A first new due date is required.");
         ContractRules.Text(request.Reason, 3, 500, "Plan amendment reason");
         var caller = Caller.From(http.User);
         var initial = await ContractApi.Find(contractId, db, http, false, ct);
@@ -74,7 +75,7 @@ public static class ContractPlanApi
         var zone = TimeZoneInfo.FindSystemTimeZoneById(contract.TimeZoneId);
         var today = LocalDate(now, zone);
         var firstCoveredDate = LocalDate(contract.EffectiveFromUtc, zone);
-        if (request.FirstNewDue == default || request.FirstNewDue < today || request.FirstNewDue < firstCoveredDate)
+        if (request.FirstNewDue < today || request.FirstNewDue < firstCoveredDate)
             throw new DomainException(400, "The first new due date must be on or after the agreement's local today and effective start.");
         var latestGenerated = contract.Visits.Where(x => x.ContractLineId == plan.ContractLineId && x.AssetId == plan.AssetId)
             .Select(x => (DateOnly?)x.DueDate).Max();

@@ -115,6 +115,8 @@ for (const restrictedEquipment of [false, true]) {
     const customerName = `000 Contract browser ${suffix}`;
     const reason = `Synthetic browser annual renewal ${suffix}`;
     let customer: Customer | undefined;
+    let primaryFailed = false;
+    let cleanupStep = "not started";
     try {
       const registration = await page.request.post("/api/customers", {
         headers: {
@@ -566,56 +568,77 @@ for (const restrictedEquipment of [false, true]) {
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual((page.viewportSize()?.width ?? 0) + 1);
       expect(failures).toEqual([]);
+    } catch (error) {
+      primaryFailed = true;
+      throw error;
     } finally {
       if (customer) {
-        // The unique customer bounds cleanup even if a multi-command UI operation
-        // failed before its response could be captured. Keep immutable evidence.
-        const jobsResponse = await page.request.get(
-          `/api/work-orders/by-customer/${customer.id}`,
-          { headers },
-        );
-        expect(jobsResponse.ok()).toBe(true);
-        const jobs: CustomerPage<WorkOrder> = await jobsResponse.json();
-        for (const order of jobs.items.filter(
-          (item) => item.status === "Created" && !item.technicianId,
-        )) {
-          const cancelled = await page.request.put(
-            `/api/work-orders/${order.id}`,
-            {
-              headers,
-              data: {
-                expectedVersion: order.version,
-                title: order.title,
-                priority: order.priority,
-                status: "Cancelled",
-              },
-            },
+        try {
+          // The unique customer bounds cleanup even if a multi-command UI operation
+          // failed before its response could be captured. Keep immutable evidence.
+          const jobsResponse = await page.request.get(
+            `/api/work-orders/by-customer/${customer.id}`,
+            { headers },
           );
-          expect(cancelled.ok()).toBe(true);
-        }
-        const agreementsResponse = await page.request.get(
-          `/api/contracts?customerId=${customer.id}&pageSize=100`,
-          { headers },
-        );
-        expect(agreementsResponse.ok()).toBe(true);
-        const agreements: ContractPage = await agreementsResponse.json();
-        for (const agreement of agreements.items.filter(
-          (item) => item.status !== "Cancelled",
-        )) {
-          const cancelled = await page.request.post(
-            `/api/contracts/${agreement.id}/status`,
-            {
-              headers,
-              data: {
-                operationId: randomUUID(),
-                contractId: agreement.id,
-                expectedVersion: agreement.version,
-                status: "Cancelled",
-                reason: "Synthetic contract browser fixture cleanup",
+          cleanupStep = `work-order lookup HTTP ${jobsResponse.status()}`;
+          expect(jobsResponse.ok(), cleanupStep).toBe(true);
+          const jobs: CustomerPage<WorkOrder> = await jobsResponse.json();
+          for (const order of jobs.items.filter(
+            (item) => item.status === "Created" && !item.technicianId,
+          )) {
+            const cancelled = await page.request.put(
+              `/api/work-orders/${order.id}`,
+              {
+                headers,
+                data: {
+                  expectedVersion: order.version,
+                  title: order.title,
+                  priority: order.priority,
+                  status: "Cancelled",
+                },
               },
-            },
+            );
+            cleanupStep = `work-order cancellation HTTP ${cancelled.status()}`;
+            expect(cancelled.ok(), cleanupStep).toBe(true);
+          }
+          const agreementsResponse = await page.request.get(
+            `/api/contracts?customerId=${customer.id}&pageSize=100`,
+            { headers },
           );
-          expect(cancelled.ok()).toBe(true);
+          cleanupStep = `agreement lookup HTTP ${agreementsResponse.status()}`;
+          expect(agreementsResponse.ok(), cleanupStep).toBe(true);
+          const agreements: ContractPage = await agreementsResponse.json();
+          for (const agreement of agreements.items.filter(
+            (item) => item.status !== "Cancelled",
+          )) {
+            const cancelled = await page.request.post(
+              `/api/contracts/${agreement.id}/status`,
+              {
+                headers,
+                data: {
+                  operationId: randomUUID(),
+                  contractId: agreement.id,
+                  expectedVersion: agreement.version,
+                  status: "Cancelled",
+                  reason: "Synthetic contract browser fixture cleanup",
+                },
+              },
+            );
+            cleanupStep = `agreement cancellation HTTP ${cancelled.status()}`;
+            expect(cancelled.ok(), cleanupStep).toBe(true);
+          }
+        } catch (cleanupError) {
+          if (!primaryFailed) throw cleanupError;
+          // Preserve the business assertion that first failed. Cleanup failures
+          // have separate, credential-free evidence for scoped reconciliation.
+          testInfo.annotations.push({
+            type: "fixture-cleanup",
+            description: `${customer.id}: ${cleanupStep}`,
+          });
+          await testInfo.attach("fixture-cleanup-warning.txt", {
+            body: `Synthetic customer ${customer.id} (${customerName}) cleanup could not complete at ${cleanupStep}. The primary test failure is preserved. Reconcile only this customer's unassigned jobs and agreements after confirming no booking/service activity.`,
+            contentType: "text/plain",
+          });
         }
       }
     }

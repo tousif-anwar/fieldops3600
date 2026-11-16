@@ -48,6 +48,11 @@ The original landing implementation remains in `stash@{0}`; do not apply it over
 
 ## Verification
 
+- Final completion/dispatch batch: full backend **195/195 passed, zero skips**. Migration005 applied to the actual local customers database; final customer/work-order images restarted. `python tests/backend/verify_contracts_http.py -v` **1/1 passed in110.3s** through real booking, technician template execution, RabbitMQ, work-order completion and exactly one contract usage record. Runtime ACL verification passed afterward.
+- Web: **80/80** tests passed; typecheck/lint and full formatting check passed. Three previously unformatted web files were normalized without semantic changes.
+- Generic and restricted-equipment contract browser journeys **4/4 passed**, desktop and Pixel7, before the next allocation/plan-amendment source additions. Restricted creation now creates a plan per covered equipment item and preserves asset/site through dispatch and renewal. The full60-case browser regression is running; no final result claimed yet.
+- Current new source slice (not yet deployed): allowance allocation from existing visit states, trusted owner cancellation release, and versioned recurrence plan amendment. New `ContractPlanApi.cs` / `ContractPlanEditor.tsx`; root API/bootstrap/DTO hooks are integrated. Focused and final combined tests remain to run. No new schema migration is expected.
+
 - Local real RabbitMQ delivery: `python scripts/verify-enterprise-delivery.py` passed, with recent inventory **20 published / 20 reporting audit / 20 inbox** and customers **20/20/20**. Read-only matching of actual owner event IDs; no event injection/replay. CI now runs this after both live HTTP workflows. See `docs/enterprise/MESSAGING_EVIDENCE.md`.
 - Renewal component tests **2/2 passed**. Future Draft renewal→new plan→exact activation PostgreSQL regression passed in the lifecycle selection **23/23**.
 - The current completion module and migration005 are implemented, but are still undergoing focused tests and are not applied to the live local runtime yet. Do not deploy source against migration004 alone: the visit model now has completion/review/revision fields requiring005.

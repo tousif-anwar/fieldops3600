@@ -392,8 +392,9 @@ public static class ContractRules
         return usage;
     }
 
-    public static int IntervalMonths(string frequency) =>
-        FrequencyMonths.TryGetValue(frequency, out var months) ? months : throw new DomainException(400, "Unknown recurrence frequency.");
+    public static int IntervalMonths(string? frequency) =>
+        frequency is not null && FrequencyMonths.TryGetValue(frequency, out var months)
+            ? months : throw new DomainException(400, "Unknown recurrence frequency.");
 
     public static void Text(string? value, int minimum, int maximum, string field)
     {

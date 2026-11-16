@@ -765,7 +765,9 @@ export function Contracts() {
                           key={`${plan.id}:${plan.version}`}
                           contract={contract}
                           plan={plan}
-                          sites={sites}
+                          sites={sites.flatMap((site) =>
+                            site.id ? [{ id: site.id, name: site.name }] : [],
+                          )}
                         />
                       ))
                     : null}

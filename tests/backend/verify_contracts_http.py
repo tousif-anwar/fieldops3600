@@ -245,7 +245,8 @@ class ContractHttpTests(unittest.TestCase):
         )
         self.assertEqual(200, status, entitlement)
         self.assertTrue(entitlement["covered"], entitlement)
-        self.assertEqual(2, entitlement["visitsRemaining"], entitlement)
+        self.assertEqual(1, entitlement["visitsRemaining"], entitlement)
+        self.assertEqual(1, entitlement["committedVisits"], entitlement)
 
         status, order = self.request(
             "POST",
@@ -295,6 +296,7 @@ class ContractHttpTests(unittest.TestCase):
         )
         self.assertEqual(200, status, remaining)
         self.assertEqual(1, remaining["visitsRemaining"], remaining)
+        self.assertEqual(0, remaining["committedVisits"], remaining)
 
         status, cancelled = self.request(
             "POST",

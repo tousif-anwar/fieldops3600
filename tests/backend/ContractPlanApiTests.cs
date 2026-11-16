@@ -85,6 +85,30 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task DifferentConcurrentCommandsCannotBothUseTheSameVersions()
+    {
+        var setup = await Setup();
+        async Task<int> Execute(AmendMaintenancePlan request)
+        {
+            await using var db = PostgresFixture.Db(setup.Connection, "customers");
+            try
+            {
+                await ContractPlanApi.Amend(setup.ContractId, setup.PlanId, request,
+                    db, NoRemote(), Actor(), new FixedClock(), default);
+                return 200;
+            }
+            catch (DomainException failure) { return failure.Status; }
+        }
+        var statuses = await Task.WhenAll(Execute(Command(setup)), Execute(Command(setup) with { Frequency = "Annual" }));
+        Assert.Equal([200, 409], statuses.Order());
+        await using var verify = PostgresFixture.Db(setup.Connection, "customers");
+        Assert.Equal(2, (await verify.Contracts.SingleAsync()).Version);
+        Assert.Equal(2, (await verify.MaintenancePlans.SingleAsync()).Version);
+        Assert.Single(await verify.Receipts.ToArrayAsync());
+        Assert.Single(await verify.ContractEvents.ToArrayAsync());
+    }
+
+    [Fact]
     public async Task ChangedCommandConflictsAndReceiptReplaysWithoutRemoteEquipmentAfterClosure()
     {
         var setup = await Setup(assetPlan: true);
@@ -162,6 +186,7 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
 
     [Theory]
     [InlineData("past")]
+    [InlineData("missing")]
     [InlineData("expired-first")]
     [InlineData("early-end")]
     [InlineData("expired-end")]
@@ -172,6 +197,7 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
         var request = invalid switch
         {
             "past" => Command(setup) with { FirstNewDue = new(2026, 3, 7) },
+            "missing" => Command(setup) with { FirstNewDue = default },
             "expired-first" => Command(setup) with { FirstNewDue = new(2027, 1, 1), EndsOn = null },
             "early-end" => Command(setup) with { EndsOn = NewDue.AddDays(-1) },
             "expired-end" => Command(setup) with { EndsOn = new(2027, 1, 1) },
@@ -248,6 +274,17 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
         };
         await Reject(setup, Command(setup), 404, owner.Remote());
         Assert.Equal(1, owner.Reads);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EquipmentForAnotherTeamOrCustomerIsRejected(bool foreignTeam)
+    {
+        var setup = await Setup(assetPlan: true);
+        var owner = new AssetOwner(new(setup.AssetId!.Value, foreignTeam ? "south" : "north",
+            foreignTeam ? setup.CustomerId : Guid.NewGuid(), setup.NewSiteId, "Active"));
+        await Reject(setup, Command(setup), 404, owner.Remote());
     }
 
     [Theory]
@@ -352,6 +389,7 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
     }
     private sealed class AssetOwner(AssetReferenceView asset) : IHttpClientFactory
     {
+        private AssetReferenceView Asset => asset;
         public int Reads { get; private set; }
         public Func<Task>? BeforeResponse { get; set; }
         public RemoteServices Remote() => new(this, new ConfigurationBuilder()
@@ -362,10 +400,10 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
             {
                 Assert.Equal(HttpMethod.Get, request.Method);
-                Assert.Equal($"/api/assets/{asset.Id:D}/reference", request.RequestUri!.AbsolutePath);
+                Assert.Equal($"/api/assets/{owner.Asset.Id:D}/reference", request.RequestUri!.AbsolutePath);
                 owner.Reads++;
                 if (owner.BeforeResponse is not null) await owner.BeforeResponse();
-                return new(HttpStatusCode.OK) { Content = JsonContent.Create(asset, options: Json.Options) };
+                return new(HttpStatusCode.OK) { Content = JsonContent.Create(owner.Asset, options: Json.Options) };
             }
         }
     }
