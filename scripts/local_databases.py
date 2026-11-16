@@ -117,14 +117,14 @@ END;""")
     if service == "reporting":
         protected.extend(["audit_events", "delivery_attempts"])
     if service == "customers":
-        protected.extend(["customer_changes", "contract_events", "contract_usage"])
+        protected.extend(["customer_changes", "contract_events", "contract_usage", "contract_renewals"])
     if service == "assets":
         protected.extend(["asset_changes", "asset_location_history"])
     if service == "inventory":
         protected.append("inventory_movements")
     protection = []
     for table in protected:
-        rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts", "customer_changes", "contract_events", "contract_usage", "asset_changes", "asset_location_history", "inventory_movements"} else "SELECT"
+        rights = "SELECT, INSERT" if table in {"audit_events", "delivery_attempts", "customer_changes", "contract_events", "contract_usage", "contract_renewals", "asset_changes", "asset_location_history", "inventory_movements"} else "SELECT"
         protection.append(
             block(f"""BEGIN
  IF to_regclass('public.{table}') IS NOT NULL THEN

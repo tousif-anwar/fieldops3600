@@ -776,6 +776,27 @@ tbody tr:hover {
 .filter-bar > span {
   max-width: 180px;
 }
+.inventory-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  height: auto;
+}
+.inventory-filters .fui-Field {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.inventory-filters .fui-Select,
+.inventory-filters select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  .inventory-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .back-link {
   background: none;
   border: 0;

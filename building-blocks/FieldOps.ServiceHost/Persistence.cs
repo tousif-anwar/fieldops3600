@@ -46,6 +46,8 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
         else InventoryPersistence.Ignore(b);
         if (identity.Name == "customers") ContractPersistence.Configure(b);
         else ContractPersistence.Ignore(b);
+        if (identity.Name == "customers") ContractLifecyclePersistence.Configure(b);
+        else ContractLifecyclePersistence.Ignore(b);
         var owned = identity.Name switch
         {
             "work-orders" => new[] { typeof(WorkOrder), typeof(ServiceRequest) },
@@ -103,6 +105,7 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
             case "work-orders":
                 b.Entity<WorkOrder>().ToTable("work_orders");
                 b.Entity<WorkOrder>().HasIndex(x => x.Number).IsUnique();
+                b.Entity<WorkOrder>().HasIndex(x => x.MaintenanceVisitId).IsUnique().HasFilter("\"MaintenanceVisitId\" IS NOT NULL");
                 b.Entity<WorkOrder>().Property(x => x.Version).IsConcurrencyToken();
                 b.Entity<WorkOrder>().HasIndex(x => new { x.CustomerId, x.CreatedAtUtc });
                 b.Entity<WorkOrder>().HasIndex(x => new { x.TeamId, x.AssetId, x.CreatedAtUtc }).HasFilter("\"AssetId\" IS NOT NULL");
@@ -166,7 +169,9 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
             ChangeTracker.Entries<CustomerChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
             ChangeTracker.Entries<AssetChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
             ChangeTracker.Entries<AssetLocationChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
-            ChangeTracker.Entries<ContractEvent>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
+            ChangeTracker.Entries<ContractEvent>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<ContractUsage>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<ContractRenewalRecord>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Audit evidence is append-only.");
         return base.SaveChangesAsync(cancellationToken);
     }

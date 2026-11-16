@@ -56,7 +56,7 @@ public sealed class ContractPostgresTests(PostgresFixture fixture)
         await using (var verify = PostgresFixture.Db(connection, "customers"))
         {
             await SchemaMigrator.Apply(verify);
-            Assert.Equal(2, await verify.Database.SqlQueryRaw<int>(
+            Assert.Equal(4, await verify.Database.SqlQueryRaw<int>(
                 "SELECT count(*)::integer AS \"Value\" FROM fieldops_schema_migrations").SingleAsync());
             Assert.Equal(1, await verify.ContractEvents.CountAsync());
             Assert.Equal(1, await verify.ContractUsage.CountAsync());

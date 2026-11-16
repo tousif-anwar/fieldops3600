@@ -58,6 +58,8 @@ public sealed class ContractExclusion
 
 public sealed class MaintenancePlan
 {
+    public Guid? ServiceLocationId { get; set; }
+    public int? AnchorDay { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ContractId { get; set; }
     public Guid ContractLineId { get; set; }
@@ -72,6 +74,7 @@ public sealed class MaintenancePlan
 
 public sealed class MaintenanceVisit
 {
+    public Guid? ServiceLocationId { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ContractId { get; set; }
     public Guid ContractLineId { get; set; }
@@ -81,6 +84,11 @@ public sealed class MaintenanceVisit
     public DateOnly DueDate { get; set; }
     public string Status { get; set; } = "Pending";
     public DateTimeOffset GeneratedAtUtc { get; set; }
+    public long AssignmentRevision { get; set; }
+    public DateTimeOffset? CompletedAtUtc { get; set; }
+    public Guid? CompletionEventId { get; set; }
+    public bool CompletionReviewRequired { get; set; }
+    public string? CompletionReviewReason { get; set; }
 }
 
 public sealed class ContractUsage
@@ -137,7 +145,7 @@ public static class ContractRules
             throw new DomainException(400, "Invalid contract team.");
         if (!Statuses.Contains(contract.Status))
             throw new DomainException(400, "Unknown contract status.");
-        if (contract.EffectiveFromUtc > now.AddDays(1))
+        if (contract.Status != "Draft" && contract.EffectiveFromUtc > now.AddDays(1))
             throw new DomainException(400, "Contract start cannot be in the future.");
         if (contract.ExpiresAtUtc is not null && contract.ExpiresAtUtc <= contract.EffectiveFromUtc)
             throw new DomainException(400, "Contract expiration must follow its start.");
@@ -179,7 +187,8 @@ public static class ContractRules
         if (contract.Plans.Any(plan => plan.ContractId != contract.Id || plan.ContractLineId == Guid.Empty ||
             contract.Lines.All(line => line.Id != plan.ContractLineId) || !Frequencies.Contains(plan.Frequency) ||
             plan.IntervalMonths != FrequencyMonths[plan.Frequency] || plan.NextDueDate == default ||
-            (plan.EndsOn is not null && plan.EndsOn < plan.NextDueDate)))
+            (plan.AnchorDay is < 1 or > 31) ||
+            (plan.Active && plan.EndsOn is not null && plan.EndsOn < plan.NextDueDate)))
             throw new DomainException(400, "Maintenance plan values are invalid.");
         if (contract.Plans.Where(x => x.Active).GroupBy(x => new { x.ContractLineId, x.AssetId }).Any(group => group.Count() > 1))
             throw new DomainException(400, "Only one active maintenance plan is allowed per line and equipment.");
@@ -189,6 +198,8 @@ public static class ContractRules
     {
         if (contract.Status is not ("Draft" or "Suspended"))
             throw new DomainException(409, "Only a draft or suspended contract can be activated.");
+        if (contract.EffectiveFromUtc > now)
+            throw new DomainException(409, "A contract cannot be activated before its effective start.");
         if (contract.ExpiresAtUtc is not null && contract.ExpiresAtUtc <= now)
             throw new DomainException(409, "An expired contract cannot be activated.");
         contract.Status = "Active";
@@ -240,7 +251,8 @@ public static class ContractRules
             if (localDate < covered.EffectiveFrom || (covered.EffectiveTo is not null && localDate > covered.EffectiveTo))
                 return new(false, "Equipment coverage is not effective on this date.");
         }
-        if (contract.Exclusions.Any(x => (x.AssetId == assetId || string.Equals(x.ServiceType, serviceType, StringComparison.OrdinalIgnoreCase))))
+        if (contract.Exclusions.Any(x => (x.AssetId is null || x.AssetId == assetId) &&
+            (x.ServiceType is null || string.Equals(x.ServiceType, serviceType, StringComparison.OrdinalIgnoreCase))))
             return new(false, "This service or equipment is excluded from the contract.");
         var usedVisits = contract.Usage.Where(x => x.ContractLineId == line.Id).Sum(x => x.VisitsUsed);
         if (line.IncludedVisits > 0 && usedVisits >= line.IncludedVisits)
@@ -257,19 +269,32 @@ public static class ContractRules
     {
         if (contract.Status != "Active")
             throw new DomainException(409, "Maintenance visits can only be generated for an active contract.");
-        if (throughDate < DateOnly.FromDateTime(now.UtcDateTime))
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(contract.TimeZoneId);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).DateTime);
+        if (throughDate < today)
             throw new DomainException(400, "The recurring visit horizon cannot be in the past.");
+        if (throughDate > today.AddYears(2))
+            throw new DomainException(400, "Generate maintenance visits no more than two years ahead.");
+        var firstDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(contract.EffectiveFromUtc, zone).DateTime);
+        DateOnly? lastDate = null;
+        if (contract.ExpiresAtUtc is { } expires)
+        {
+            var localExpiry = TimeZoneInfo.ConvertTime(expires, zone);
+            lastDate = DateOnly.FromDateTime(localExpiry.DateTime);
+            if (localExpiry.TimeOfDay == TimeSpan.Zero) lastDate = lastDate.Value.AddDays(-1);
+        }
         var generated = 0;
         foreach (var plan in contract.Plans.Where(x => x.Active))
         {
             var line = contract.Lines.SingleOrDefault(x => x.Id == plan.ContractLineId && x.Active)
                 ?? throw new DomainException(409, "A maintenance plan refers to an inactive coverage line.");
             var due = plan.NextDueDate;
+            plan.AnchorDay ??= due.Day;
             while (due <= throughDate && (plan.EndsOn is null || due <= plan.EndsOn))
             {
-                if (contract.ExpiresAtUtc is not null && due >= DateOnly.FromDateTime(contract.ExpiresAtUtc.Value.UtcDateTime))
+                if (lastDate is not null && due > lastDate)
                     break;
-                if (contract.Visits.All(x => x.ContractLineId != plan.ContractLineId || x.AssetId != plan.AssetId || x.DueDate != due))
+                if (due >= firstDate && contract.Visits.All(x => x.ContractLineId != plan.ContractLineId || x.AssetId != plan.AssetId || x.DueDate != due))
                 {
                     contract.Visits.Add(new MaintenanceVisit
                     {
@@ -277,12 +302,14 @@ public static class ContractRules
                         ContractLineId = plan.ContractLineId,
                         CustomerId = contract.CustomerId,
                         AssetId = plan.AssetId,
+                        ServiceLocationId = plan.ServiceLocationId,
                         DueDate = due,
                         GeneratedAtUtc = now
                     });
                     generated++;
                 }
-                due = due.AddMonths(plan.IntervalMonths);
+                var month = new DateOnly(due.Year, due.Month, 1).AddMonths(plan.IntervalMonths);
+                due = new DateOnly(month.Year, month.Month, Math.Min(plan.AnchorDay.Value, DateTime.DaysInMonth(month.Year, month.Month)));
                 plan.NextDueDate = due;
                 plan.Version++;
                 if (generated >= 1000) throw new DomainException(409, "Too many visits would be generated in one batch.");

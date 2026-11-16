@@ -4,7 +4,7 @@ Updated: 15 November 2026, America/New_York. Active request: nine enterprise cap
 
 ## Current phase
 
-Inventory is implemented and verified. Maintenance contracts now have a working vertical slice in the existing customer context: agreement lifecycle, coverage, entitlements, exclusions, recurrence, usage evidence, authorized APIs, migration, operator workspace, and customer-portal read. Work is on `codex/enterprise-completion`, based on `1ea2dffb0bc476326faadb9db3832b1f6733ec0e`.
+Inventory has API and desktop/mobile browser verification. The current uncommitted maintenance batch adds durable visit-to-work-order dispatch, site binding, coverage snapshots, renewal, calendar corrections, and an optional default-disabled lifecycle worker. Runtime migrations have been applied; final updated runtime/browser validation is in progress. Work is on `codex/enterprise-completion`, based on `1ea2dffb0bc476326faadb9db3832b1f6733ec0e`.
 
 The user chose **local/test foundations** for external services. Use synthetic local notification sinks and contract-tested Microsoft adapters. Real delivery, an authorized Dataverse tenant, staging hosting, legal assessment, and production certification are not available evidence. Continue independent work rather than inventing credentials or claiming these gates passed.
 
@@ -12,8 +12,8 @@ The user chose **local/test foundations** for external services. Use synthetic l
 
 | Capability | Status | Next gate |
 |---|---|---|
-| Inventory/reservations/transfers/consumption | Implemented and verified; dedicated browser journey and real broker/mobile runtime acceptance remain | Add a focused Inventory E2E journey, then run outbox delivery against RabbitMQ and mobile runtime |
-| Maintenance contracts/entitlements/recurrence | Core vertical slice implemented and live-verified; scheduling conversion and automatic work-order entitlement guard remain | Convert pending visits into work orders through scheduling and call entitlement evaluation from work-order creation/classification |
+| Inventory/reservations/transfers/consumption | Implemented; dedicated live browser journey passed on desktop and Pixel 7; broker/mobile native runtime acceptance remain | Verify outbox delivery against RabbitMQ and mobile runtime |
+| Maintenance contracts/entitlements/recurrence | Core slice live-verified; dispatch/renewal/lifecycle extensions under final verification | Rebuild runtime with final review fix, run real HTTP/browser journey; then completion/usage integration and remaining documents/editing |
 | Customer appointment options/self-booking | Not implemented | Extend authoritative scheduling and constraints; no duplicate booking state |
 | Estimates/e-signature/financial authorization | Not implemented | Decimal policy, immutable approved revision/hash/intent evidence, work authorization guard |
 | Billing/job costing/internal invoices | Not implemented | Consume actual stock/labor and contract/estimate facts; immutable issued snapshot |
@@ -48,6 +48,11 @@ The original landing implementation remains in `stash@{0}`; do not apply it over
 
 ## Verification
 
+- Current extension batch: full backend **180/180 passed, zero skips** before the final future-Draft plan/activation review fix. Lifecycle-selected **22/22** passed. The newly added regression and final rebuild remain to run.
+- Dedicated Inventory browser journey: **2/2 passed**, desktop and Pixel 7, actual Keycloak/API/UI with no request mocking. See `docs/enterprise/INVENTORY_BROWSER.md`.
+- Customer migrations **003_maintenance_dispatch.sql**, **004_contract_lifecycle.sql**, and work-order **009_contract_dispatch.sql** applied to the existing local databases with successful owner migration jobs. No volume reset or data deletion.
+- Web typecheck/lint, **78/78** existing tests, and production build passed. Two new renewal component tests are being validated separately; one initial exact-label selector included Fluent's required asterisk and is corrected.
+
 - Backend build: `./.tools/dotnet/dotnet.exe build services/FieldOps.Backend.slnx -c Release --no-restore -m:1 -p:UseSharedCompilation=false` — passed, one NU1900 warning when the NuGet vulnerability feed is unreachable.
 - Full backend tests: `./.tools/dotnet/dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore` — **155/155 passed, zero skips**, including real PostgreSQL Testcontainers.
 - Contract-selected tests: `./.tools/dotnet/dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~Contract'` — **9/9 passed**.
@@ -79,11 +84,10 @@ The original landing implementation remains in `stash@{0}`; do not apply it over
 
 ## Known gaps and blockers
 
-- Generated maintenance visits are not yet turned into work orders or booked through scheduling. They are pending agreement records with `WorkOrderId = null`; dispatch remains responsible for the next integration.
-- The work-order creation/classification path does not yet call the entitlement endpoint to block uncovered chargeable work. The endpoint exists and is authorized but is not the authority in that workflow yet.
-- Contract renewal, automatic expiry/missed-visit processing, contract documents, and per-asset effective-date/exclusion editing are not implemented.
-- No dedicated Inventory browser journey exists. Contracts now has a desktop smoke journey (`apps/web/e2e/contracts.spec.ts`); its create/activate controls are covered by API and component tests but not a second live write journey.
-- Contracts do not yet store an explicit service-location reference. A generated visit therefore cannot safely create a work order for a specific site until that contract/site binding is added and validated.
+- The new maintenance dispatch bridge creates exactly one unassigned job per visit with durable retry intent. It reuses normal scheduling afterward; a completed schedule-to-service-to-usage journey still needs implementation/verification.
+- Work-order creation and equipment changes now evaluate coverage and store an advisory snapshot. This does not reserve entitlement capacity or provide financial authorization; estimates/billing must supply that later authority.
+- Renewal and optional automatic expiry/generation/missed processing are implemented with PostgreSQL tests. The worker is integrated but disabled without explicit policy. Contract documents and per-asset effective-date/exclusion editing remain.
+- New live contract write/dispatch/renewal browser tests are in progress. Existing contract smoke remains valid for the older runtime.
 - Real RabbitMQ outbox delivery and mobile runtime acceptance remain unverified (inventory and contract events are queued in the transactional outbox).
 - Warehouse tests could not run on host Python without `psycopg`; previous documented result is 44/44 in a provisioned environment.
 - No external notification delivery, e-signature provider, Dataverse tenant, staging deployment, or certification assessment has been performed or claimed.

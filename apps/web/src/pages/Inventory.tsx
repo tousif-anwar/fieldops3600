@@ -146,7 +146,7 @@ export function Inventory() {
       ) : (
         <>
           <Panel>
-            <div className="filter-bar">
+            <div className="filter-bar inventory-filters">
               <Field label="Work order">
                 <Select
                   value={workOrderId}

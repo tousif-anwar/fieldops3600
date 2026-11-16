@@ -24,6 +24,14 @@ public sealed class WorkOrder
     public Guid? ServiceLocationId { get; set; }
     // Logical reference to the asset owner; validated over its API before assignment.
     public Guid? AssetId { get; set; }
+    public Guid? MaintenanceVisitId { get; set; }
+    public Guid? ContractId { get; set; }
+    public Guid? ContractLineId { get; set; }
+    public DateTimeOffset? CoverageEvaluatedAtUtc { get; set; }
+    public string? CoverageReason { get; set; }
+    public bool ContractLaborCovered { get; set; }
+    public bool ContractPartsCovered { get; set; }
+    public bool FinancialAuthorizationRequired { get; set; } = true;
     public string? UnregisteredCustomerReason { get; set; }
     public string ServiceCategory { get; set; } = "HVAC";
     public string Priority { get; set; } = "Normal";

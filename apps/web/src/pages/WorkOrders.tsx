@@ -714,6 +714,26 @@ export function OrderDetails() {
               <dt>Service category</dt>
               <dd>{w.serviceCategory}</dd>
             </div>
+            {w.coverageEvaluatedAtUtc ? (
+              <div>
+                <dt>Agreement coverage review</dt>
+                <dd>
+                  {w.coverageReason} Reviewed{" "}
+                  {dateTime(w.coverageEvaluatedAtUtc)}.{" "}
+                  {w.financialAuthorizationRequired
+                    ? "Financial review required before billing."
+                    : "Coverage must be revalidated against actual usage before billing."}
+                </dd>
+              </div>
+            ) : null}
+            {w.maintenanceVisitId ? (
+              <div>
+                <dt>Maintenance visit</dt>
+                <dd>
+                  <Link to="/contracts">Open maintenance agreements</Link>
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt>Priority</dt>
               <dd>

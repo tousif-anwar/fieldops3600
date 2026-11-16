@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FieldOps.ServiceHost;
 
-public sealed record CreateOrder(string Title, string? CustomerName, string? SiteAddress, string ServiceCategory, string Priority, string TeamId, Guid? CustomerId = null, Guid? ServiceLocationId = null, string? UnregisteredCustomerReason = null, Guid? AssetId = null, string? ReportedProblem = null);
+public sealed record CreateOrder(string Title, string? CustomerName, string? SiteAddress, string ServiceCategory, string Priority, string TeamId, Guid? CustomerId = null, Guid? ServiceLocationId = null, string? UnregisteredCustomerReason = null, Guid? AssetId = null, string? ReportedProblem = null, Guid? OperationId = null, Guid? MaintenanceVisitId = null, Guid? ContractId = null);
 public sealed record UpdateOrder(int ExpectedVersion, string Title, string Priority, string Status);
 public sealed record LinkOrderAsset(int ExpectedVersion, Guid? AssetId);
 public sealed record AssetReferenceView(Guid Id, string TeamId, Guid CustomerId, Guid ServiceLocationId, string Status);
@@ -118,10 +118,55 @@ public static class OperationsApi
             var items = await query.OrderByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
             return Results.Ok(new { items, total, page, pageSize });
         }).RequireAuthorization("operational");
-        group.MapPost("", async (CreateOrder request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        group.MapPost("", CreateWorkOrder).RequireAuthorization("dispatch");
+        group.MapPut("/{id:guid}/asset", async (Guid id, LinkOrderAsset request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
         {
+            var order = await db.WorkOrders.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Work order not found.");
+            Caller.From(http.User).Demand(order.TeamId);
+            if (order.Version != request.ExpectedVersion) throw new DomainException(409, "Work order changed. Refresh before saving.");
+            if (order.CustomerId is null || order.ServiceLocationId is null) throw new DomainException(409, "Equipment can be linked only to a registered customer work order.");
+            if (order.Status is "Completed" or "Cancelled") throw new DomainException(409, "Equipment cannot be changed after the work order is closed.");
+            if (request.AssetId is { } assetId)
+            {
+                var asset = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId}/reference", http, ct);
+                if (asset.TeamId != order.TeamId || asset.CustomerId != order.CustomerId || asset.ServiceLocationId != order.ServiceLocationId)
+                    throw new DomainException(400, "Equipment must belong to this work order's customer and service location.");
+                if (asset.Status != "Active") throw new DomainException(409, "Only active equipment can be linked to work.");
+            }
+            if (order.AssetId == request.AssetId) return Results.Ok(order);
+            if (order.MaintenanceVisitId.HasValue) throw new DomainException(409, "The equipment on a dispatched maintenance visit cannot be replaced. Review the source visit instead.");
+            var coverage = await remote.Get<EntitlementDecision>("Customers", $"/api/contracts/entitlements?customerId={order.CustomerId:D}&serviceType={Uri.EscapeDataString(order.ServiceCategory)}{(request.AssetId is { } coverageAsset ? "&assetId=" + coverageAsset.ToString("D") : "")}", http, ct);
+            MaintenanceDispatch.ApplyDecision(order, coverage, clock.GetUtcNow());
+            order.AssetId = request.AssetId;
+            order.Version++;
+            db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderUpdated.v1", order.Id, OrderPayload(order), order.Version, clock.GetUtcNow()));
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(order);
+        }).RequireAuthorization("dispatch");
+        group.MapPut("/{id:guid}", async (Guid id, UpdateOrder request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
+        {
+            var order = await db.WorkOrders.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Work order not found.");
+            Caller.From(http.User).Demand(order.TeamId, order.TechnicianId);
+            if (order.Version != request.ExpectedVersion) throw new DomainException(409, "Work order changed. Refresh before saving.");
+            ValidateText(request.Title, 3, 160, "title");
+            if (!new[] { "Low", "Normal", "High", "Critical" }.Contains(request.Priority)) throw new DomainException(400, "Unknown priority.");
+            WorkOrderRules.RequireAllowedUpdate(order.Status, request.Status);
+            if (request.Status == "Cancelled" && order.Status != "Cancelled")
+                _ = await remote.Post<System.Text.Json.JsonElement>("Scheduling", $"/api/scheduling/work-orders/{order.Id}/cancel-intent", new { }, http, ct);
+            order.Title = request.Title.Trim(); order.Priority = request.Priority; order.Status = request.Status; order.Version++;
+            db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderUpdated.v1", order.Id, OrderPayload(order), order.Version, clock.GetUtcNow()));
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(order);
+        }).RequireAuthorization("dispatch");
+    }
+
+    public static async Task<IResult> CreateWorkOrder(CreateOrder request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct)
+    {
             var caller = Caller.From(http.User);
             caller.Demand(request.TeamId);
+            var replay = await MaintenanceDispatch.ExistingOrder(request, db, http, ct);
+            if (replay is not null) return Results.Ok(replay);
+            request = await MaintenanceDispatch.PrepareOrder(request, remote, http, ct);
             ValidateText(request.Title, 3, 160, "title");
             string customerName, siteAddress;
             int? customerVersion = null;
@@ -152,57 +197,36 @@ public static class OperationsApi
                 ValidateText(request.CustomerName, 2, 100, "customer name"); ValidateText(request.SiteAddress, 3, 240, "site address");
                 customerName = request.CustomerName!.Trim(); siteAddress = request.SiteAddress!.Trim(); unregisteredReason = request.UnregisteredCustomerReason!.Trim();
             }
-            if (!new[] { "HVAC", "Electrical", "Mechanical", "Refrigeration", "Controls", "Heating", "Cooling", "Ventilation" }.Contains(request.ServiceCategory)) throw new DomainException(400, "Unknown service category.");
+            WorkOrderRules.RequireCategory(request.ServiceCategory);
             if (!new[] { "Low", "Normal", "High", "Critical" }.Contains(request.Priority)) throw new DomainException(400, "Unknown priority.");
             var reportedProblem = string.IsNullOrWhiteSpace(request.ReportedProblem) ? request.Title.Trim() : request.ReportedProblem.Trim();
             ValidateText(reportedProblem, 3, 4000, "reported problem");
             var now = clock.GetUtcNow();
             var order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title.Trim(), ReportedProblem = reportedProblem, CustomerName = customerName, SiteAddress = siteAddress, CustomerId = request.CustomerId, CustomerVersion = customerVersion, ServiceLocationId = request.ServiceLocationId, AssetId = request.AssetId, UnregisteredCustomerReason = unregisteredReason, ServiceCategory = request.ServiceCategory, Priority = request.Priority, TeamId = request.TeamId, CreatedAtUtc = now };
+            if (request.MaintenanceVisitId is { } visitId) { order.Id = visitId; order.MaintenanceVisitId = visitId; }
+            if (order.CustomerId is { } customerId)
+            {
+                var decision = await remote.Get<EntitlementDecision>("Customers", $"/api/contracts/entitlements?customerId={customerId:D}&serviceType={Uri.EscapeDataString(order.ServiceCategory)}{(order.AssetId is { } equipmentId ? "&assetId=" + equipmentId.ToString("D") : "")}{(request.ContractId is { } agreementId ? "&contractId=" + agreementId.ToString("D") : "")}", http, ct);
+                MaintenanceDispatch.ApplyDecision(order, decision, now);
+                if (request.MaintenanceVisitId.HasValue && (!decision.Covered || decision.ContractId != request.ContractId))
+                    throw new DomainException(409, "The maintenance agreement no longer covers this visit. Review its entitlement before dispatch.");
+            }
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            if (request.MaintenanceVisitId is { } allocationId)
+            {
+                await AssignmentOfferApi.LockOrder(db, allocationId, ct);
+                var existing = await MaintenanceDispatch.ExistingOrder(request, db, http, ct);
+                if (existing is not null) return Results.Ok(existing);
+            }
             db.WorkOrders.Add(order);
             // Customer and address are deliberately excluded from integration/audit events.
             db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderCreated.v1", order.Id, OrderPayload(order), order.Version, now));
             await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
             return Results.Created($"/api/work-orders/{order.Id}", order);
-        }).RequireAuthorization("dispatch");
-        group.MapPut("/{id:guid}/asset", async (Guid id, LinkOrderAsset request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
-        {
-            var order = await db.WorkOrders.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Work order not found.");
-            Caller.From(http.User).Demand(order.TeamId);
-            if (order.Version != request.ExpectedVersion) throw new DomainException(409, "Work order changed. Refresh before saving.");
-            if (order.CustomerId is null || order.ServiceLocationId is null) throw new DomainException(409, "Equipment can be linked only to a registered customer work order.");
-            if (order.Status is "Completed" or "Cancelled") throw new DomainException(409, "Equipment cannot be changed after the work order is closed.");
-            if (request.AssetId is { } assetId)
-            {
-                var asset = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId}/reference", http, ct);
-                if (asset.TeamId != order.TeamId || asset.CustomerId != order.CustomerId || asset.ServiceLocationId != order.ServiceLocationId)
-                    throw new DomainException(400, "Equipment must belong to this work order's customer and service location.");
-                if (asset.Status != "Active") throw new DomainException(409, "Only active equipment can be linked to work.");
-            }
-            if (order.AssetId == request.AssetId) return Results.Ok(order);
-            order.AssetId = request.AssetId;
-            order.Version++;
-            db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderUpdated.v1", order.Id, OrderPayload(order), order.Version, clock.GetUtcNow()));
-            await db.SaveChangesAsync(ct);
-            return Results.Ok(order);
-        }).RequireAuthorization("dispatch");
-        group.MapPut("/{id:guid}", async (Guid id, UpdateOrder request, ServiceDb db, RemoteServices remote, TimeProvider clock, HttpContext http, CancellationToken ct) =>
-        {
-            var order = await db.WorkOrders.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new DomainException(404, "Work order not found.");
-            Caller.From(http.User).Demand(order.TeamId, order.TechnicianId);
-            if (order.Version != request.ExpectedVersion) throw new DomainException(409, "Work order changed. Refresh before saving.");
-            ValidateText(request.Title, 3, 160, "title");
-            if (!new[] { "Low", "Normal", "High", "Critical" }.Contains(request.Priority)) throw new DomainException(400, "Unknown priority.");
-            WorkOrderRules.RequireAllowedUpdate(order.Status, request.Status);
-            if (request.Status == "Cancelled" && order.Status != "Cancelled")
-                _ = await remote.Post<System.Text.Json.JsonElement>("Scheduling", $"/api/scheduling/work-orders/{order.Id}/cancel-intent", new { }, http, ct);
-            order.Title = request.Title.Trim(); order.Priority = request.Priority; order.Status = request.Status; order.Version++;
-            db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderUpdated.v1", order.Id, OrderPayload(order), order.Version, clock.GetUtcNow()));
-            await db.SaveChangesAsync(ct);
-            return Results.Ok(order);
-        }).RequireAuthorization("dispatch");
     }
 
-    public static object OrderPayload(WorkOrder order) => new { workOrderId = order.Id, order.Number, order.TeamId, order.TechnicianId, order.CustomerId, order.CustomerVersion, order.ServiceLocationId, order.AssetId, customerReferenceStatus = order.CustomerId.HasValue ? "Registered" : "ExplicitException", order.ServiceCategory, order.Priority, order.Status, order.CreatedAtUtc, order.CompletedAtUtc };
+    public static object OrderPayload(WorkOrder order) => new { workOrderId = order.Id, order.Number, order.TeamId, order.TechnicianId, order.CustomerId, order.CustomerVersion, order.ServiceLocationId, order.AssetId, customerReferenceStatus = order.CustomerId.HasValue ? "Registered" : "ExplicitException", order.ServiceCategory, order.Priority, order.Status, order.CreatedAtUtc, order.CompletedAtUtc, order.MaintenanceVisitId, order.ContractId, order.ContractLineId, order.CoverageEvaluatedAtUtc, order.FinancialAuthorizationRequired };
 
     private static void MapTechnicians(WebApplication app)
     {

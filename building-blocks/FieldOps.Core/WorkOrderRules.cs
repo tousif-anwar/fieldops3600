@@ -1,7 +1,16 @@
+using System.Collections.Frozen;
+
 namespace FieldOps.Core;
 
 public static class WorkOrderRules
 {
+    public static readonly FrozenSet<string> ServiceCategories = new[]
+    { "HVAC", "Electrical", "Mechanical", "Refrigeration", "Controls", "Heating", "Cooling", "Ventilation" }.ToFrozenSet(StringComparer.Ordinal);
+
+    public static void RequireCategory(string category)
+    {
+        if (!ServiceCategories.Contains(category)) throw new DomainException(400, "Unknown service category.");
+    }
     public static bool ApplyBookingEvent(WorkOrder order, string eventType, string? technicianId, long revision)
     {
         if (eventType is not ("BookingCreated.v1" or "BookingCancelled.v1" or "BookingRescheduled.v1") || revision <= order.AssignmentRevision) return false;

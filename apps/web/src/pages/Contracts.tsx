@@ -1,6 +1,13 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Checkbox, Field, Input, Select } from "@fluentui/react-components";
+import {
+  Button,
+  Checkbox,
+  Field,
+  Input,
+  Select,
+} from "@fluentui/react-components";
 import { Plus, RefreshCw } from "lucide-react";
 import { api, post } from "../api";
 import { useAuth } from "../auth";
@@ -21,17 +28,30 @@ import type {
   MaintenanceContract,
 } from "../contract-contracts";
 import { contractFrequencies, serviceTypes } from "../contract-contracts";
+import { ContractRenewalSection } from "../components/ContractRenewal";
 
 const dateOnly = (value?: string | null) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString() : "—";
-const inputDate = (date: Date) => date.toISOString().slice(0, 10);
+const inputDate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const localDate = () => inputDate(new Date());
 const later = (days: number) => {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return inputDate(date);
 };
-const utcDate = (value: string) => new Date(`${value}T00:00:00Z`).toISOString();
+const utcDate = (value: string) => new Date(`${value}T00:00:00`).toISOString();
+const calendarDate = (value: string | number, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (name: string) =>
+    parts.find((item) => item.type === name)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+};
 
 export function Contracts() {
   const auth = useAuth();
@@ -48,6 +68,7 @@ export function Contracts() {
   const [coversAll, setCoversAll] = useState(true);
   const [assetIds, setAssetIds] = useState("");
   const [generateThrough, setGenerateThrough] = useState(() => later(90));
+  const [serviceLocationId, setServiceLocationId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
@@ -55,7 +76,8 @@ export function Contracts() {
 
   const customers = useQuery({
     queryKey: ["customers", "contract-picker"],
-    queryFn: () => api<Page<Customer>>("/api/customers?pageSize=100&status=Active"),
+    queryFn: () =>
+      api<Page<Customer>>("/api/customers?pageSize=100&status=Active"),
   });
   const contracts = useQuery({
     queryKey: ["contracts", customerId],
@@ -69,14 +91,36 @@ export function Contracts() {
     queryFn: () => api<MaintenanceContract>(`/api/contracts/${selectedId}`),
     enabled: !!selectedId,
   });
+  const detailCustomerId = detail.data?.customerId ?? "";
+  const serviceCustomer = useQuery({
+    queryKey: ["customer", detailCustomerId],
+    queryFn: () => api<Customer>(`/api/customers/${detailCustomerId}`),
+    enabled: !!detailCustomerId,
+  });
+  const sites =
+    serviceCustomer.data?.locations.filter(
+      (site) => site.status === "Active",
+    ) ?? [];
+  const selectedSite = sites.some((site) => site.id === serviceLocationId)
+    ? serviceLocationId
+    : "";
 
   const customerNames = useMemo(
-    () => new Map((customers.data?.items ?? []).map((customer) => [customer.id, customer.displayName])),
+    () =>
+      new Map(
+        (customers.data?.items ?? []).map((customer) => [
+          customer.id,
+          customer.displayName,
+        ]),
+      ),
     [customers.data],
   );
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["contracts"] });
-    if (selectedId) await queryClient.invalidateQueries({ queryKey: ["contract", selectedId] });
+    if (selectedId)
+      await queryClient.invalidateQueries({
+        queryKey: ["contract", selectedId],
+      });
   };
   const command = async (path: string, body: unknown, message: string) => {
     setBusy(true);
@@ -101,7 +145,9 @@ export function Contracts() {
     const visits = Number(includedVisits);
     const allowance = Number(partsAllowance);
     if (!Number.isInteger(visits) || visits < 0) {
-      setError(new Error("Included visits must be a nonnegative whole number."));
+      setError(
+        new Error("Included visits must be a nonnegative whole number."),
+      );
       return;
     }
     if (!Number.isFinite(allowance) || allowance < 0) {
@@ -125,7 +171,7 @@ export function Contracts() {
         customerId,
         effectiveFromUtc: utcDate(effectiveFrom),
         expiresAtUtc: utcDate(expiresAt),
-        timeZoneId: "UTC",
+        timeZoneId: Intl.DateTimeFormat().resolvedOptions().timeZone,
         coversAllAssets: coversAll,
         lines: [
           {
@@ -140,7 +186,9 @@ export function Contracts() {
         exclusions: [],
       });
       const line = created.lines[0];
-      if (!line) throw new Error("The agreement was created without a coverage line.");
+      setSelectedId(created.id);
+      if (!line)
+        throw new Error("The agreement was created without a coverage line.");
       const planned = await post<MaintenanceContract>(
         `/api/contracts/${created.id}/plans`,
         {
@@ -160,12 +208,13 @@ export function Contracts() {
           contractId: created.id,
           expectedVersion: planned.version,
           status: "Active",
-          reason: "Agreement created and activated in the operations workspace.",
+          reason:
+            "Agreement created and activated in the operations workspace.",
         },
       );
       setSelectedId(active.id);
       await refresh();
-      setNotice("Agreement created, scheduled, and activated.");
+      setNotice("Agreement created with a recurring plan and activated.");
     } catch (cause) {
       setError(cause);
     } finally {
@@ -194,9 +243,19 @@ export function Contracts() {
         contractId: contract.id,
         contractLineId: line.id,
         assetId: null,
+        serviceLocationId: selectedSite || null,
         frequency,
-        startDate: planStart,
-        endsOn: expiresAt,
+        startDate:
+          planStart <
+          calendarDate(contract.effectiveFromUtc, contract.timeZoneId)
+            ? calendarDate(contract.effectiveFromUtc, contract.timeZoneId)
+            : planStart,
+        endsOn: contract.expiresAtUtc
+          ? calendarDate(
+              new Date(contract.expiresAtUtc).getTime() - 1,
+              contract.timeZoneId,
+            )
+          : null,
       },
       "Recurring plan added.",
     );
@@ -223,14 +282,19 @@ export function Contracts() {
     <>
       <PageHeader
         title="Maintenance agreements"
-        description="Coverage, visit allowances, exclusions, and recurring maintenance are owned by the customer registry. Generated visits remain pending until dispatch schedules them."
+        description="Review coverage and recurring visits, then create maintenance work orders for dispatch."
         actions={
-          <Button icon={<RefreshCw aria-hidden="true" size={16} />} onClick={() => void refresh()}>
+          <Button
+            icon={<RefreshCw aria-hidden="true" size={16} />}
+            onClick={() => void refresh()}
+          >
             Refresh agreements
           </Button>
         }
       />
-      {mainError ? <ErrorState error={mainError} retry={() => void refresh()} /> : null}
+      {mainError ? (
+        <ErrorState error={mainError} retry={() => void refresh()} />
+      ) : null}
       {error ? <ErrorState error={error} /> : null}
       {notice ? <InlineMessage success>{notice}</InlineMessage> : null}
       <div className="detail-grid">
@@ -283,7 +347,10 @@ export function Contracts() {
               </Field>
             </div>
             <div className="form-two">
-              <Field label="Included visits" hint="Zero means no visit allowance.">
+              <Field
+                label="Included visits"
+                hint="Zero means unlimited covered visits."
+              >
                 <Input
                   type="number"
                   min="0"
@@ -293,7 +360,10 @@ export function Contracts() {
                   onChange={(event) => setIncludedVisits(event.target.value)}
                 />
               </Field>
-              <Field label="Parts allowance" hint="Used to decide covered parts.">
+              <Field
+                label="Parts allowance"
+                hint="Used to decide covered parts."
+              >
                 <Input
                   type="number"
                   min="0"
@@ -353,7 +423,12 @@ export function Contracts() {
                 />
               </Field>
             ) : null}
-            <Button type="submit" appearance="primary" icon={<Plus size={16} />} disabled={busy || loading}>
+            <Button
+              type="submit"
+              appearance="primary"
+              icon={<Plus size={16} />}
+              disabled={busy || loading || !manage}
+            >
               {busy ? "Saving agreement…" : "Create and activate"}
             </Button>
           </form>
@@ -364,9 +439,17 @@ export function Contracts() {
         >
           {loading ? <Loading label="Loading agreements…" /> : null}
           {contracts.data?.items.length === 0 ? (
-            <Empty title="No agreements" description="Create an agreement for an active customer." />
+            <Empty
+              title="No agreements"
+              description="Create an agreement for an active customer."
+            />
           ) : (
-            <div className="table-scroll" tabIndex={0} role="region" aria-label="Maintenance agreements">
+            <div
+              className="table-scroll"
+              tabIndex={0}
+              role="region"
+              aria-label="Maintenance agreements"
+            >
               <table className="data-table">
                 <thead>
                   <tr>
@@ -381,11 +464,17 @@ export function Contracts() {
                   {contracts.data?.items.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        <Button appearance="transparent" onClick={() => selectContract(item)}>
-                          {customerNames.get(item.customerId) ?? item.customerId}
+                        <Button
+                          appearance="transparent"
+                          onClick={() => selectContract(item)}
+                        >
+                          {customerNames.get(item.customerId) ??
+                            item.customerId}
                         </Button>
                       </td>
-                      <td><Status value={item.status} /></td>
+                      <td>
+                        <Status value={item.status} />
+                      </td>
                       <td>{dateOnly(item.effectiveFromUtc.slice(0, 10))}</td>
                       <td>{item.lineCount}</td>
                       <td>{dateOnly(item.nextVisit)}</td>
@@ -408,27 +497,72 @@ export function Contracts() {
           }
         >
           {detail.isPending ? <Loading label="Loading agreement…" /> : null}
-          {detail.error ? <ErrorState error={detail.error} retry={() => void detail.refetch()} /> : null}
+          {detail.error ? (
+            <ErrorState
+              error={detail.error}
+              retry={() => void detail.refetch()}
+            />
+          ) : null}
           {contract ? (
             <>
               <div className="inline-message">
-                <span><Status value={contract.status} /> · Version {contract.version} · {contract.timeZoneId}</span>
-                <span>{dateOnly(contract.effectiveFromUtc.slice(0, 10))} → {dateOnly(contract.expiresAtUtc?.slice(0, 10))}</span>
+                <span>
+                  <Status value={contract.status} /> · Version{" "}
+                  {contract.version} · {contract.timeZoneId}
+                </span>
+                <span>
+                  {dateOnly(
+                    calendarDate(
+                      contract.effectiveFromUtc,
+                      contract.timeZoneId,
+                    ),
+                  )}{" "}
+                  →{" "}
+                  {contract.expiresAtUtc
+                    ? dateOnly(
+                        calendarDate(
+                          contract.expiresAtUtc,
+                          contract.timeZoneId,
+                        ),
+                      )
+                    : "—"}
+                </span>
               </div>
               {manage ? (
                 <div className="page-actions">
-                  {contract.status === "Draft" || contract.status === "Suspended" ? (
-                    <Button disabled={busy} onClick={() => void changeStatus(contract, "Active")}>Activate</Button>
+                  {contract.status === "Draft" ||
+                  contract.status === "Suspended" ? (
+                    <Button
+                      disabled={busy}
+                      onClick={() => void changeStatus(contract, "Active")}
+                    >
+                      Activate
+                    </Button>
                   ) : null}
                   {contract.status === "Active" ? (
-                    <Button disabled={busy} onClick={() => void changeStatus(contract, "Suspended")}>Suspend</Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void changeStatus(contract, "Suspended")}
+                    >
+                      Suspend
+                    </Button>
                   ) : null}
                   {contract.status !== "Cancelled" ? (
-                    <Button disabled={busy} onClick={() => void changeStatus(contract, "Cancelled")}>Cancel agreement</Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void changeStatus(contract, "Cancelled")}
+                    >
+                      Cancel agreement
+                    </Button>
                   ) : null}
                 </div>
               ) : null}
-              <div className="table-scroll" tabIndex={0} role="region" aria-label="Coverage lines">
+              <div
+                className="table-scroll"
+                tabIndex={0}
+                role="region"
+                aria-label="Coverage lines"
+              >
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -446,9 +580,15 @@ export function Contracts() {
                         <td>{line.serviceType}</td>
                         <td>{line.laborCovered ? "Covered" : "Billable"}</td>
                         <td>{line.partsCovered ? "Covered" : "Billable"}</td>
-                        <td>{line.visitsUsed} / {line.includedVisits}</td>
-                        <td>{line.visitsRemaining}</td>
-                        <td>{line.partsCovered ? (line.partsAllowance - line.partsUsed).toFixed(2) : "Billable"}</td>
+                        <td>
+                          {line.visitsUsed} / {line.includedVisits === 0 ? "Unlimited" : line.includedVisits}
+                        </td>
+                        <td>{line.visitsRemaining ?? "Unlimited"}</td>
+                        <td>
+                          {line.partsCovered
+                            ? (line.partsAllowance - line.partsUsed).toFixed(2)
+                            : "Billable"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -457,61 +597,237 @@ export function Contracts() {
               <div className="detail-grid">
                 <div>
                   <h3>Recurring plans</h3>
-                  {contract.plans.length === 0 ? <p>No plan yet.</p> : (
-                    <div className="table-scroll" tabIndex={0} role="region" aria-label="Recurring plans">
+                  {contract.plans.length === 0 ? (
+                    <p>No plan yet.</p>
+                  ) : (
+                    <div
+                      className="table-scroll"
+                      tabIndex={0}
+                      role="region"
+                      aria-label="Recurring plans"
+                    >
                       <table className="data-table">
-                        <thead><tr><th scope="col">Frequency</th><th scope="col">Next due</th><th scope="col">Ends</th><th scope="col">Active</th></tr></thead>
-                        <tbody>{contract.plans.map((plan) => (
-                          <tr key={plan.id}><td>{plan.frequency}</td><td>{dateOnly(plan.nextDueDate)}</td><td>{dateOnly(plan.endsOn)}</td><td>{plan.active ? "Yes" : "No"}</td></tr>
-                        ))}</tbody>
+                        <thead>
+                          <tr>
+                            <th scope="col">Frequency</th>
+                            <th scope="col">Next due</th>
+                            <th scope="col">Ends</th>
+                            <th scope="col">Active</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contract.plans.map((plan) => (
+                            <tr key={plan.id}>
+                              <td>{plan.frequency}</td>
+                              <td>{dateOnly(plan.nextDueDate)}</td>
+                              <td>{dateOnly(plan.endsOn)}</td>
+                              <td>{plan.active ? "Yes" : "No"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
                       </table>
                     </div>
                   )}
                   {manage ? (
                     <div className="form-body">
                       <div className="form-two">
-                        <Field label="Plan start"><Input type="date" value={planStart} onChange={(event) => setPlanStart(event.target.value)} /></Field>
-                        <Field label="Frequency"><Select value={frequency} onChange={(event) => setFrequency(event.target.value)}>{contractFrequencies.map((value) => <option key={value} value={value}>{value}</option>)}</Select></Field>
+                        <Field label="Plan start">
+                          <Input
+                            type="date"
+                            value={
+                              planStart <
+                              calendarDate(
+                                contract.effectiveFromUtc,
+                                contract.timeZoneId,
+                              )
+                                ? calendarDate(
+                                    contract.effectiveFromUtc,
+                                    contract.timeZoneId,
+                                  )
+                                : planStart
+                            }
+                            min={calendarDate(
+                              contract.effectiveFromUtc,
+                              contract.timeZoneId,
+                            )}
+                            onChange={(event) =>
+                              setPlanStart(event.target.value)
+                            }
+                          />
+                        </Field>
+                        <Field label="Frequency">
+                          <Select
+                            value={frequency}
+                            onChange={(event) =>
+                              setFrequency(event.target.value)
+                            }
+                          >
+                            {contractFrequencies.map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
                       </div>
-                      <Button disabled={busy} onClick={() => addPlan(contract)}>Add recurring plan</Button>
+                      <Button disabled={busy} onClick={() => addPlan(contract)}>
+                        Add recurring plan
+                      </Button>
                     </div>
                   ) : null}
                 </div>
                 <div>
                   <h3>Generate upcoming visits</h3>
-                  <p>Visits are idempotent and stop at the agreement expiration. Dispatch remains responsible for technician assignment.</p>
+                  <p>
+                    Visits are idempotent and stop at the agreement expiration.
+                    Dispatch remains responsible for technician assignment.
+                  </p>
                   {manage ? (
                     <div className="form-body">
-                      <Field label="Generate through"><Input type="date" value={generateThrough} onChange={(event) => setGenerateThrough(event.target.value)} /></Field>
-                      <Button disabled={busy || contract.status !== "Active"} onClick={() => void generate(contract)}>Generate visits</Button>
+                      <Field label="Generate through">
+                        <Input
+                          type="date"
+                          value={generateThrough}
+                          onChange={(event) =>
+                            setGenerateThrough(event.target.value)
+                          }
+                        />
+                      </Field>
+                      <Button
+                        disabled={busy || contract.status !== "Active"}
+                        onClick={() => void generate(contract)}
+                      >
+                        Generate visits
+                      </Button>
                     </div>
                   ) : null}
                 </div>
               </div>
               <h3>Upcoming and recorded visits</h3>
-              {contract.visits.length === 0 ? <p>No visits generated.</p> : (
-                <div className="table-scroll" tabIndex={0} role="region" aria-label="Maintenance visits">
+              {serviceCustomer.error ? (
+                <ErrorState
+                  error={serviceCustomer.error}
+                  retry={() => void serviceCustomer.refetch()}
+                />
+              ) : null}
+              <Field
+                label="Service location for maintenance dispatch"
+                hint="Choose the customer's site before creating a job. Technician assignment remains in Schedule."
+              >
+                <Select
+                  value={selectedSite}
+                  onChange={(event) => setServiceLocationId(event.target.value)}
+                >
+                  <option value="">Select service location</option>
+                  {sites.map((site) => (
+                    <option value={site.id} key={site.id}>
+                      {site.name} · {site.addressLine1}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {contract.visits.length === 0 ? (
+                <p>No visits generated.</p>
+              ) : (
+                <div
+                  className="table-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Maintenance visits"
+                >
                   <table className="data-table">
-                    <thead><tr><th scope="col">Due</th><th scope="col">Service</th><th scope="col">Status</th><th scope="col">Work order</th></tr></thead>
-                    <tbody>{contract.visits.map((visit) => (
-                      <tr key={visit.id}>
-                        <td>{dateOnly(visit.dueDate)}</td>
-                        <td>{contract.lines.find((line) => line.id === visit.contractLineId)?.serviceType ?? "—"}</td>
-                        <td><Status value={visit.status} /></td>
-                        <td>{visit.workOrderId ?? "Not scheduled"}</td>
+                    <thead>
+                      <tr>
+                        <th scope="col">Due</th>
+                        <th scope="col">Service</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Work order</th>
+                        <th scope="col">Dispatch</th>
                       </tr>
-                    ))}</tbody>
+                    </thead>
+                    <tbody>
+                      {contract.visits.map((visit) => (
+                        <tr key={visit.id}>
+                          <td>{dateOnly(visit.dueDate)}</td>
+                          <td>
+                            {contract.lines.find(
+                              (line) => line.id === visit.contractLineId,
+                            )?.serviceType ?? "—"}
+                          </td>
+                          <td>
+                            <Status value={visit.status} />
+                            {visit.completionReviewRequired ? <p role="status">Coverage review required: {visit.completionReviewReason}</p> : null}
+                          </td>
+                          <td>
+                            {visit.workOrderId ? (
+                              <Link to={`/work-orders/${visit.workOrderId}`}>
+                                Open work order
+                              </Link>
+                            ) : (
+                              "Not created"
+                            )}
+                          </td>
+                          <td>
+                            {visit.workOrderId ? (
+                              <Link to="/schedule">Open Schedule</Link>
+                            ) : visit.status === "Pending" ||
+                              visit.status === "Dispatching" ? (
+                              <Button
+                                disabled={
+                                  busy ||
+                                  !(visit.serviceLocationId || selectedSite) ||
+                                  contract.status !== "Active"
+                                }
+                                onClick={() =>
+                                  void command(
+                                    `/api/contracts/${contract.id}/visits/${visit.id}/dispatch`,
+                                    {
+                                      operationId: crypto.randomUUID(),
+                                      serviceLocationId:
+                                        visit.serviceLocationId || selectedSite,
+                                    },
+                                    "Maintenance work order created. Review and assign it in Schedule.",
+                                  )
+                                }
+                              >
+                                {visit.status === "Dispatching"
+                                  ? "Retry creating work order"
+                                  : "Create work order"}
+                              </Button>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               )}
               <h3>Usage evidence</h3>
-              {contract.usage.length === 0 ? <p>No visit or parts usage recorded.</p> : (
+              {contract.usage.length === 0 ? (
+                <p>No visit or parts usage recorded.</p>
+              ) : (
                 <dl className="detail-list">
                   {contract.usage.map((usage) => (
-                    <div key={usage.id}><dt>{dateTime(usage.occurredAtUtc)}</dt><dd>{usage.visitsUsed} visit(s) · {usage.partsCost.toFixed(2)} parts · work order {usage.workOrderId}</dd></div>
+                    <div key={usage.id}>
+                      <dt>{dateTime(usage.occurredAtUtc)}</dt>
+                      <dd>
+                        {usage.visitsUsed} visit(s) ·{" "}
+                        {usage.partsCost.toFixed(2)} parts · work order{" "}
+                        {usage.workOrderId}
+                      </dd>
+                    </div>
                   ))}
                 </dl>
               )}
+              {manage ? (
+                <ContractRenewalSection
+                  key={`${contract.id}:${contract.version}`}
+                  contract={contract}
+                  onOpen={setSelectedId}
+                />
+              ) : null}
             </>
           ) : null}
         </Panel>

@@ -11,19 +11,20 @@ public sealed record ContractExclusionInput(string? ServiceType, Guid? AssetId, 
 public sealed record CreateContract(Guid OperationId, Guid CustomerId, DateTimeOffset EffectiveFromUtc, DateTimeOffset? ExpiresAtUtc,
     string TimeZoneId, bool CoversAllAssets, ContractLineInput[] Lines, CoveredAssetInput[]? CoveredAssets, ContractExclusionInput[]? Exclusions);
 public sealed record CreateMaintenancePlan(Guid OperationId, Guid ContractId, Guid ContractLineId, Guid? AssetId, string Frequency,
-    DateOnly StartDate, DateOnly? EndsOn);
+    DateOnly StartDate, DateOnly? EndsOn, Guid? ServiceLocationId = null);
 public sealed record GenerateContractVisits(Guid OperationId, Guid ContractId, DateOnly ThroughDate);
 public sealed record RecordContractUsage(Guid OperationId, Guid ContractId, Guid ContractLineId, Guid WorkOrderId, int VisitsUsed = 1,
     decimal PartsCost = 0);
 public sealed record ChangeContractStatus(Guid OperationId, Guid ContractId, int ExpectedVersion, string Status, string Reason);
 
 public sealed record ContractLineView(Guid Id, string ServiceType, bool LaborCovered, bool PartsCovered, int IncludedVisits,
-    decimal PartsAllowance, int VisitsUsed, decimal PartsUsed, int VisitsRemaining, bool Active);
+    decimal PartsAllowance, int VisitsUsed, decimal PartsUsed, int? VisitsRemaining, bool Active);
 public sealed record CoveredAssetView(Guid AssetId, DateOnly EffectiveFrom, DateOnly? EffectiveTo, bool Active);
 public sealed record MaintenancePlanView(Guid Id, Guid ContractLineId, Guid? AssetId, string Frequency, DateOnly NextDueDate,
-    DateOnly? EndsOn, bool Active, int Version);
+    DateOnly? EndsOn, bool Active, int Version, Guid? ServiceLocationId = null);
 public sealed record MaintenanceVisitView(Guid Id, Guid ContractLineId, Guid? AssetId, Guid? WorkOrderId, DateOnly DueDate,
-    string Status, DateTimeOffset GeneratedAtUtc);
+    string Status, DateTimeOffset GeneratedAtUtc, Guid? ServiceLocationId = null,
+    DateTimeOffset? CompletedAtUtc = null, bool CompletionReviewRequired = false, string? CompletionReviewReason = null);
 public sealed record ContractUsageView(Guid Id, Guid ContractLineId, Guid WorkOrderId, int VisitsUsed, decimal PartsCost,
     DateTimeOffset OccurredAtUtc);
 public sealed record ContractView(Guid Id, string TeamId, Guid CustomerId, string Status, DateTimeOffset EffectiveFromUtc,
@@ -69,7 +70,7 @@ public static class ContractApi
             http.Response.Headers.CacheControl = "no-store";
             return Results.Ok(contracts.Select(contract => new PortalContractView(contract.Id, contract.Status,
                 contract.EffectiveFromUtc, contract.ExpiresAtUtc, LineViews(contract),
-                contract.Visits.Where(x => x.DueDate >= DateOnly.FromDateTime(now.UtcDateTime) && (x.Status is "Pending" or "Scheduled"))
+                contract.Visits.Where(x => x.DueDate >= DateOnly.FromDateTime(now.UtcDateTime) && (x.Status is "Pending" or "Dispatching" or "Created" or "Scheduled"))
                     .OrderBy(x => x.DueDate).Take(50).Select(VisitView).ToArray())));
         }).RequireAuthorization("customer");
     }
@@ -138,12 +139,18 @@ public static class ContractApi
         HttpContext http, TimeProvider clock, CancellationToken ct)
     {
         var contract = await Find(request.ContractId, db, http, true, ct);
+        var serviceLocationId = request.ServiceLocationId;
         if (request.AssetId is { } assetId)
         {
             var reference = await remote.Get<AssetReferenceView>("Assets", $"/api/assets/{assetId:D}/reference", http, ct);
             if (reference.CustomerId != contract.CustomerId || reference.TeamId != contract.TeamId || reference.Status == "Retired")
                 throw new DomainException(404, "The selected equipment was not found for this customer.");
+            serviceLocationId ??= reference.ServiceLocationId;
+            if (serviceLocationId != reference.ServiceLocationId)
+                throw new DomainException(400, "The maintenance plan must use the equipment's current service location.");
         }
+        if (serviceLocationId.HasValue && !await db.ServiceLocations.AnyAsync(x => x.Id == serviceLocationId && x.CustomerId == contract.CustomerId && x.Status == "Active", ct))
+            throw new DomainException(404, "Active customer service location not found.");
         return await Commit(request.OperationId, request, "contract-plan-create", contract.TeamId, db, http, clock, now =>
         {
             var line = contract.Lines.SingleOrDefault(x => x.Id == request.ContractLineId && x.Active)
@@ -159,9 +166,11 @@ public static class ContractApi
                 ContractId = contract.Id,
                 ContractLineId = line.Id,
                 AssetId = request.AssetId,
+                ServiceLocationId = serviceLocationId,
                 Frequency = request.Frequency,
                 IntervalMonths = ContractRules.IntervalMonths(request.Frequency),
                 NextDueDate = request.StartDate,
+                AnchorDay = request.StartDate.Day,
                 EndsOn = request.EndsOn
             };
             // Explicit state avoids treating a client-generated key added through a tracked
@@ -241,7 +250,7 @@ public static class ContractApi
     }
 
     public static async Task<IResult> Evaluate(ServiceDb db, HttpContext http, CancellationToken ct, Guid customerId,
-        string serviceType, Guid? assetId = null)
+        string serviceType, Guid? assetId = null, Guid? contractId = null)
     {
         var caller = Caller.From(http.User);
         var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(x => x.Id == customerId, ct)
@@ -250,7 +259,7 @@ public static class ContractApi
         if (string.IsNullOrWhiteSpace(serviceType) || serviceType.Length > 80) throw new DomainException(400, "A service type is required.");
         var now = DateTimeOffset.UtcNow;
         var contracts = await ContractsQuery(db, customerId, customer.TeamId)
-            .Where(x => x.Status == "Active").Include(x => x.Lines).Include(x => x.CoveredAssets)
+            .Where(x => x.Status == "Active" && (!contractId.HasValue || x.Id == contractId)).Include(x => x.Lines).Include(x => x.CoveredAssets)
             .Include(x => x.Exclusions).Include(x => x.Usage).AsSplitQuery().ToListAsync(ct);
         var decisions = contracts.Select(contract => ContractRules.Evaluate(contract, customerId, assetId, serviceType, now)).ToArray();
         var covered = decisions.Where(x => x.Covered).OrderByDescending(x => x.VisitsRemaining ?? int.MaxValue).FirstOrDefault();
@@ -280,7 +289,7 @@ public static class ContractApi
     private static IQueryable<MaintenanceContract> ContractsQuery(ServiceDb db, Guid customerId, string teamId) =>
         db.Contracts.Where(x => x.CustomerId == customerId && x.TeamId == teamId);
 
-    private static async Task<MaintenanceContract> Find(Guid id, ServiceDb db, HttpContext http, bool tracking, CancellationToken ct)
+    internal static async Task<MaintenanceContract> Find(Guid id, ServiceDb db, HttpContext http, bool tracking, CancellationToken ct)
     {
         var query = tracking ? db.Contracts : db.Contracts.AsNoTracking();
         var contract = await query.Include(x => x.Lines).Include(x => x.CoveredAssets).Include(x => x.Exclusions)
@@ -315,7 +324,7 @@ public static class ContractApi
         return Results.Content(response, "application/json");
     }
 
-    private static void AddEvent(ServiceDb db, HttpContext http, MaintenanceContract contract, string action, DateTimeOffset now,
+    internal static void AddEvent(ServiceDb db, HttpContext http, MaintenanceContract contract, string action, DateTimeOffset now,
         object details)
     {
         var caller = Caller.From(http.User);
@@ -340,7 +349,7 @@ public static class ContractApi
         contract.Version, contract.CreatedAtUtc, contract.UpdatedAtUtc, LineViews(contract),
         contract.CoveredAssets.OrderBy(x => x.EffectiveFrom).Select(x => new CoveredAssetView(x.AssetId, x.EffectiveFrom, x.EffectiveTo, x.Active)).ToArray(),
         contract.Plans.OrderBy(x => x.NextDueDate).Select(x => new MaintenancePlanView(x.Id, x.ContractLineId, x.AssetId, x.Frequency,
-            x.NextDueDate, x.EndsOn, x.Active, x.Version)).ToArray(),
+            x.NextDueDate, x.EndsOn, x.Active, x.Version, x.ServiceLocationId)).ToArray(),
         contract.Visits.OrderBy(x => x.DueDate).Select(VisitView).ToArray(),
         contract.Usage.OrderByDescending(x => x.OccurredAtUtc).Select(x => new ContractUsageView(x.Id, x.ContractLineId, x.WorkOrderId,
             x.VisitsUsed, x.PartsCost, x.OccurredAtUtc)).ToArray());
@@ -351,9 +360,10 @@ public static class ContractApi
         var visits = used.Sum(x => x.VisitsUsed);
         var parts = used.Sum(x => x.PartsCost);
         return new ContractLineView(line.Id, line.ServiceType, line.LaborCovered, line.PartsCovered, line.IncludedVisits,
-            line.PartsAllowance, visits, parts, Math.Max(0, line.IncludedVisits - visits), line.Active);
+            line.PartsAllowance, visits, parts, line.IncludedVisits == 0 ? null : Math.Max(0, line.IncludedVisits - visits), line.Active);
     }).ToArray();
 
     private static MaintenanceVisitView VisitView(MaintenanceVisit visit) => new(visit.Id, visit.ContractLineId, visit.AssetId,
-        visit.WorkOrderId, visit.DueDate, visit.Status, visit.GeneratedAtUtc);
+        visit.WorkOrderId, visit.DueDate, visit.Status, visit.GeneratedAtUtc, visit.ServiceLocationId,
+        visit.CompletedAtUtc, visit.CompletionReviewRequired, visit.CompletionReviewReason);
 }

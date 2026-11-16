@@ -15,6 +15,14 @@ export interface WorkOrder {
   customerId?: string | null;
   serviceLocationId?: string | null;
   assetId?: string | null;
+  maintenanceVisitId?: string | null;
+  contractId?: string | null;
+  contractLineId?: string | null;
+  coverageEvaluatedAtUtc?: string | null;
+  coverageReason?: string | null;
+  contractLaborCovered?: boolean;
+  contractPartsCovered?: boolean;
+  financialAuthorizationRequired?: boolean;
   unregisteredCustomerReason?: string | null;
   siteAddress: string;
   serviceCategory: string;

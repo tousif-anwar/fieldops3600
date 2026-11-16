@@ -7,7 +7,7 @@ export interface ContractLine {
   partsAllowance: number;
   visitsUsed: number;
   partsUsed: number;
-  visitsRemaining: number;
+  visitsRemaining: number | null;
   active: boolean;
 }
 
@@ -19,6 +19,7 @@ export interface CoveredAsset {
 }
 
 export interface MaintenancePlan {
+  serviceLocationId?: string | null;
   id: string;
   contractLineId: string;
   assetId?: string | null;
@@ -30,6 +31,7 @@ export interface MaintenancePlan {
 }
 
 export interface MaintenanceVisit {
+  serviceLocationId?: string | null;
   id: string;
   contractLineId: string;
   assetId?: string | null;
@@ -37,6 +39,9 @@ export interface MaintenanceVisit {
   dueDate: string;
   status: string;
   generatedAtUtc: string;
+  completedAtUtc?: string | null;
+  completionReviewRequired?: boolean;
+  completionReviewReason?: string | null;
 }
 
 export interface ContractUsage {
@@ -46,6 +51,19 @@ export interface ContractUsage {
   visitsUsed: number;
   partsCost: number;
   occurredAtUtc: string;
+}
+
+export interface ContractRenewal {
+  id: string;
+  sourceContractId: string;
+  renewedContractId: string;
+  sourceVersion: number;
+  effectiveFromUtc: string;
+  expiresAtUtc: string;
+  reason: string;
+  actorId: string;
+  actorRole: string;
+  recordedAtUtc: string;
 }
 
 export interface MaintenanceContract {
@@ -106,7 +124,9 @@ export const serviceTypes = [
   "HVAC",
   "Refrigeration",
   "Electrical",
-  "Plumbing",
+  "Mechanical",
   "Controls",
-  "Other",
+  "Heating",
+  "Cooling",
+  "Ventilation",
 ] as const;

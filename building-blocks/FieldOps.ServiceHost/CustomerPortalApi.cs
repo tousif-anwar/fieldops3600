@@ -174,6 +174,8 @@ public static class CustomerPortalApi
         ServiceRequestRules.Decide(request, input.ExpectedVersion, input.Decision, input.Reason, now, order?.Id);
         if (order is not null)
         {
+            var decision = await remote.Get<EntitlementDecision>("Customers", $"/api/contracts/entitlements?customerId={order.CustomerId:D}&serviceType={Uri.EscapeDataString(order.ServiceCategory)}{(order.AssetId is { } equipmentId ? "&assetId=" + equipmentId.ToString("D") : "")}", http, ct);
+            MaintenanceDispatch.ApplyDecision(order, decision, now);
             db.WorkOrders.Add(order);
             db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderCreated.v1", order.Id, OperationsApi.OrderPayload(order), order.Version, now));
         }

@@ -5,6 +5,7 @@ reset databases, or call an external provider. The agreement is cancelled at the
 its audit records remain.
 """
 from datetime import date, datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
 from pathlib import Path
@@ -164,6 +165,32 @@ class ContractHttpTests(unittest.TestCase):
         )
         self.assertEqual(200, status, replay)
         self.assertEqual(0, replay["generated"], replay)
+
+        # Dispatch commits a durable intent and uses the visit ID as the work-order key.
+        # Concurrent retries go through the real service owners, not database inserts.
+        visit = generated["visits"][0]
+        dispatch = {"operationId": str(uuid4()), "serviceLocationId": location["id"]}
+        route = f"/api/contracts/{contract['id']}/visits/{visit['id']}/dispatch"
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            attempts = list(pool.map(lambda _: self.request("POST", route, dispatch), range(2)))
+        self.assertEqual([200, 200], sorted(status for status, _ in attempts), attempts)
+        self.assertEqual(attempts[0][1], attempts[1][1])
+        self.assertTrue(attempts[0][1]["dispatchComplete"])
+        status, recurring_order = self.request("GET", "/api/work-orders/" + attempts[0][1]["workOrderId"])
+        self.assertEqual(200, status, recurring_order)
+        self.assertEqual(visit["id"], recurring_order["id"])
+        self.assertEqual(visit["id"], recurring_order["maintenanceVisitId"])
+        self.assertEqual(location["id"], recurring_order["serviceLocationId"])
+        self.assertEqual(contract["id"], recurring_order["contractId"])
+        self.assertEqual("Created", recurring_order["status"])
+        self.assertIsNone(recurring_order["technicianId"])
+        self.assertIsNotNone(recurring_order["coverageEvaluatedAtUtc"])
+        self.assertEqual(403, self.request("POST", route, dispatch, "technician")[0])
+        changed_visit = generated["visits"][1]
+        self.assertEqual(409, self.request("POST", f"/api/contracts/{contract['id']}/visits/{changed_visit['id']}/dispatch", dispatch)[0])
+        status, orders_for_customer = self.request("GET", f"/api/work-orders/by-customer/{customer['id']}")
+        self.assertEqual(200, status, orders_for_customer)
+        self.assertEqual(1, orders_for_customer["total"])
 
         status, entitlement = self.request(
             "GET",

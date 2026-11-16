@@ -63,7 +63,10 @@ def main():
         AND NOT has_table_privilege(current_user,'contract_events','TRUNCATE')
         AND has_table_privilege(current_user,'contract_usage','SELECT') AND has_table_privilege(current_user,'contract_usage','INSERT')
         AND NOT has_table_privilege(current_user,'contract_usage','UPDATE') AND NOT has_table_privilege(current_user,'contract_usage','DELETE')
-        AND NOT has_table_privilege(current_user,'contract_usage','TRUNCATE')""")
+        AND NOT has_table_privilege(current_user,'contract_usage','TRUNCATE')
+        AND has_table_privilege(current_user,'contract_renewals','SELECT') AND has_table_privilege(current_user,'contract_renewals','INSERT')
+        AND NOT has_table_privilege(current_user,'contract_renewals','UPDATE') AND NOT has_table_privilege(current_user,'contract_renewals','DELETE')
+        AND NOT has_table_privilege(current_user,'contract_renewals','TRUNCATE') AND NOT has_table_privilege(current_user,'contract_renewals','TRIGGER')""")
     sql("fieldops_assets", "fieldops_assets_app", """SELECT
         has_table_privilege(current_user,'asset_changes','SELECT') AND has_table_privilege(current_user,'asset_changes','INSERT')
         AND NOT has_table_privilege(current_user,'asset_changes','UPDATE') AND NOT has_table_privilege(current_user,'asset_changes','DELETE')

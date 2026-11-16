@@ -89,6 +89,7 @@ jobs:
       - run: python tests/backend/verify_resource_authorization_http.py -v
       - run: python tests/backend/verify_optimizer_http.py -v
       - run: python tests/backend/verify_inventory_http.py -v
+      - run: python tests/backend/verify_contracts_http.py -v
       - run: npm ci && npx playwright install --with-deps chromium && npm run test:e2e
         working-directory: apps/web
         env: {WEB_BASE_URL: 'http://localhost:8088', FIELDOPS_LIVE_E2E: '1'}

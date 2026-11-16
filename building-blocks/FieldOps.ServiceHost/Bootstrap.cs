@@ -22,6 +22,7 @@ public static class Bootstrap
         builder.Host.UseSerilog((context, logger) => logger.ReadFrom.Configuration(context.Configuration).MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning).MinimumLevel.Override("Microsoft.IdentityModel", Serilog.Events.LogEventLevel.Warning).MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning).Enrich.FromLogContext().WriteTo.Console());
         builder.Services.AddSingleton(new ServiceIdentity(service));
         builder.Services.AddSingleton(TimeProvider.System);
+        if (service == "customers") builder.Services.AddContractLifecycle(builder.Configuration);
         if (service == "scheduling") builder.Services.AddHostedService<AssignmentOfferExpiryWorker>();
         builder.Services.AddDbContext<ServiceDb>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database") ?? throw new InvalidOperationException("ConnectionStrings:Database is required.")).ReplaceService<IModelCacheKeyFactory, ServiceModelKeyFactory>());
         builder.Services.AddHttpClient("services", client => client.Timeout = TimeSpan.FromSeconds(12));
@@ -108,6 +109,8 @@ public static class Bootstrap
         app.MapMetrics();
         OperationsApi.Map(app, service);
         CustomerPortalApi.Map(app, service);
+        if (service == "customers") MaintenanceDispatch.Map(app);
+        if (service == "customers") ContractLifecycleApi.Map(app);
         if (service == "customers") ContractApi.Map(app);
         if (service == "inventory") InventoryApi.Map(app);
         if (service == "workflows") ServiceReportApi.Map(app);

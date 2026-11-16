@@ -95,7 +95,7 @@ public sealed class ContractTests
         ContractRules.Validate(contract, Now);
 
         Assert.Equal(3, ContractRules.GenerateVisits(contract, new DateOnly(2026, 12, 31), Now));
-        Assert.Equal(["2026-01-31", "2026-04-30", "2026-07-30"],
+        Assert.Equal(["2026-01-31", "2026-04-30", "2026-07-31"],
             contract.Visits.OrderBy(x => x.DueDate).Select(x => x.DueDate.ToString("yyyy-MM-dd")).ToArray());
     }
 
