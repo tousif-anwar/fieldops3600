@@ -34,7 +34,8 @@ public sealed record ContractView(Guid Id, string TeamId, Guid CustomerId, strin
 public sealed record ContractSummary(Guid Id, Guid CustomerId, string Status, DateTimeOffset EffectiveFromUtc, DateTimeOffset? ExpiresAtUtc,
     int Version, int LineCount, int VisitCount, DateOnly? NextVisit);
 public sealed record PortalContractView(Guid Id, string Status, DateTimeOffset EffectiveFromUtc, DateTimeOffset? ExpiresAtUtc,
-    ContractLineView[] Lines, MaintenanceVisitView[] UpcomingVisits);
+    ContractLineView[] Lines, MaintenanceVisitView[] UpcomingVisits, string TimeZoneId, bool CoversAllAssets,
+    CoveredAssetView[] CoveredAssets);
 
 public static class ContractApi
 {
@@ -58,21 +59,29 @@ public static class ContractApi
         // The work-order owner evaluates coverage with an operational token; dispatchers can use the same route.
         app.MapGet("/api/contracts/entitlements", Evaluate).RequireAuthorization("operational");
 
-        app.MapGet("/api/customer-portal/agreements", async (ServiceDb db, HttpContext http, CancellationToken ct) =>
+        app.MapGet("/api/customer-portal/agreements", Portal).RequireAuthorization("customer");
+    }
+
+    public static async Task<IResult> Portal(ServiceDb db, HttpContext http, TimeProvider clock, CancellationToken ct)
+    {
+        var scope = CustomerScope.From(http.User);
+        var now = clock.GetUtcNow();
+        var contracts = await ContractsQuery(db, scope.CustomerId, scope.TeamId)
+            .Where(x => x.Status == "Active" || x.Status == "Suspended")
+            .OrderBy(x => x.ExpiresAtUtc).ThenBy(x => x.Id)
+            .Include(x => x.Lines).Include(x => x.Visits).Include(x => x.Usage).Include(x => x.CoveredAssets)
+            .AsSplitQuery().Take(50).ToListAsync(ct);
+        http.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(contracts.Select(contract =>
         {
-            var scope = CustomerScope.From(http.User);
-            var now = DateTimeOffset.UtcNow;
-            var contracts = await ContractsQuery(db, scope.CustomerId, scope.TeamId)
-                .Where(x => x.Status == "Active" || x.Status == "Suspended")
-                .OrderBy(x => x.ExpiresAtUtc).ThenBy(x => x.Id)
-                .Include(x => x.Lines).Include(x => x.Visits)
-                .AsSplitQuery().Take(50).ToListAsync(ct);
-            http.Response.Headers.CacheControl = "no-store";
-            return Results.Ok(contracts.Select(contract => new PortalContractView(contract.Id, contract.Status,
+            var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, TimeZoneInfo.FindSystemTimeZoneById(contract.TimeZoneId)).DateTime);
+            return new PortalContractView(contract.Id,
+                contract.ExpiresAtUtc <= now ? "Expired" : contract.Status,
                 contract.EffectiveFromUtc, contract.ExpiresAtUtc, LineViews(contract),
-                contract.Visits.Where(x => x.DueDate >= DateOnly.FromDateTime(now.UtcDateTime) && (x.Status is "Pending" or "Dispatching" or "Created" or "Scheduled"))
-                    .OrderBy(x => x.DueDate).Take(50).Select(VisitView).ToArray())));
-        }).RequireAuthorization("customer");
+                contract.Visits.Where(x => x.DueDate >= today && (x.Status is "Pending" or "Dispatching" or "Created" or "Scheduled"))
+                    .OrderBy(x => x.DueDate).Take(50).Select(VisitView).ToArray(), contract.TimeZoneId, contract.CoversAllAssets,
+                contract.CoveredAssets.OrderBy(x => x.EffectiveFrom).Select(x => new CoveredAssetView(x.AssetId, x.EffectiveFrom, x.EffectiveTo, x.Active)).ToArray());
+        }).ToArray());
     }
 
     public static async Task<IResult> Create(CreateContract request, ServiceDb db, RemoteServices remote, HttpContext http,
@@ -212,12 +221,21 @@ public static class ContractApi
         var order = await remote.Get<WorkOrder>("WorkOrders", $"/api/work-orders/{request.WorkOrderId:D}", http, ct);
         Caller.From(http.User).Demand(order.TeamId, order.TechnicianId);
         if (order.CustomerId != contract.CustomerId) throw new DomainException(404, "The work order belongs to another customer.");
+        if (order.Status != "Completed" || order.CompletedAtUtc is null)
+            throw new DomainException(409, "Contract usage requires completed service confirmed by the work-order owner.");
+        if (order.MaintenanceVisitId.HasValue)
+            throw new DomainException(409, "Maintenance visit usage is recorded automatically from completion events.");
+        if (order.ContractId != contract.Id || order.ContractLineId != request.ContractLineId || order.TeamId != contract.TeamId)
+            throw new DomainException(409, "Usage must match the work order's evaluated agreement and coverage line.");
+        if (request.VisitsUsed != 1 || request.PartsCost != 0)
+            throw new DomainException(400, "Record one completed visit with zero parts cost; verified material costing is recorded separately.");
         return await Commit(request.OperationId, request, "contract-usage:" + id, contract.TeamId, db, http, clock, now =>
         {
-            if (!ContractRules.IsEffective(contract, now))
-                throw new DomainException(409, "Usage can only be recorded against an active, effective contract.");
+            var decision = MaintenanceVisitConsumer.EvaluateCompletion(contract, order.AssetId, order.ServiceCategory, order.CompletedAtUtc.Value);
+            if (!decision.Covered || decision.ContractLineId != request.ContractLineId)
+                throw new DomainException(409, "Completed service does not match eligible contract coverage: " + decision.Reason);
             var usage = ContractRules.RecordUsage(contract, request.ContractLineId, order.Id, request.VisitsUsed,
-                request.PartsCost, now);
+                request.PartsCost, order.CompletedAtUtc.Value);
             // Usage is append-only and has a client-generated key: a navigation add can
             // otherwise be detected as an update, which the runtime role must not perform.
             db.Entry(usage).State = EntityState.Added;

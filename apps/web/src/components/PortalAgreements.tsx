@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { Empty, ErrorState, Loading, Panel, Status } from "./common";
 import type { PortalAgreement } from "../contract-contracts";
+import type { PortalEquipment } from "../service-request-contracts";
 
 const dateOnly = (value?: string | null) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString() : "—";
@@ -11,9 +12,18 @@ export function PortalAgreements() {
     queryKey: ["portal-agreements"],
     queryFn: () => api<PortalAgreement[]>("/api/customer-portal/agreements"),
   });
+  const equipment = useQuery({
+    queryKey: ["portal-equipment"],
+    queryFn: () => api<PortalEquipment[]>("/api/customer-portal/equipment"),
+  });
   if (agreements.isPending) return <Loading label="Loading your agreements…" />;
   if (agreements.isError)
-    return <ErrorState error={agreements.error} retry={() => void agreements.refetch()} />;
+    return (
+      <ErrorState
+        error={agreements.error}
+        retry={() => void agreements.refetch()}
+      />
+    );
   if (agreements.data.length === 0)
     return (
       <Panel title="Maintenance agreements">
@@ -31,12 +41,16 @@ export function PortalAgreements() {
       {agreements.data.map((agreement) => (
         <section className="customer-subrecord" key={agreement.id}>
           <h3>
-            <Status value={agreement.status} /> · Effective {dateOnly(agreement.effectiveFromUtc.slice(0, 10))}
+            <Status value={agreement.status} /> · Effective{" "}
+            {dateOnly(agreement.effectiveFromUtc.slice(0, 10))}
           </h3>
-          <p>
-            Expires {dateOnly(agreement.expiresAtUtc?.slice(0, 10))}
-          </p>
-          <div className="table-scroll" tabIndex={0} role="region" aria-label="Agreement coverage">
+          <p>Expires {dateOnly(agreement.expiresAtUtc?.slice(0, 10))}</p>
+          <div
+            className="table-scroll"
+            tabIndex={0}
+            role="region"
+            aria-label="Agreement coverage"
+          >
             <table className="data-table">
               <thead>
                 <tr>
@@ -52,12 +66,40 @@ export function PortalAgreements() {
                     <td>{line.serviceType}</td>
                     <td>{line.laborCovered ? "Covered" : "Not covered"}</td>
                     <td>{line.partsCovered ? "Covered" : "Not covered"}</td>
-                    <td>{line.includedVisits === 0 ? "No visit allowance" : line.visitsRemaining}</td>
+                    <td>{line.visitsRemaining ?? "Unlimited"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <h4>Covered equipment</h4>
+          {agreement.coversAllAssets ? (
+            <p>
+              All equipment owned by your account, subject to the agreement's
+              service exclusions.
+            </p>
+          ) : (
+            <>
+              {equipment.error ? (
+                <ErrorState
+                  error={equipment.error}
+                  retry={() => void equipment.refetch()}
+                />
+              ) : null}
+              <ul>
+                {agreement.coveredAssets.map((covered) => (
+                  <li key={covered.assetId}>
+                    {equipment.data?.find(
+                      (asset) => asset.id === covered.assetId,
+                    )?.name ?? "Registered equipment"}{" "}
+                    · {covered.active ? "Active" : "Inactive"} ·{" "}
+                    {dateOnly(covered.effectiveFrom)} →{" "}
+                    {dateOnly(covered.effectiveTo)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <h4>Upcoming maintenance</h4>
           {agreement.upcomingVisits.length === 0 ? (
             <p>No upcoming generated visits.</p>

@@ -67,11 +67,13 @@ public static class Bootstrap
             {
                 if (service is "work-orders" or "notifications" or "reporting") config.AddConsumer<OperationalConsumer>();
                 if (service == "reporting") config.AddConsumer<ReplayFaultConsumer>();
+                if (service == "customers") config.AddConsumer<MaintenanceVisitConsumer>();
                 config.UsingRabbitMq((context, rabbit) =>
                 {
                     rabbit.Host(builder.Configuration["RabbitMq:Host"] ?? "localhost", builder.Configuration["RabbitMq:VirtualHost"] ?? "/", host => { host.Username(builder.Configuration["RabbitMq:Username"] ?? throw new InvalidOperationException("RabbitMq:Username is required.")); host.Password(builder.Configuration["RabbitMq:Password"] ?? throw new InvalidOperationException("RabbitMq:Password is required.")); });
                     if (service is "work-orders" or "notifications" or "reporting") rabbit.ReceiveEndpoint($"fieldops-{service}-events", endpoint => { endpoint.UseMessageRetry(retry => retry.Intervals(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(10))); endpoint.ConcurrentMessageLimit = 1; endpoint.ConfigureConsumer<OperationalConsumer>(context); });
                     if (service == "reporting") rabbit.ReceiveEndpoint("fieldops-replay-faults", endpoint => { endpoint.UseMessageRetry(retry => retry.Intervals(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(10))); endpoint.ConcurrentMessageLimit = 1; endpoint.ConfigureConsumer<ReplayFaultConsumer>(context); });
+                    if (service == "customers") rabbit.ReceiveEndpoint("fieldops-customers-maintenance-events", endpoint => { endpoint.UseMessageRetry(retry => retry.Intervals(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(10))); endpoint.ConcurrentMessageLimit = 1; endpoint.ConfigureConsumer<MaintenanceVisitConsumer>(context); });
                 });
             });
             builder.Services.AddHostedService<OutboxDispatcher>();

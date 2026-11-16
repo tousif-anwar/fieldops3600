@@ -1,6 +1,6 @@
 # Contract renewal and automatic lifecycle foundations
 
-Verified locally on 15 November 2026, America/New_York. These additions extend the existing customers context and its agreement, visit, receipt, audit and outbox tables. They do not create another scheduler or booking ledger. The automatic worker is **not registered or enabled in the running local application** by this change.
+Updated 16 November 2026, America/New_York. These additions extend the existing customers context and its agreement, visit, receipt, audit and outbox tables. They do not create another scheduler or booking ledger. The customers host calls the registration extension, but the automatic worker remains **disabled by default** and is registered only when an explicit enabled policy is configured.
 
 ## Renewal
 
@@ -16,7 +16,7 @@ The command uses the existing actor-scoped receipt namespace and request hashing
 
 ## Explicit automatic processing policy
 
-[ContractLifecycleApi.cs](../../building-blocks/FieldOps.ServiceHost/ContractLifecycleApi.cs) contains the processor, optional registration extension and background worker. Registration is an explicit customers-host integration decision: `services.AddContractLifecycle(configuration)`. Calling this extension with the default configuration registers no worker. This assignment leaves the application hook uncalled.
+[ContractLifecycleApi.cs](../../building-blocks/FieldOps.ServiceHost/ContractLifecycleApi.cs) contains the processor, registration extension and background worker. The customers host calls `services.AddContractLifecycle(configuration)`. Calling this extension with the default configuration registers no worker; automatic processing requires the explicit configuration below.
 
 | Setting | Default | Meaning when enabled |
 |---|---|---|
@@ -33,7 +33,7 @@ Processing performs these operations:
 2. Only agreements currently Active and effective generate visits, using the existing `ContractRules.GenerateVisits` with the configured local-date horizon. Plan cursors advance and existing visit identities remain. Generated visits are explicitly tracked as inserts. A cursor-only advance gets audit evidence even when no new visit is needed; a repeated no-op sweep preserves agreement version and update time.
 3. Only unlinked **Pending** visits may become Missed. Dispatching, Created, Scheduled, Completed, Cancelled and already Missed visits retain their state. The due day plus the full configured number of grace days must have passed in the agreement's time zone. For example, a March 7 due date with one grace day stays Pending throughout March 8 locally and becomes eligible on March 9. If the grace setting is absent, no visit is automatically marked Missed.
 
-The processor never deletes visits, creates or books a work order, assigns technicians, records usage, activates a renewal, or changes the authoritative scheduling constraints. Dispatch remains a separate explicit workflow. Multiple workers serialize through the same team lock; uniqueness and advanced cursors prevent duplicate generated visits, and state transitions prevent duplicate lifecycle audit/outbox writes. A failed transaction rolls back its changes; committed earlier agreements remain durable and later sweeps retry remaining work.
+The processor never deletes visits, creates or books a work order, assigns technicians, records usage, activates a renewal, or changes the authoritative scheduling constraints. Dispatch remains a separate explicit workflow. Multiple workers serialize through the same team lock; uniqueness and advanced cursors prevent duplicate generated visits, and state transitions prevent duplicate lifecycle audit/outbox writes. Each agreement has an isolated transaction. A failed agreement rolls back its changes, clears uncommitted tracked state, increments the sweep's `Failed` count and logs its agreement/team identifiers through the worker logger. Processing continues with later agreements, and the failed agreement remains eligible for a future retry. Successful result counts include committed changes only. Cancellation propagates immediately rather than becoming an agreement failure.
 
 ## Additive schema and calendar behavior
 
@@ -58,3 +58,5 @@ The PostgreSQL cases verify concurrent renewal retries create exactly one Draft/
 Two early migration-test failures were in its synthetic setup: EF's raw-SQL formatter treated SQL braces as format markers, then the legacy customer insert omitted pre-existing required columns. The final helper executes the embedded immutable migration through `NpgsqlCommand` and supplies the required customer fields. Both failures were corrected before the passing run; no check was skipped or weakened.
 
 This evidence covers deterministic local foundations and real PostgreSQL. It does not claim that the automatic worker has processed existing development data, that RabbitMQ has delivered these new outbox messages, or that a production scheduler/provider has been enabled. The parent integration owns the live authenticated HTTP/browser deployment checks and runtime-role verification.
+
+The additional [ContractLifecycleResilienceTests.cs](../../tests/backend/ContractLifecycleResilienceTests.cs) scenarios exercise a persisted poison agreement ahead of a healthy agreement, rollback of a staged expiration/audit/outbox, continued healthy generation and missed marking, failure logging/retry accounting, unchanged repeated healthy work, and cancellation after acquiring the agreement transaction/lock. These new scenarios are pending execution until the shared .NET build window is available; no passing result is claimed yet.

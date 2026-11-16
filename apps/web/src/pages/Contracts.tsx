@@ -297,7 +297,7 @@ export function Contracts() {
       ) : null}
       {error ? <ErrorState error={error} /> : null}
       {notice ? <InlineMessage success>{notice}</InlineMessage> : null}
-      <div className="detail-grid">
+      <div className="detail-grid contracts-grid">
         <Panel
           title="Create agreement"
           description="The agreement starts with one covered service line. Equipment coverage can be restricted to explicit asset IDs."
@@ -488,6 +488,7 @@ export function Contracts() {
       </div>
       {selectedId ? (
         <Panel
+          className="contract-detail"
           title="Agreement detail"
           description="Entitlements are consumed only by recorded work-order usage; generating a visit does not consume one."
           action={
@@ -581,7 +582,10 @@ export function Contracts() {
                         <td>{line.laborCovered ? "Covered" : "Billable"}</td>
                         <td>{line.partsCovered ? "Covered" : "Billable"}</td>
                         <td>
-                          {line.visitsUsed} / {line.includedVisits === 0 ? "Unlimited" : line.includedVisits}
+                          {line.visitsUsed} /{" "}
+                          {line.includedVisits === 0
+                            ? "Unlimited"
+                            : line.includedVisits}
                         </td>
                         <td>{line.visitsRemaining ?? "Unlimited"}</td>
                         <td>
@@ -756,7 +760,12 @@ export function Contracts() {
                           </td>
                           <td>
                             <Status value={visit.status} />
-                            {visit.completionReviewRequired ? <p role="status">Coverage review required: {visit.completionReviewReason}</p> : null}
+                            {visit.completionReviewRequired ? (
+                              <p role="status">
+                                Coverage review required:{" "}
+                                {visit.completionReviewReason}
+                              </p>
+                            ) : null}
                           </td>
                           <td>
                             {visit.workOrderId ? (

@@ -111,6 +111,9 @@ export interface PortalAgreement {
   expiresAtUtc?: string | null;
   lines: ContractLine[];
   upcomingVisits: MaintenanceVisit[];
+  timeZoneId: string;
+  coversAllAssets: boolean;
+  coveredAssets: CoveredAsset[];
 }
 
 export const contractFrequencies = [

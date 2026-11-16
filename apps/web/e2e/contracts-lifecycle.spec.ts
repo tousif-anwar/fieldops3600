@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Response } from "@playwright/test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import type {
@@ -283,7 +283,7 @@ test("manager activates, dispatches and renews a real maintenance agreement", as
     });
     await orderLink.click();
     await expect(
-      page.getByRole("heading", { name: "Recurring maintenance", exact: true }),
+      page.getByRole("heading", { name: order.title, exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Agreement coverage review", { exact: true }),
@@ -313,21 +313,78 @@ test("manager activates, dispatches and renews a real maintenance agreement", as
     renewalEnd.setUTCFullYear(renewalEnd.getUTCFullYear() + 1);
     await renewalSection
       .getByLabel("Renewal starts", { exact: false })
-      .fill(`${expiryDate}T00:00:00`);
+      .fill(`${expiryDate}T00:00`);
     await renewalSection
       .getByLabel("Renewal expires", { exact: false })
-      .fill(renewalEnd.toISOString().slice(0, 19));
+      .fill(renewalEnd.toISOString().slice(0, 16));
     await renewalSection
       .getByRole("textbox", { name: "Renewal reason", exact: false })
       .fill(reason);
-    const renewalResponse = posted(
-      page,
-      `/api/contracts/${active.id}/renewals`,
-    );
     await renewalSection
-      .getByRole("button", { name: "Create renewal draft", exact: true })
+      .getByRole("heading", { name: "Renewal", exact: true })
       .click();
-    const renewal = await committed<ContractRenewal>(await renewalResponse);
+    expect(
+      await renewalSection
+        .locator("form")
+        .evaluate((form: HTMLFormElement) =>
+          [...form.querySelectorAll("input")]
+            .filter((input) => !input.validity.valid)
+            .map((input) => ({
+              type: input.type,
+              value: input.value,
+              message: input.validationMessage,
+            })),
+        ),
+    ).toEqual([]);
+    await page.screenshot({
+      path: testInfo.outputPath("contract-renewal-ready.png"),
+    });
+    const layout = await page.evaluate(() => ({
+      viewport: {
+        width: window.innerWidth,
+        visualWidth: window.visualViewport?.width,
+        documentWidth: document.documentElement.scrollWidth,
+      },
+      elements: [
+        ...document.querySelectorAll(
+          ".panel, .form-body, .form-two, .fui-Field, input, select, button",
+        ),
+      ]
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            tag: element.tagName,
+            className: element.className,
+            id: element.id,
+            text:
+              element.tagName === "BUTTON" ? element.textContent : undefined,
+            x: rect.x,
+            width: rect.width,
+            right: rect.right,
+            minWidth: style.minWidth,
+            maxWidth: style.maxWidth,
+            display: style.display,
+          };
+        })
+        .filter(
+          (element) => element.right > document.documentElement.clientWidth + 1,
+        ),
+    }));
+    writeFileSync(
+      testInfo.outputPath("contract-layout.json"),
+      JSON.stringify(layout, null, 2),
+    );
+    expect(layout.viewport.documentWidth).toBeLessThanOrEqual(
+      (page.viewportSize()?.width ?? 0) + 1,
+    );
+    const [renewalResponse] = await Promise.all([
+      posted(page, `/api/contracts/${active.id}/renewals`),
+      renewalSection
+        .getByRole("button", { name: "Create renewal draft", exact: true })
+        .click(),
+    ]);
+    const renewal = await committed<ContractRenewal>(renewalResponse);
     expect(renewal.sourceContractId).toBe(active.id);
     expect(renewal.sourceVersion).toBe(sourceBefore.version);
     expect(renewal.renewedContractId).not.toBe(active.id);
@@ -399,9 +456,22 @@ test("manager activates, dispatches and renews a real maintenance agreement", as
       { headers },
     );
     expect(evidenceResponse.ok()).toBe(true);
-    expect(evidenceResponse.headers()["cache-control"]).toBe("no-store");
+    expect(
+      evidenceResponse
+        .headers()
+        ["cache-control"].split(",")
+        .map((directive) => directive.trim()),
+    ).toContain("no-store");
     const evidence: ContractRenewal[] = await evidenceResponse.json();
-    expect(evidence).toEqual([renewal]);
+    expect(evidence).toHaveLength(1);
+    const { recordedAtUtc, ...persistedEvidence } = evidence[0];
+    const { recordedAtUtc: responseRecordedAt, ...responseEvidence } = renewal;
+    expect(persistedEvidence).toEqual(responseEvidence);
+    // PostgreSQL stores microseconds; the immediate .NET response can include
+    // a seventh fractional digit. Browser time comparisons use milliseconds.
+    expect(new Date(recordedAtUtc).getTime()).toBe(
+      new Date(responseRecordedAt).getTime(),
+    );
     const auditAfterResponse = await page.request.get(
       `/api/contracts/${active.id}/history`,
       { headers },
