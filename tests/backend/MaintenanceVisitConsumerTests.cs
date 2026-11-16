@@ -38,8 +38,14 @@ public sealed class MaintenanceVisitConsumerTests(PostgresFixture fixture)
         Assert.Equal(0m, usage.PartsCost);
         Assert.Equal(visit.Id, usage.WorkOrderId);
         Assert.Equal(2, await db.Inbox.CountAsync());
-        Assert.Equal(2, await db.ContractEvents.CountAsync());
-        Assert.Equal(2, await db.Outbox.CountAsync());
+        Assert.Equal(3, await db.ContractEvents.CountAsync());
+        Assert.Equal(3, await db.Outbox.CountAsync());
+        var created = await db.ContractEvents.SingleAsync(x => x.Action == "MaintenanceVisitWorkOrderCreated.v1");
+        var createdDetails = Json.Read<JsonElement>(created.DetailsJson);
+        Assert.Equal(visit.Id, createdDetails.GetProperty("visitId").GetGuid());
+        Assert.Equal(visit.Id, createdDetails.GetProperty("workOrderId").GetGuid());
+        Assert.Equal(setup.Contract.Id, createdDetails.GetProperty("contractId").GetGuid());
+        Assert.Equal("north", createdDetails.GetProperty("teamId").GetString());
         Assert.All(await db.Outbox.ToArrayAsync(), row =>
         {
             var audit = Json.Read<AuditEvent>(row.Body);
@@ -107,8 +113,8 @@ public sealed class MaintenanceVisitConsumerTests(PostgresFixture fixture)
         Assert.True(visit.CompletionReviewRequired);
         Assert.False(string.IsNullOrWhiteSpace(visit.CompletionReviewReason));
         Assert.Equal(exhausted ? 1 : 0, await db.ContractUsage.CountAsync());
-        Assert.Single(await db.ContractEvents.ToListAsync());
-        Assert.Equal("MaintenanceCompletionReviewRequired.v1", (await db.ContractEvents.SingleAsync()).Action);
+        Assert.Equal(2, await db.ContractEvents.CountAsync());
+        Assert.Equal(1, await db.ContractEvents.CountAsync(x => x.Action == "MaintenanceCompletionReviewRequired.v1"));
     }
 
     [Fact]
@@ -127,6 +133,33 @@ public sealed class MaintenanceVisitConsumerTests(PostgresFixture fixture)
         Assert.Equal("Expired", (await verify.Contracts.SingleAsync()).Status);
         Assert.Equal("Completed", (await verify.MaintenanceVisits.SingleAsync()).Status);
         Assert.True((await verify.MaintenanceVisits.SingleAsync()).CompletionReviewRequired);
+        Assert.Empty(await verify.ContractUsage.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ResumedAgreementDoesNotSilentlyGrantHistoricalAuthorizationAfterDispatch()
+    {
+        var setup = await Seed();
+        await using (var db = PostgresFixture.Db(setup.Connection, "customers"))
+        {
+            foreach (var (version, action, minutes, details) in new[]
+            {
+                (2, "MaintenanceVisitDispatchRequested.v1", -50, Json.Write(new { visitId = setup.Order.Id })),
+                (3, "MaintenanceContractStatusChanged.v1", -30, Json.Write(new { status = "Suspended" })),
+                (4, "MaintenanceContractStatusChanged.v1", -20, Json.Write(new { status = "Active" }))
+            }) db.ContractEvents.Add(new ContractEvent
+            {
+                ContractId = setup.Contract.Id, Version = version, Action = action, ActorId = "manager-01",
+                ActorRole = "OperationsManager", CorrelationId = "test", OccurredAtUtc = Now.AddMinutes(minutes), DetailsJson = details
+            });
+            await db.SaveChangesAsync();
+        }
+        await Process(setup, OwnerEvent(setup, "WorkOrderCompleted.v1"));
+        await using var verify = PostgresFixture.Db(setup.Connection, "customers");
+        var visit = await verify.MaintenanceVisits.SingleAsync();
+        Assert.Equal("Completed", visit.Status);
+        Assert.True(visit.CompletionReviewRequired);
+        Assert.Contains("status changed after dispatch", visit.CompletionReviewReason);
         Assert.Empty(await verify.ContractUsage.ToListAsync());
     }
 
@@ -161,7 +194,13 @@ public sealed class MaintenanceVisitConsumerTests(PostgresFixture fixture)
     public async Task ManualUsageRequiresCompletedMatchingNonMaintenanceOrderAndVerifiedVisitOnly()
     {
         var setup = await Seed();
+        await using (var db = PostgresFixture.Db(setup.Connection, "customers"))
+        {
+            (await db.Contracts.Include(x => x.Lines).SingleAsync()).Lines[0].IncludedVisits = 2;
+            await db.SaveChangesAsync();
+        }
         var order = setup.Order;
+        order.Id = Guid.NewGuid();
         order.MaintenanceVisitId = null;
         order.Status = "Created";
         order.CompletedAtUtc = null;
@@ -192,6 +231,7 @@ public sealed class MaintenanceVisitConsumerTests(PostgresFixture fixture)
         await using var verify = PostgresFixture.Db(setup.Connection, "customers");
         Assert.Single(await verify.ContractUsage.ToListAsync());
         Assert.Equal(0m, (await verify.ContractUsage.SingleAsync()).PartsCost);
+        Assert.Equal(Now, (await verify.Contracts.SingleAsync()).UpdatedAtUtc);
     }
 
     private async Task<Setup> Seed(string status = "Active", bool exhausted = false)
@@ -212,6 +252,7 @@ public sealed class MaintenanceVisitConsumerTests(PostgresFixture fixture)
         if (exhausted) contract.Usage.Add(new ContractUsage { ContractId = contract.Id, ContractLineId = line.Id,
             WorkOrderId = Guid.NewGuid(), VisitsUsed = 1, OccurredAtUtc = Now.AddHours(-2) });
         db.Customers.Add(customer);
+        await db.SaveChangesAsync();
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
         var order = new WorkOrder { Id = visit.Id, MaintenanceVisitId = visit.Id, ContractId = contract.Id, ContractLineId = line.Id,

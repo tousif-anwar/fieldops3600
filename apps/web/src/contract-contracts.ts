@@ -8,6 +8,8 @@ export interface ContractLine {
   visitsUsed: number;
   partsUsed: number;
   visitsRemaining: number | null;
+  committedVisits?: number;
+  visitsAvailable?: number | null;
   active: boolean;
 }
 

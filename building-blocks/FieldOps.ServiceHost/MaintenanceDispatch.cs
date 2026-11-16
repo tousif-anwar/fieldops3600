@@ -31,7 +31,7 @@ public static class MaintenanceDispatch
         if (!ContractRules.IsEffective(contract, clock.GetUtcNow()))
             throw new DomainException(409, "The maintenance agreement is not active and effective.");
         var line = contract.Lines.Single(x => x.Id == visit.ContractLineId);
-        var coverage = ContractRules.Evaluate(contract, contract.CustomerId, visit.AssetId, line.ServiceType, clock.GetUtcNow());
+        var coverage = ContractRules.Evaluate(contract, contract.CustomerId, visit.AssetId, line.ServiceType, clock.GetUtcNow(), visit.Id);
         if (!coverage.Covered) throw new DomainException(409, coverage.Reason);
         http.Response.Headers.CacheControl = "no-store";
         return Results.Ok(new MaintenanceDispatchView(contract.Id, visit.Id, contract.CustomerId, contract.TeamId,
@@ -74,6 +74,19 @@ public static class MaintenanceDispatch
             }
             if (visit.ServiceLocationId.HasValue && visit.ServiceLocationId != request.ServiceLocationId)
                 throw new DomainException(409, "This visit is already bound to a different service location.");
+            if (receipt is not null && visit.WorkOrderId == visit.Id)
+            {
+                // The owner response may have been lost while its trusted event
+                // already linked, scheduled, or completed this exact commitment.
+                // Repair the original actor/hash receipt without another owner call
+                // and preserve the projected service state and usage evidence.
+                var recovered = new MaintenanceDispatchResult(visit.Id, visit.WorkOrderId,
+                    request.ServiceLocationId, visit.Status, true);
+                receipt.ResponseJson = Json.Write(recovered);
+                await db.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+                return Results.Ok(recovered);
+            }
             if (visit.Status is "Completed" or "Missed" or "Cancelled")
                 throw new DomainException(409, "This visit cannot create a work order.");
             if (visit.Status == "Pending")
@@ -118,7 +131,7 @@ public static class MaintenanceDispatch
                 visit.Status = "Created";
                 contract.Version++;
                 contract.UpdatedAtUtc = clock.GetUtcNow();
-                ContractApi.AddEvent(db, http, contract, "MaintenanceVisitWorkOrderCreated.v1", clock.GetUtcNow(), new { visitId, workOrderId = committed.Id, contractId });
+                ContractApi.AddEvent(db, http, contract, "MaintenanceVisitWorkOrderCreated.v1", clock.GetUtcNow(), new { contract.TeamId, visitId, workOrderId = committed.Id, contractId });
             }
             var receipt = await db.Receipts.SingleAsync(x => x.Id == key, ct);
             CheckReceipt(receipt, caller, hash);

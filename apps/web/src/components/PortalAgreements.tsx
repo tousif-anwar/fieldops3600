@@ -6,6 +6,13 @@ import type { PortalEquipment } from "../service-request-contracts";
 
 const dateOnly = (value?: string | null) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString() : "—";
+const agreementDate = (value: string | null | undefined, timeZone: string) =>
+  value
+    ? new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeZone,
+      }).format(new Date(value))
+    : "—";
 
 export function PortalAgreements() {
   const agreements = useQuery({
@@ -42,9 +49,18 @@ export function PortalAgreements() {
         <section className="customer-subrecord" key={agreement.id}>
           <h3>
             <Status value={agreement.status} /> · Effective{" "}
-            {dateOnly(agreement.effectiveFromUtc.slice(0, 10))}
+            {agreementDate(
+              agreement.effectiveFromUtc,
+              agreement.timeZoneId ?? "UTC",
+            )}
           </h3>
-          <p>Expires {dateOnly(agreement.expiresAtUtc?.slice(0, 10))}</p>
+          <p>
+            Expires{" "}
+            {agreementDate(
+              agreement.expiresAtUtc,
+              agreement.timeZoneId ?? "UTC",
+            )}
+          </p>
           <div
             className="table-scroll"
             tabIndex={0}
@@ -57,7 +73,7 @@ export function PortalAgreements() {
                   <th scope="col">Service</th>
                   <th scope="col">Labor</th>
                   <th scope="col">Parts</th>
-                  <th scope="col">Visits remaining</th>
+                  <th scope="col">Visits available</th>
                 </tr>
               </thead>
               <tbody>
@@ -66,7 +82,18 @@ export function PortalAgreements() {
                     <td>{line.serviceType}</td>
                     <td>{line.laborCovered ? "Covered" : "Not covered"}</td>
                     <td>{line.partsCovered ? "Covered" : "Not covered"}</td>
-                    <td>{line.visitsRemaining ?? "Unlimited"}</td>
+                    <td>
+                      {line.visitsAvailable ??
+                        (line.includedVisits === 0
+                          ? "Unlimited"
+                          : line.visitsRemaining)}
+                      {(line.committedVisits ?? 0) > 0 ? (
+                        <small>
+                          {" "}
+                          · {line.committedVisits} committed to maintenance
+                        </small>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -87,7 +114,7 @@ export function PortalAgreements() {
                 />
               ) : null}
               <ul>
-                {agreement.coveredAssets.map((covered) => (
+                {(agreement.coveredAssets ?? []).map((covered) => (
                   <li key={covered.assetId}>
                     {equipment.data?.find(
                       (asset) => asset.id === covered.assetId,

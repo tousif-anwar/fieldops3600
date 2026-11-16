@@ -206,7 +206,7 @@ public static class OperationsApi
             if (request.MaintenanceVisitId is { } visitId) { order.Id = visitId; order.MaintenanceVisitId = visitId; }
             if (order.CustomerId is { } customerId)
             {
-                var decision = await remote.Get<EntitlementDecision>("Customers", $"/api/contracts/entitlements?customerId={customerId:D}&serviceType={Uri.EscapeDataString(order.ServiceCategory)}{(order.AssetId is { } equipmentId ? "&assetId=" + equipmentId.ToString("D") : "")}{(request.ContractId is { } agreementId ? "&contractId=" + agreementId.ToString("D") : "")}", http, ct);
+                var decision = await remote.Get<EntitlementDecision>("Customers", $"/api/contracts/entitlements?customerId={customerId:D}&serviceType={Uri.EscapeDataString(order.ServiceCategory)}{(order.AssetId is { } equipmentId ? "&assetId=" + equipmentId.ToString("D") : "")}{(request.ContractId is { } agreementId ? "&contractId=" + agreementId.ToString("D") : "")}{(request.MaintenanceVisitId is { } allocatedVisit ? "&allocationVisitId=" + allocatedVisit.ToString("D") : "")}", http, ct);
                 MaintenanceDispatch.ApplyDecision(order, decision, now);
                 if (request.MaintenanceVisitId.HasValue && (!decision.Covered || decision.ContractId != request.ContractId))
                     throw new DomainException(409, "The maintenance agreement no longer covers this visit. Review its entitlement before dispatch.");

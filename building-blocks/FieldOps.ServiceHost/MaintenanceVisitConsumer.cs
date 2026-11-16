@@ -13,7 +13,8 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
     public static async Task Process(AuditEvent message, ServiceDb db, TimeProvider clock, CancellationToken ct = default)
     {
         if (db.ServiceName != "customers") throw new InvalidOperationException("Maintenance visit projection belongs to customers.");
-        var orderFact = message.SourceService == "work-orders" && message.EventType is "WorkOrderCreated.v1" or "WorkOrderCompleted.v1";
+        var cancellationFact = message.SourceService == "work-orders" && message.EventType == "WorkOrderUpdated.v1" && Text(message, "status") == "Cancelled";
+        var orderFact = cancellationFact || message.SourceService == "work-orders" && message.EventType is "WorkOrderCreated.v1" or "WorkOrderCompleted.v1";
         var bookingFact = message.SourceService == "scheduling" && message.EventType is "BookingCreated.v1" or "BookingRescheduled.v1" or "BookingCancelled.v1";
         if ((!orderFact && !bookingFact) || message.EventVersion != 1 || message.SchemaVersion != 1 || message.WorkOrderId == Guid.Empty)
             return;
@@ -36,6 +37,7 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
         var visit = contract.Visits.Single(x => x.Id == identity.VisitId);
         var line = contract.Lines.Single(x => x.Id == visit.ContractLineId);
         var now = clock.GetUtcNow();
+        var linkedWorkOrder = false;
         db.Inbox.Add(new InboxMessage { Id = inboxId, ProcessedAtUtc = now });
         if (visit.ServiceLocationId is null || visit.Id != message.WorkOrderId ||
             (visit.WorkOrderId.HasValue && visit.WorkOrderId != message.WorkOrderId) ||
@@ -50,7 +52,17 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
             return;
         }
 
-        if (message.EventType == "WorkOrderCompleted.v1")
+        if (cancellationFact && visit.CompletionEventId is null && visit.Status is not ("Completed" or "Cancelled"))
+        {
+            linkedWorkOrder = visit.WorkOrderId is null;
+            visit.WorkOrderId = message.WorkOrderId;
+            visit.Status = "Cancelled";
+            contract.Version++;
+            contract.UpdatedAtUtc = now;
+            Append("MaintenanceVisitCancelled.v1", new { contract.TeamId, contractId = contract.Id, visitId = visit.Id,
+                workOrderId = message.WorkOrderId, sourceEventId = message.EventId, allocationReleased = true });
+        }
+        else if (message.EventType == "WorkOrderCompleted.v1")
         {
             if (visit.CompletionEventId is null)
             {
@@ -60,6 +72,10 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
                     await Save();
                     return;
                 }
+                var wasCancelled = visit.Status == "Cancelled";
+                var decision = EvaluateCompletion(contract, visit.AssetId, line.ServiceType, completedAt.Value,
+                    wasCancelled ? null : visit.Id);
+                linkedWorkOrder = visit.WorkOrderId is null;
                 visit.WorkOrderId = message.WorkOrderId;
                 visit.Status = "Completed";
                 visit.CompletedAtUtc = completedAt;
@@ -70,10 +86,10 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
                     // The actual completion instant controls the term boundary.
                     // A currently non-active term requires review: Expired alone
                     // cannot prove whether its previous state was Active or Suspended.
-                    var decision = EvaluateCompletion(contract, visit.AssetId, line.ServiceType, completedAt.Value);
-                    if (decision.Covered && completedAt >= visit.GeneratedAtUtc)
+                    var changedStatus = await StatusChangedAfterDispatch(db, contract.Id, visit, completedAt.Value, ct);
+                    if (decision.Covered && !wasCancelled && !changedStatus && completedAt >= visit.GeneratedAtUtc)
                     {
-                        var usage = ContractRules.RecordUsage(contract, line.Id, message.WorkOrderId, 1, 0, completedAt.Value);
+                        var usage = ContractRules.RecordUsage(contract, line.Id, message.WorkOrderId, 1, 0, completedAt.Value, visit.Id);
                         db.Entry(usage).State = EntityState.Added;
                         Append("ContractUsageRecorded.v1", new { contract.TeamId, contractId = contract.Id, visitId = visit.Id,
                             usageId = usage.Id, usage.ContractLineId, usage.WorkOrderId, usage.VisitsUsed, usage.PartsCost,
@@ -84,22 +100,33 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
                         visit.CompletionReviewRequired = true;
                         visit.CompletionReviewReason = completedAt < visit.GeneratedAtUtc
                             ? "Completion precedes the generated maintenance visit."
+                            : wasCancelled ? "Completion conflicts with the owner's cancelled work order; review historical service authorization."
+                            : changedStatus ? "Agreement status changed after dispatch; review historical service authorization."
                             : decision.Reason;
                         contract.Version++;
                     }
                 }
-                else contract.Version++;
+                else
+                {
+                    if (existing.VisitsUsed != 1)
+                    {
+                        visit.CompletionReviewRequired = true;
+                        visit.CompletionReviewReason = "Existing usage does not account for one completed maintenance visit.";
+                    }
+                    contract.Version++;
+                }
                 contract.UpdatedAtUtc = now;
                 Append(visit.CompletionReviewRequired ? "MaintenanceCompletionReviewRequired.v1" : "MaintenanceVisitCompleted.v1",
                     new { contract.TeamId, contractId = contract.Id, visitId = visit.Id, workOrderId = message.WorkOrderId,
                         visit.CompletedAtUtc, visit.CompletionReviewRequired, visit.CompletionReviewReason, sourceEventId = message.EventId });
             }
         }
-        else if (visit.CompletionEventId is null && visit.Status != "Completed")
+        else if (!cancellationFact && visit.CompletionEventId is null && visit.Status is not ("Completed" or "Cancelled"))
         {
             var previousStatus = visit.Status;
             var previousOrderId = visit.WorkOrderId;
             var previousRevision = visit.AssignmentRevision;
+            linkedWorkOrder = visit.WorkOrderId is null;
             visit.WorkOrderId = message.WorkOrderId;
             if (bookingFact && message.SequenceNumber > visit.AssignmentRevision)
             {
@@ -115,6 +142,9 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
                     workOrderId = message.WorkOrderId, visit.Status, visit.AssignmentRevision, sourceEventId = message.EventId });
             }
         }
+        if (linkedWorkOrder)
+            Append("MaintenanceVisitWorkOrderCreated.v1", new { contract.TeamId, contractId = contract.Id,
+                visitId = visit.Id, workOrderId = message.WorkOrderId, sourceEventId = message.EventId });
         await Save();
 
         async Task Save()
@@ -137,9 +167,24 @@ public sealed class MaintenanceVisitConsumer(ServiceDb db, TimeProvider clock) :
         }
     }
 
-    public static EntitlementDecision EvaluateCompletion(MaintenanceContract contract, Guid? assetId, string serviceType, DateTimeOffset completedAt)
+    public static EntitlementDecision EvaluateCompletion(MaintenanceContract contract, Guid? assetId, string serviceType, DateTimeOffset completedAt,
+        Guid? allocationVisitId = null)
     {
-        return ContractRules.Evaluate(contract, contract.CustomerId, assetId, serviceType, completedAt);
+        return ContractRules.Evaluate(contract, contract.CustomerId, assetId, serviceType, completedAt, allocationVisitId);
+    }
+
+    private static async Task<bool> StatusChangedAfterDispatch(ServiceDb db, Guid contractId, MaintenanceVisit visit,
+        DateTimeOffset completedAt, CancellationToken ct)
+    {
+        var history = await db.ContractEvents.AsNoTracking().Where(x => x.ContractId == contractId &&
+            x.OccurredAtUtc >= visit.GeneratedAtUtc && x.OccurredAtUtc <= completedAt &&
+            (x.Action == "MaintenanceVisitDispatchRequested.v1" || x.Action == "MaintenanceContractStatusChanged.v1" ||
+             x.Action == "MaintenanceContractExpired.v1")).ToArrayAsync(ct);
+        var dispatchVersion = history.Where(x => x.Action == "MaintenanceVisitDispatchRequested.v1" &&
+            Json.Read<JsonElement>(x.DetailsJson).TryGetProperty("visitId", out var id) && id.TryGetGuid(out var value) && value == visit.Id)
+            .Select(x => (int?)x.Version).Max();
+        return history.Any(x => x.Action != "MaintenanceVisitDispatchRequested.v1" &&
+            (dispatchVersion is null || x.Version > dispatchVersion));
     }
 
     private static bool MatchesOwner(AuditEvent message, MaintenanceContract contract, MaintenanceVisit visit, ContractLine line) =>

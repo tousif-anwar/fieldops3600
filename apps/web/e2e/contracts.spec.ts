@@ -45,10 +45,16 @@ test("manager opens the real maintenance agreement register", async ({
   await expect(
     page.getByRole("heading", { name: "Maintenance agreements", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Create agreement" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Agreement register" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create agreement" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Agreement register" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Create and activate" }),
   ).toBeVisible();
-  expect(errors.filter((item) => /403|401|Uncaught|not authorized/i.test(item))).toEqual([]);
+  expect(
+    errors.filter((item) => /403|401|Uncaught|not authorized/i.test(item)),
+  ).toEqual([]);
 });

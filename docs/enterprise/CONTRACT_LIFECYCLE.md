@@ -59,4 +59,12 @@ Two early migration-test failures were in its synthetic setup: EF's raw-SQL form
 
 This evidence covers deterministic local foundations and real PostgreSQL. It does not claim that the automatic worker has processed existing development data, that RabbitMQ has delivered these new outbox messages, or that a production scheduler/provider has been enabled. The parent integration owns the live authenticated HTTP/browser deployment checks and runtime-role verification.
 
-The additional [ContractLifecycleResilienceTests.cs](../../tests/backend/ContractLifecycleResilienceTests.cs) scenarios exercise a persisted poison agreement ahead of a healthy agreement, rollback of a staged expiration/audit/outbox, continued healthy generation and missed marking, failure logging/retry accounting, unchanged repeated healthy work, and cancellation after acquiring the agreement transaction/lock. These new scenarios are pending execution until the shared .NET build window is available; no passing result is claimed yet.
+The additional [ContractLifecycleResilienceTests.cs](../../tests/backend/ContractLifecycleResilienceTests.cs) scenarios exercise a persisted poison agreement ahead of a healthy agreement, rollback of a staged expiration/audit/outbox, continued healthy generation and missed marking, failure logging/retry accounting, unchanged repeated healthy work, and cancellation after acquiring the agreement transaction/lock.
+
+On 16 November, the following focused real PostgreSQL run passed **3/3 tests, zero skips**: the two resilience cases and the customer-portal contract case selected by the parent integration. Compilation was clean and test execution took three seconds.
+
+```powershell
+.\.tools\dotnet\dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false --filter 'FullyQualifiedName~ContractLifecycleResilience|FullyQualifiedName~ContractPortal' --logger 'console;verbosity=minimal'
+```
+
+An initial resilience assertion compared an unrequested navigation collection that EF relationship fixup had populated in only one context. The assertion now compares the explicitly loaded status, version, update time, plans and visits with deterministic ordering; audit/outbox counts are verified separately. Both substantive rollback/progress checks and cancellation remained enabled throughout.

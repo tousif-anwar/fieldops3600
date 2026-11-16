@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
 from pathlib import Path
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -49,6 +50,52 @@ class ContractHttpTests(unittest.TestCase):
         status, response = self.request("POST", "/api/contracts" + path, payload, role)
         self.assertIn(status, (200, 201), response)
         return payload, response
+
+    def wait(self, predicate, description, timeout=45):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            value = predicate()
+            if value:
+                return value
+            time.sleep(0.2)
+        self.fail("Timed out waiting for " + description)
+
+    def complete_maintenance_service(self, work_order_id):
+        # Capacity and owner rules stay authoritative. Repeated local verification
+        # retains service evidence, so search unoccupied future working windows.
+        booked = None
+        for days in range(1, 61):
+            candidate = datetime.now(timezone.utc).replace(hour=15, minute=0, second=0, microsecond=0) + timedelta(days=days)
+            if candidate.weekday() > 4:
+                continue
+            status, response = self.request("POST", "/api/bookings", {
+                "workOrderId": work_order_id, "technicianId": "tech-01",
+                "startUtc": candidate.isoformat(), "endUtc": (candidate + timedelta(hours=1)).isoformat(),
+            })
+            if status == 201:
+                booked = response
+                break
+            self.assertEqual(409, status, response)
+        self.assertIsNotNone(booked, "No available synthetic service window in the next 60 days")
+        self.wait(lambda: (result := self.request("GET", "/api/work-orders/" + work_order_id))[0] == 200
+                  and result[1]["status"] == "Scheduled", "real booking projection")
+        status, workflow = self.request("POST", "/api/workflows", {"workOrderId": work_order_id}, "technician")
+        self.assertIn(status, (200, 201), workflow)
+        status, template = self.request("GET", "/api/workflows/templates/" + str(workflow["templateVersion"]), role="technician")
+        self.assertEqual(200, status, template)
+        for stage in template["stages"]:
+            answers = {}
+            for field in stage["fields"]:
+                if not field.get("conditionField") or answers.get(field["conditionField"]) == field.get("conditionValue"):
+                    answers[field["key"]] = ("45.5" if field.get("inputType") == "number" else
+                                             "Synthetic completed maintenance service evidence." if field.get("inputType") == "text" else field["options"][0])
+            payload = {"expectedVersion": workflow["version"], "idempotencyKey": str(uuid4()), "answers": answers,
+                       "offline": False, "clientOccurredAtUtc": datetime.now(timezone.utc).isoformat()}
+            status, workflow = self.request("POST", "/api/workflows/" + workflow["id"] + "/submit", payload, "technician")
+            self.assertEqual(200, status, workflow)
+        self.assertEqual("Completed", workflow["status"])
+        self.wait(lambda: (result := self.request("GET", "/api/work-orders/" + work_order_id))[0] == 200
+                  and result[1]["status"] == "Completed", "real work-order completion projection")
 
     def test_synthetic_agreement_recurrence_entitlement_and_usage(self):
         # A fresh customer isolates this agreement from earlier retained evidence.
@@ -221,12 +268,27 @@ class ContractHttpTests(unittest.TestCase):
             "contractLineId": line["id"],
             "workOrderId": order["id"],
             "visitsUsed": 1,
-            "partsCost": 10,
+            "partsCost": 0,
         }
-        status, used = self.request("POST", f"/api/contracts/{contract['id']}/usage", usage)
-        self.assertEqual(200, status, used)
+        # An arbitrary uncompleted customer job cannot consume the allowance.
+        self.assertEqual(409, self.request("POST", f"/api/contracts/{contract['id']}/usage", usage)[0])
+        self.complete_maintenance_service(recurring_order["id"])
+
+        def completed_agreement():
+            status, result = self.request("GET", f"/api/contracts/{contract['id']}")
+            self.assertEqual(200, status, result)
+            completed_visit = next(item for item in result["visits"] if item["id"] == visit["id"])
+            return result if completed_visit["status"] == "Completed" and len(result["usage"]) == 1 else None
+
+        used = self.wait(completed_agreement, "customer consumer completion and append-only usage")
+        completed_visit = next(item for item in used["visits"] if item["id"] == visit["id"])
+        self.assertFalse(completed_visit["completionReviewRequired"], completed_visit)
+        self.assertIsNotNone(completed_visit["completedAtUtc"])
+        self.assertEqual(recurring_order["id"], used["usage"][0]["workOrderId"])
+        self.assertEqual(0, used["usage"][0]["partsCost"])
         self.assertEqual(1, used["lines"][0]["visitsUsed"])
-        self.assertEqual(409, self.request("POST", f"/api/contracts/{contract['id']}/usage", {**usage, "operationId": str(uuid4())})[0])
+        self.assertEqual(409, self.request("POST", f"/api/contracts/{contract['id']}/usage",
+                                         {**usage, "workOrderId": recurring_order["id"], "operationId": str(uuid4())})[0])
         status, remaining = self.request(
             "GET",
             f"/api/contracts/entitlements?customerId={customer['id']}&serviceType={service_type}",

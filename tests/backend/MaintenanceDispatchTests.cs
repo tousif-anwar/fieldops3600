@@ -56,6 +56,80 @@ public sealed class MaintenanceDispatchTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task LostResponseReceiptRecoversAfterOwnerCompletionWithoutRemoteCallsOrRepeatedUsage()
+    {
+        var setup = await Setup();
+        var transport = new Owners(setup.CustomerDb, setup.OrderDb) { LoseFirstWorkOrderResponse = true };
+        var request = new DispatchMaintenanceVisit(Guid.NewGuid(), setup.SiteId);
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+            await Assert.ThrowsAsync<HttpRequestException>(() => MaintenanceDispatch.Dispatch(setup.ContractId, setup.VisitId, request,
+                db, transport.Remote(), Actor(), TimeProvider.System, default));
+
+        AuditEvent completed;
+        await using (var db = PostgresFixture.Db(setup.OrderDb, "work-orders"))
+        {
+            var order = await db.WorkOrders.SingleAsync();
+            order.Status = "Completed";
+            order.CompletedAtUtc = DateTimeOffset.UtcNow;
+            order.Version++;
+            await db.SaveChangesAsync();
+            completed = EventFactory.Create(null, "work-orders", "WorkOrderCompleted.v1", order.Id,
+                OperationsApi.OrderPayload(order), order.Version, order.CompletedAtUtc.Value);
+        }
+        int eventCount;
+        int version;
+        Guid otherSiteId;
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+        {
+            await MaintenanceVisitConsumer.Process(completed, db, TimeProvider.System);
+            var visit = await db.MaintenanceVisits.SingleAsync();
+            Assert.Equal("Completed", visit.Status);
+            Assert.Equal(setup.VisitId, visit.WorkOrderId);
+            Assert.Equal(completed.EventId, visit.CompletionEventId);
+            Assert.Single(await db.ContractUsage.ToArrayAsync());
+            eventCount = await db.ContractEvents.CountAsync();
+            version = (await db.Contracts.SingleAsync()).Version;
+            var otherSite = new ServiceLocation
+            {
+                CustomerId = setup.CustomerId, Name = "Another authorized site", AddressLine1 = "200 Example Avenue",
+                City = "Test City", Region = "NY", PostalCode = "10000"
+            };
+            db.ServiceLocations.Add(otherSite);
+            await db.SaveChangesAsync();
+            otherSiteId = otherSite.Id;
+        }
+
+        // Any HTTP owner call would throw: the committed customer projection is
+        // enough to finalize this exact original receipt, even after completion.
+        var noRemote = new RemoteServices(new NoRemote(), new ConfigurationBuilder().Build());
+        MaintenanceDispatchResult recovered;
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+            recovered = Body<MaintenanceDispatchResult>(await MaintenanceDispatch.Dispatch(setup.ContractId, setup.VisitId,
+                request, db, noRemote, Actor(), TimeProvider.System, default));
+        Assert.True(recovered.DispatchComplete);
+        Assert.Equal("Completed", recovered.Status);
+        Assert.Equal(setup.VisitId, recovered.WorkOrderId);
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+            Assert.Equal(recovered, Body<MaintenanceDispatchResult>(await MaintenanceDispatch.Dispatch(setup.ContractId,
+                setup.VisitId, request, db, noRemote, Actor(), TimeProvider.System, default)));
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+            Assert.Equal(409, (await Assert.ThrowsAsync<DomainException>(() => MaintenanceDispatch.Dispatch(setup.ContractId,
+                setup.VisitId, request with { ServiceLocationId = otherSiteId }, db, noRemote, Actor(), TimeProvider.System, default))).Status);
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+            Assert.Equal(404, (await Assert.ThrowsAsync<DomainException>(() => MaintenanceDispatch.Dispatch(setup.ContractId,
+                setup.VisitId, request, db, noRemote, Actor("south"), TimeProvider.System, default))).Status);
+        await using (var db = PostgresFixture.Db(setup.CustomerDb, "customers"))
+        {
+            Assert.Equal(eventCount, await db.ContractEvents.CountAsync());
+            Assert.Equal(version, (await db.Contracts.SingleAsync()).Version);
+            Assert.Equal(1, (await db.ContractUsage.SingleAsync()).VisitsUsed);
+            Assert.Equal(recovered, Json.Read<MaintenanceDispatchResult>((await db.Receipts.SingleAsync()).ResponseJson));
+        }
+        await using var orders = PostgresFixture.Db(setup.OrderDb, "work-orders");
+        Assert.Single(await orders.WorkOrders.ToArrayAsync());
+    }
+
+    [Fact]
     public async Task RacingDispatchesCreateOneOwnerRecordAndBindOneSite()
     {
         var setup = await Setup();
@@ -136,6 +210,11 @@ public sealed class MaintenanceDispatchTests(PostgresFixture fixture)
     private static T Body<T>(IResult result) => result is ContentHttpResult content
         ? Json.Read<T>(content.ResponseContent!) : (T)((IValueHttpResult)result).Value!;
 
+    private sealed class NoRemote : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => throw new InvalidOperationException("Receipt recovery must not call an owner service.");
+    }
+
     // Only HTTP transport is substituted: both owners execute their actual handlers
     // and durable transactions against separate real PostgreSQL databases.
     private sealed class Owners(string customerDb, string orderDb) : IHttpClientFactory
@@ -164,7 +243,8 @@ public sealed class MaintenanceDispatchTests(PostgresFixture fixture)
                     {
                         var query = QueryHelpers.ParseQuery(uri.Query);
                         result = await ContractApi.Evaluate(db, Actor(), ct, Guid.Parse(query["customerId"].ToString()), query["serviceType"].ToString(),
-                            contractId: query.TryGetValue("contractId", out var selected) ? Guid.Parse(selected.ToString()) : null);
+                            contractId: query.TryGetValue("contractId", out var selected) ? Guid.Parse(selected.ToString()) : null,
+                            allocationVisitId: query.TryGetValue("allocationVisitId", out var allocated) ? Guid.Parse(allocated.ToString()) : null);
                     }
                     else if (uri.AbsolutePath.EndsWith("/dispatch", StringComparison.Ordinal))
                     {

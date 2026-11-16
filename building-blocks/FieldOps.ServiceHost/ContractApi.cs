@@ -18,7 +18,8 @@ public sealed record RecordContractUsage(Guid OperationId, Guid ContractId, Guid
 public sealed record ChangeContractStatus(Guid OperationId, Guid ContractId, int ExpectedVersion, string Status, string Reason);
 
 public sealed record ContractLineView(Guid Id, string ServiceType, bool LaborCovered, bool PartsCovered, int IncludedVisits,
-    decimal PartsAllowance, int VisitsUsed, decimal PartsUsed, int? VisitsRemaining, bool Active);
+    decimal PartsAllowance, int VisitsUsed, decimal PartsUsed, int? VisitsRemaining, bool Active,
+    int CommittedVisits = 0, int? VisitsAvailable = null);
 public sealed record CoveredAssetView(Guid AssetId, DateOnly EffectiveFrom, DateOnly? EffectiveTo, bool Active);
 public sealed record MaintenancePlanView(Guid Id, Guid ContractLineId, Guid? AssetId, string Frequency, DateOnly NextDueDate,
     DateOnly? EndsOn, bool Active, int Version, Guid? ServiceLocationId = null);
@@ -236,6 +237,7 @@ public static class ContractApi
                 throw new DomainException(409, "Completed service does not match eligible contract coverage: " + decision.Reason);
             var usage = ContractRules.RecordUsage(contract, request.ContractLineId, order.Id, request.VisitsUsed,
                 request.PartsCost, order.CompletedAtUtc.Value);
+            contract.UpdatedAtUtc = now;
             // Usage is append-only and has a client-generated key: a navigation add can
             // otherwise be detected as an update, which the runtime role must not perform.
             db.Entry(usage).State = EntityState.Added;
@@ -268,18 +270,20 @@ public static class ContractApi
     }
 
     public static async Task<IResult> Evaluate(ServiceDb db, HttpContext http, CancellationToken ct, Guid customerId,
-        string serviceType, Guid? assetId = null, Guid? contractId = null)
+        string serviceType, Guid? assetId = null, Guid? contractId = null, Guid? allocationVisitId = null)
     {
         var caller = Caller.From(http.User);
         var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(x => x.Id == customerId, ct)
             ?? throw new DomainException(404, "Customer not found.");
         caller.Demand(customer.TeamId);
         if (string.IsNullOrWhiteSpace(serviceType) || serviceType.Length > 80) throw new DomainException(400, "A service type is required.");
+        if (allocationVisitId.HasValue && !contractId.HasValue)
+            throw new DomainException(400, "An explicit agreement is required when validating an allocated visit.");
         var now = DateTimeOffset.UtcNow;
         var contracts = await ContractsQuery(db, customerId, customer.TeamId)
             .Where(x => x.Status == "Active" && (!contractId.HasValue || x.Id == contractId)).Include(x => x.Lines).Include(x => x.CoveredAssets)
-            .Include(x => x.Exclusions).Include(x => x.Usage).AsSplitQuery().ToListAsync(ct);
-        var decisions = contracts.Select(contract => ContractRules.Evaluate(contract, customerId, assetId, serviceType, now)).ToArray();
+            .Include(x => x.Exclusions).Include(x => x.Usage).Include(x => x.Visits).AsSplitQuery().ToListAsync(ct);
+        var decisions = contracts.Select(contract => ContractRules.Evaluate(contract, customerId, assetId, serviceType, now, allocationVisitId)).ToArray();
         var covered = decisions.Where(x => x.Covered).OrderByDescending(x => x.VisitsRemaining ?? int.MaxValue).FirstOrDefault();
         http.Response.Headers.CacheControl = "no-store";
         return Results.Ok(covered ?? decisions.FirstOrDefault() ?? new EntitlementDecision(false, "No active contract covers this service."));
@@ -378,7 +382,8 @@ public static class ContractApi
         var visits = used.Sum(x => x.VisitsUsed);
         var parts = used.Sum(x => x.PartsCost);
         return new ContractLineView(line.Id, line.ServiceType, line.LaborCovered, line.PartsCovered, line.IncludedVisits,
-            line.PartsAllowance, visits, parts, line.IncludedVisits == 0 ? null : Math.Max(0, line.IncludedVisits - visits), line.Active);
+            line.PartsAllowance, visits, parts, line.IncludedVisits == 0 ? null : Math.Max(0, line.IncludedVisits - visits), line.Active,
+            ContractRules.CommittedVisits(contract, line.Id), ContractRules.AvailableVisits(contract, line.Id));
     }).ToArray();
 
     private static MaintenanceVisitView VisitView(MaintenanceVisit visit) => new(visit.Id, visit.ContractLineId, visit.AssetId,

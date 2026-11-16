@@ -178,7 +178,12 @@ function App() {
             path="contracts"
             element={
               <RequireRole
-                roles={["Dispatcher", "Supervisor", "OperationsManager", "Administrator"]}
+                roles={[
+                  "Dispatcher",
+                  "Supervisor",
+                  "OperationsManager",
+                  "Administrator",
+                ]}
               >
                 <Contracts />
               </RequireRole>

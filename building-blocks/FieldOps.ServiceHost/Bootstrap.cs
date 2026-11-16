@@ -113,6 +113,7 @@ public static class Bootstrap
         CustomerPortalApi.Map(app, service);
         if (service == "customers") MaintenanceDispatch.Map(app);
         if (service == "customers") ContractLifecycleApi.Map(app);
+        if (service == "customers") ContractPlanApi.Map(app);
         if (service == "customers") ContractApi.Map(app);
         if (service == "inventory") InventoryApi.Map(app);
         if (service == "workflows") ServiceReportApi.Map(app);

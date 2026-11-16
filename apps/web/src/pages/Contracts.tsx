@@ -22,6 +22,7 @@ import {
   Status,
 } from "../components/common";
 import type { Customer, Page } from "../customer-contracts";
+import type { AssetSummary } from "../asset-contracts";
 import type {
   ContractPage,
   ContractSummary,
@@ -29,6 +30,7 @@ import type {
 } from "../contract-contracts";
 import { contractFrequencies, serviceTypes } from "../contract-contracts";
 import { ContractRenewalSection } from "../components/ContractRenewal";
+import { ContractPlanEditor } from "../components/ContractPlanEditor";
 
 const dateOnly = (value?: string | null) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString() : "—";
@@ -69,6 +71,7 @@ export function Contracts() {
   const [assetIds, setAssetIds] = useState("");
   const [generateThrough, setGenerateThrough] = useState(() => later(90));
   const [serviceLocationId, setServiceLocationId] = useState("");
+  const [planAssetId, setPlanAssetId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
@@ -104,6 +107,14 @@ export function Contracts() {
   const selectedSite = sites.some((site) => site.id === serviceLocationId)
     ? serviceLocationId
     : "";
+  const equipment = useQuery({
+    queryKey: ["assets", "contract-plan", detailCustomerId],
+    queryFn: () =>
+      api<Page<AssetSummary>>(
+        `/api/assets?customerId=${detailCustomerId}&pageSize=100`,
+      ),
+    enabled: !!detailCustomerId && !detail.data?.coversAllAssets,
+  });
 
   const customerNames = useMemo(
     () =>
@@ -186,21 +197,27 @@ export function Contracts() {
         exclusions: [],
       });
       const line = created.lines[0];
+      queryClient.setQueryData(["contract", created.id], created);
       setSelectedId(created.id);
       if (!line)
         throw new Error("The agreement was created without a coverage line.");
-      const planned = await post<MaintenanceContract>(
-        `/api/contracts/${created.id}/plans`,
-        {
-          operationId: crypto.randomUUID(),
-          contractId: created.id,
-          contractLineId: line.id,
-          assetId: null,
-          frequency,
-          startDate: planStart,
-          endsOn: expiresAt,
-        },
-      );
+      let planned = created;
+      for (const assetId of coversAll
+        ? [null]
+        : covered.map((asset) => asset.assetId)) {
+        planned = await post<MaintenanceContract>(
+          `/api/contracts/${created.id}/plans`,
+          {
+            operationId: crypto.randomUUID(),
+            contractId: created.id,
+            contractLineId: line.id,
+            assetId,
+            frequency,
+            startDate: planStart,
+            endsOn: expiresAt,
+          },
+        );
+      }
       const active = await post<MaintenanceContract>(
         `/api/contracts/${created.id}/status`,
         {
@@ -212,8 +229,12 @@ export function Contracts() {
             "Agreement created and activated in the operations workspace.",
         },
       );
+      queryClient.setQueryData(["contract", active.id], active);
       setSelectedId(active.id);
-      await refresh();
+      await Promise.all([
+        refresh(),
+        queryClient.invalidateQueries({ queryKey: ["contract", active.id] }),
+      ]);
       setNotice("Agreement created with a recurring plan and activated.");
     } catch (cause) {
       setError(cause);
@@ -242,7 +263,7 @@ export function Contracts() {
         operationId: crypto.randomUUID(),
         contractId: contract.id,
         contractLineId: line.id,
-        assetId: null,
+        assetId: contract.coversAllAssets ? null : selectedPlanAsset,
         serviceLocationId: selectedSite || null,
         frequency,
         startDate:
@@ -277,6 +298,11 @@ export function Contracts() {
   const loading = customers.isPending || contracts.isPending;
   const mainError = customers.error ?? contracts.error;
   const contract = detail.data;
+  const selectedPlanAsset = contract?.coveredAssets.some(
+    (asset) => asset.assetId === planAssetId && asset.active,
+  )
+    ? planAssetId
+    : contract?.coveredAssets.find((asset) => asset.active)?.assetId;
 
   return (
     <>
@@ -571,7 +597,9 @@ export function Contracts() {
                       <th scope="col">Labor</th>
                       <th scope="col">Parts</th>
                       <th scope="col">Visits used</th>
-                      <th scope="col">Remaining</th>
+                      <th scope="col">Visits left</th>
+                      <th scope="col">Committed</th>
+                      <th scope="col">Available to dispatch</th>
                       <th scope="col">Parts allowance remaining</th>
                     </tr>
                   </thead>
@@ -588,6 +616,13 @@ export function Contracts() {
                             : line.includedVisits}
                         </td>
                         <td>{line.visitsRemaining ?? "Unlimited"}</td>
+                        <td>{line.committedVisits ?? 0}</td>
+                        <td>
+                          {line.visitsAvailable ??
+                            (line.includedVisits === 0
+                              ? "Unlimited"
+                              : line.visitsRemaining)}
+                        </td>
                         <td>
                           {line.partsCovered
                             ? (line.partsAllowance - line.partsUsed).toFixed(2)
@@ -634,6 +669,44 @@ export function Contracts() {
                   )}
                   {manage ? (
                     <div className="form-body">
+                      {!contract.coversAllAssets ? (
+                        <>
+                          {equipment.error ? (
+                            <ErrorState
+                              error={equipment.error}
+                              retry={() => void equipment.refetch()}
+                            />
+                          ) : null}
+                          <Field
+                            label="Plan equipment"
+                            required
+                            hint="Each restricted equipment item needs its own recurring plan."
+                          >
+                            <Select
+                              value={selectedPlanAsset ?? ""}
+                              disabled={busy}
+                              onChange={(event) =>
+                                setPlanAssetId(event.target.value)
+                              }
+                            >
+                              <option value="">Choose covered equipment</option>
+                              {contract.coveredAssets
+                                .filter((asset) => asset.active)
+                                .map((asset) => (
+                                  <option
+                                    key={asset.assetId}
+                                    value={asset.assetId}
+                                  >
+                                    {equipment.data?.items.find(
+                                      (item) => item.id === asset.assetId,
+                                    )?.name ??
+                                      `Covered equipment ${asset.assetId.slice(0, 8)}`}
+                                  </option>
+                                ))}
+                            </Select>
+                          </Field>
+                        </>
+                      ) : null}
                       <div className="form-two">
                         <Field label="Plan start">
                           <Input
@@ -674,11 +747,28 @@ export function Contracts() {
                           </Select>
                         </Field>
                       </div>
-                      <Button disabled={busy} onClick={() => addPlan(contract)}>
+                      <Button
+                        disabled={
+                          busy ||
+                          (!contract.coversAllAssets && !selectedPlanAsset)
+                        }
+                        onClick={() => addPlan(contract)}
+                      >
                         Add recurring plan
                       </Button>
                     </div>
                   ) : null}
+                  {manage &&
+                  ["Draft", "Active", "Suspended"].includes(contract.status)
+                    ? contract.plans.map((plan) => (
+                        <ContractPlanEditor
+                          key={`${plan.id}:${plan.version}`}
+                          contract={contract}
+                          plan={plan}
+                          sites={sites}
+                        />
+                      ))
+                    : null}
                 </div>
                 <div>
                   <h3>Generate upcoming visits</h3>

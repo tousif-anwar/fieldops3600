@@ -31,32 +31,34 @@ const customer = {
 };
 
 beforeEach(() => {
-  vi.mocked(api).mockReset().mockImplementation(async (path) => {
-    if (path.startsWith("/api/customers")) {
-      return { items: [customer], total: 1, page: 1, pageSize: 100 };
-    }
-    if (path.startsWith("/api/contracts")) {
-      return {
-        items: [
-          {
-            id: "contract-1",
-            customerId: customer.id,
-            status: "Active",
-            effectiveFromUtc: "2026-01-01T00:00:00Z",
-            expiresAtUtc: "2027-01-01T00:00:00Z",
-            version: 2,
-            lineCount: 1,
-            visitCount: 4,
-            nextVisit: "2026-04-01",
-          },
-        ],
-        total: 1,
-        page: 1,
-        pageSize: 100,
-      };
-    }
-    return [];
-  });
+  vi.mocked(api)
+    .mockReset()
+    .mockImplementation(async (path) => {
+      if (path.startsWith("/api/customers")) {
+        return { items: [customer], total: 1, page: 1, pageSize: 100 };
+      }
+      if (path.startsWith("/api/contracts")) {
+        return {
+          items: [
+            {
+              id: "contract-1",
+              customerId: customer.id,
+              status: "Active",
+              effectiveFromUtc: "2026-01-01T00:00:00Z",
+              expiresAtUtc: "2027-01-01T00:00:00Z",
+              version: 2,
+              lineCount: 1,
+              visitCount: 4,
+              nextVisit: "2026-04-01",
+            },
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 100,
+        };
+      }
+      return [];
+    });
 });
 
 describe("maintenance agreements", () => {
@@ -74,7 +76,9 @@ describe("maintenance agreements", () => {
     );
     expect(await screen.findByText("Northwind Tower")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create and activate" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create and activate" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Next visit")).toBeInTheDocument();
   });
 });

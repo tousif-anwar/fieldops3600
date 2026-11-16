@@ -45,7 +45,7 @@ public sealed class ContractLifecycleResilienceTests(PostgresFixture fixture)
             Assert.Equal(2, await db.Outbox.CountAsync());
             Assert.All(await db.Outbox.ToArrayAsync(), x =>
                 Assert.Equal(healthy.Id, Json.Read<AuditEvent>(x.Body).EventPayload.GetProperty("contractId").GetGuid()));
-            committedHealthy = Json.Write(current);
+            committedHealthy = Snapshot(current);
         }
 
         // A later sweep retries the failed owner, while committed healthy work
@@ -55,7 +55,7 @@ public sealed class ContractLifecycleResilienceTests(PostgresFixture fixture)
                 await ContractLifecycleProcessor.Run(db, new FixedClock(Now.AddMinutes(1)), Policy, logger: logger));
         await using (var db = PostgresFixture.Db(connection, "customers"))
         {
-            Assert.Equal(committedHealthy, Json.Write(await Load(db, healthy.Id)));
+            Assert.Equal(committedHealthy, Snapshot(await Load(db, healthy.Id)));
             Assert.Equal(2, await db.ContractEvents.CountAsync());
             Assert.Equal(2, await db.Outbox.CountAsync());
         }
@@ -125,6 +125,13 @@ public sealed class ContractLifecycleResilienceTests(PostgresFixture fixture)
 
     private static Task<MaintenanceContract> Load(ServiceDb db, Guid id) => db.Contracts
         .Include(x => x.Plans).Include(x => x.Visits).AsSplitQuery().SingleAsync(x => x.Id == id);
+
+    private static string Snapshot(MaintenanceContract contract) => Json.Write(new
+    {
+        contract.Id, contract.Status, contract.Version, contract.UpdatedAtUtc,
+        Plans = contract.Plans.OrderBy(x => x.Id).ToArray(),
+        Visits = contract.Visits.OrderBy(x => x.Id).ToArray()
+    });
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {

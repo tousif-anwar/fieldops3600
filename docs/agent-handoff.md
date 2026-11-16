@@ -1,6 +1,6 @@
 # Enterprise implementation handoff
 
-Updated: 15 November 2026, America/New_York. Active request: nine enterprise capabilities in the latest attached brief, implemented as dependency-aware vertical slices. All nine remain in scope.
+Updated: 16 November 2026, America/New_York. Active request: nine enterprise capabilities in the latest attached brief, implemented as dependency-aware vertical slices. All nine remain in scope.
 
 ## Current phase
 
@@ -47,6 +47,11 @@ Do not promote a row to complete until its applicable definition-of-done gates i
 The original landing implementation remains in `stash@{0}`; do not apply it over newer website sources blindly.
 
 ## Verification
+
+- Local real RabbitMQ delivery: `python scripts/verify-enterprise-delivery.py` passed, with recent inventory **20 published / 20 reporting audit / 20 inbox** and customers **20/20/20**. Read-only matching of actual owner event IDs; no event injection/replay. CI now runs this after both live HTTP workflows. See `docs/enterprise/MESSAGING_EVIDENCE.md`.
+- Renewal component tests **2/2 passed**. Future Draft renewal→new plan→exact activation PostgreSQL regression passed in the lifecycle selection **23/23**.
+- The current completion module and migration005 are implemented, but are still undergoing focused tests and are not applied to the live local runtime yet. Do not deploy source against migration004 alone: the visit model now has completion/review/revision fields requiring005.
+- A live contract write/dispatch/renewal desktop journey passed; Pixel7 exposed actual intrinsic-width overflow (658px document at412px viewport). Scoped grid/field fixes are now in the rebuilt web image; the unweakened mobile journey is rerunning.
 
 - Current extension batch: full backend **180/180 passed, zero skips** before the final future-Draft plan/activation review fix. Lifecycle-selected **22/22** passed. The newly added regression and final rebuild remain to run.
 - Dedicated Inventory browser journey: **2/2 passed**, desktop and Pixel 7, actual Keycloak/API/UI with no request mocking. See `docs/enterprise/INVENTORY_BROWSER.md`.

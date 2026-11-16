@@ -123,7 +123,8 @@ public sealed record EntitlementDecision(
     int? VisitsRemaining = null,
     decimal? PartsAllowanceRemaining = null,
     bool LaborCovered = false,
-    bool PartsCovered = false);
+    bool PartsCovered = false,
+    int CommittedVisits = 0);
 
 public static class ContractRules
 {
@@ -230,7 +231,7 @@ public static class ContractRules
         (contract.ExpiresAtUtc is null || now < contract.ExpiresAtUtc.Value);
 
     public static EntitlementDecision Evaluate(MaintenanceContract contract, Guid customerId, Guid? assetId,
-        string serviceType, DateTimeOffset now)
+        string serviceType, DateTimeOffset now, Guid? allocationVisitId = null)
     {
         if (contract.CustomerId != customerId)
             return new(false, "The contract belongs to another customer.");
@@ -255,14 +256,46 @@ public static class ContractRules
             (x.ServiceType is null || string.Equals(x.ServiceType, serviceType, StringComparison.OrdinalIgnoreCase))))
             return new(false, "This service or equipment is excluded from the contract.");
         var usedVisits = contract.Usage.Where(x => x.ContractLineId == line.Id).Sum(x => x.VisitsUsed);
-        if (line.IncludedVisits > 0 && usedVisits >= line.IncludedVisits)
-            return new(false, "The contract visit allowance is exhausted.", contract.Id, line.Id, 0, line.PartsCovered ? line.PartsAllowance : null, line.LaborCovered, line.PartsCovered);
+        var committedVisits = CommittedVisits(contract, line.Id);
+        var ownAllocation = allocationVisitId is { } allocatedId
+            ? ValidAllocation(contract, line.Id, allocatedId, assetId) : null;
+        if (allocationVisitId.HasValue && ownAllocation is null)
+            return new(false, "The requested visit is not this service's committed maintenance allocation.", contract.Id, line.Id,
+                AvailableVisits(contract, line.Id), null, line.LaborCovered, line.PartsCovered, committedVisits);
+        var others = committedVisits - (ownAllocation is not null && HoldsAllocation(contract, ownAllocation) ? 1 : 0);
         var usedParts = contract.Usage.Where(x => x.ContractLineId == line.Id).Sum(x => x.PartsCost);
+        var remainingParts = line.PartsCovered ? Math.Max(0, line.PartsAllowance - usedParts) : (decimal?)null;
+        if (line.IncludedVisits > 0 && usedVisits + others >= line.IncludedVisits)
+            return new(false, usedVisits >= line.IncludedVisits ? "The contract visit allowance is exhausted."
+                : "The remaining contract visits are committed to existing service.", contract.Id, line.Id, 0,
+                remainingParts, line.LaborCovered, line.PartsCovered, committedVisits);
         return new(true, "Covered by the active contract.", contract.Id, line.Id,
-            line.IncludedVisits > 0 ? line.IncludedVisits - usedVisits : null,
-            line.PartsCovered ? Math.Max(0, line.PartsAllowance - usedParts) : null,
-            line.LaborCovered, line.PartsCovered);
+            line.IncludedVisits > 0 ? line.IncludedVisits - usedVisits - others : null,
+            remainingParts, line.LaborCovered, line.PartsCovered, committedVisits);
     }
+
+    /// <summary>Outstanding maintenance commitments, with completed usage counted only once.</summary>
+    public static int CommittedVisits(MaintenanceContract contract, Guid lineId) =>
+        contract.Visits.Count(x => x.ContractLineId == lineId && HoldsAllocation(contract, x));
+
+    /// <summary>Unallocated allowance for another job; null means unlimited visits.</summary>
+    public static int? AvailableVisits(MaintenanceContract contract, Guid lineId)
+    {
+        var line = contract.Lines.Single(x => x.Id == lineId);
+        return line.IncludedVisits == 0 ? null : Math.Max(0, line.IncludedVisits -
+            contract.Usage.Where(x => x.ContractLineId == lineId).Sum(x => x.VisitsUsed) - CommittedVisits(contract, lineId));
+    }
+
+    private static bool HoldsAllocation(MaintenanceContract contract, MaintenanceVisit visit) =>
+        (visit.Status is "Dispatching" or "Created" or "Scheduled" || visit.Status == "Completed" && visit.CompletionReviewRequired) &&
+        !contract.Usage.Any(x => x.ContractLineId == visit.ContractLineId && x.WorkOrderId == (visit.WorkOrderId ?? visit.Id) && x.VisitsUsed > 0);
+
+    private static MaintenanceVisit? ValidAllocation(MaintenanceContract contract, Guid lineId, Guid visitId, Guid? assetId) =>
+        contract.Visits.SingleOrDefault(x => x.Id == visitId && x.ContractId == contract.Id && x.CustomerId == contract.CustomerId &&
+            x.ContractLineId == lineId && x.AssetId == assetId && x.ServiceLocationId is not null && x.ServiceLocationId != Guid.Empty &&
+            (x.WorkOrderId is null || x.WorkOrderId == x.Id) &&
+            (x.Status is "Dispatching" or "Created" or "Scheduled" ||
+             x.Status == "Completed" && x.CompletionEventId is not null && !x.CompletionReviewRequired));
 
     /// <summary>Adds only missing visits and advances the plan; callers persist atomically.</summary>
     public static int GenerateVisits(MaintenanceContract contract, DateOnly throughDate, DateTimeOffset now)
@@ -322,7 +355,7 @@ public static class ContractRules
     }
 
     public static ContractUsage RecordUsage(MaintenanceContract contract, Guid lineId, Guid workOrderId,
-        int visitsUsed, decimal partsCost, DateTimeOffset now)
+        int visitsUsed, decimal partsCost, DateTimeOffset now, Guid? allocationVisitId = null)
     {
         if (workOrderId == Guid.Empty) throw new DomainException(400, "A work order is required for contract usage.");
         if (visitsUsed is < 0 or > 100) throw new DomainException(400, "Usage visits must be between zero and one hundred.");
@@ -330,9 +363,15 @@ public static class ContractRules
             throw new DomainException(400, "Usage parts cost must be nonnegative with at most two decimal places.");
         var line = contract.Lines.SingleOrDefault(x => x.Id == lineId && x.Active)
             ?? throw new DomainException(404, "Coverage line not found.");
+        var ownAllocation = allocationVisitId is { } allocatedId
+            ? contract.Visits.SingleOrDefault(x => x.Id == allocatedId) : null;
+        if (allocationVisitId.HasValue && (allocationVisitId != workOrderId || ownAllocation is null ||
+            ValidAllocation(contract, lineId, allocationVisitId.Value, ownAllocation.AssetId) is null))
+            throw new DomainException(409, "Usage must reference this work order's committed maintenance allocation.");
         var usedVisits = contract.Usage.Where(x => x.ContractLineId == lineId).Sum(x => x.VisitsUsed);
-        if (line.IncludedVisits > 0 && usedVisits + visitsUsed > line.IncludedVisits)
-            throw new DomainException(409, "Recorded visits exceed the contract allowance.");
+        var allocatedOthers = CommittedVisits(contract, lineId) - (ownAllocation is not null && HoldsAllocation(contract, ownAllocation) ? 1 : 0);
+        if (line.IncludedVisits > 0 && usedVisits + visitsUsed + allocatedOthers > line.IncludedVisits)
+            throw new DomainException(409, "Recorded visits would consume allowance already used or committed to other service.");
         var usedParts = contract.Usage.Where(x => x.ContractLineId == lineId).Sum(x => x.PartsCost);
         if (line.PartsCovered && usedParts + partsCost > line.PartsAllowance)
             throw new DomainException(409, "Recorded parts exceed the contract allowance.");
