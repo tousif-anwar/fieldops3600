@@ -23,6 +23,7 @@ public static class Bootstrap
         builder.Services.AddSingleton(new ServiceIdentity(service));
         builder.Services.AddSingleton(TimeProvider.System);
         if (service == "customers") builder.Services.AddContractLifecycle(builder.Configuration);
+        if (service == "work-orders") builder.Services.AddHostedService<WorkOrderSlaWorker>();
         if (service == "scheduling") builder.Services.AddHostedService<AssignmentOfferExpiryWorker>();
         builder.Services.AddDbContext<ServiceDb>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database") ?? throw new InvalidOperationException("ConnectionStrings:Database is required.")).ReplaceService<IModelCacheKeyFactory, ServiceModelKeyFactory>());
         builder.Services.AddHttpClient("services", client => client.Timeout = TimeSpan.FromSeconds(12));
@@ -114,6 +115,8 @@ public static class Bootstrap
         if (service == "customers") MaintenanceDispatch.Map(app);
         if (service == "customers") ContractLifecycleApi.Map(app);
         if (service == "customers") ContractPlanApi.Map(app);
+        if (service == "customers") ContractSlaTermsApi.Map(app);
+        if (service == "work-orders") WorkOrderSla.Map(app);
         if (service == "customers") ContractApi.Map(app);
         if (service == "inventory") InventoryApi.Map(app);
         if (service == "workflows") ServiceReportApi.Map(app);

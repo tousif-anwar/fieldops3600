@@ -48,6 +48,8 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
         else ContractPersistence.Ignore(b);
         if (identity.Name == "customers") ContractLifecyclePersistence.Configure(b);
         else ContractLifecyclePersistence.Ignore(b);
+        if (identity.Name == "work-orders") ContractSlaPersistence.Configure(b);
+        else ContractSlaPersistence.Ignore(b);
         var owned = identity.Name switch
         {
             "work-orders" => new[] { typeof(WorkOrder), typeof(ServiceRequest) },
@@ -171,7 +173,9 @@ public sealed partial class ServiceDb(DbContextOptions<ServiceDb> options, Servi
             ChangeTracker.Entries<AssetLocationChange>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
             ChangeTracker.Entries<ContractEvent>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
             ChangeTracker.Entries<ContractUsage>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
-            ChangeTracker.Entries<ContractRenewalRecord>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
+            ChangeTracker.Entries<ContractRenewalRecord>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<WorkOrderSlaSnapshot>().Any(x => x.State is EntityState.Modified or EntityState.Deleted) ||
+            ChangeTracker.Entries<WorkOrderSlaEvidence>().Any(x => x.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Audit evidence is append-only.");
         return base.SaveChangesAsync(cancellationToken);
     }

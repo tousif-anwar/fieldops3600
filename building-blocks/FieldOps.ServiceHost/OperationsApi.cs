@@ -204,10 +204,12 @@ public static class OperationsApi
             var now = clock.GetUtcNow();
             var order = new WorkOrder { Number = $"WO-{now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", Title = request.Title.Trim(), ReportedProblem = reportedProblem, CustomerName = customerName, SiteAddress = siteAddress, CustomerId = request.CustomerId, CustomerVersion = customerVersion, ServiceLocationId = request.ServiceLocationId, AssetId = request.AssetId, UnregisteredCustomerReason = unregisteredReason, ServiceCategory = request.ServiceCategory, Priority = request.Priority, TeamId = request.TeamId, CreatedAtUtc = now };
             if (request.MaintenanceVisitId is { } visitId) { order.Id = visitId; order.MaintenanceVisitId = visitId; }
+            ContractSlaTerms? slaTerms = null;
             if (order.CustomerId is { } customerId)
             {
                 var decision = await remote.Get<EntitlementDecision>("Customers", $"/api/contracts/entitlements?customerId={customerId:D}&serviceType={Uri.EscapeDataString(order.ServiceCategory)}{(order.AssetId is { } equipmentId ? "&assetId=" + equipmentId.ToString("D") : "")}{(request.ContractId is { } agreementId ? "&contractId=" + agreementId.ToString("D") : "")}{(request.MaintenanceVisitId is { } allocatedVisit ? "&allocationVisitId=" + allocatedVisit.ToString("D") : "")}", http, ct);
                 MaintenanceDispatch.ApplyDecision(order, decision, now);
+                slaTerms = decision.Sla;
                 if (request.MaintenanceVisitId.HasValue && (!decision.Covered || decision.ContractId != request.ContractId))
                     throw new DomainException(409, "The maintenance agreement no longer covers this visit. Review its entitlement before dispatch.");
             }
@@ -219,6 +221,7 @@ public static class OperationsApi
                 if (existing is not null) return Results.Ok(existing);
             }
             db.WorkOrders.Add(order);
+            WorkOrderSla.Attach(db, order, slaTerms, http, now);
             // Customer and address are deliberately excluded from integration/audit events.
             db.Enqueue(EventFactory.Create(http, "work-orders", "WorkOrderCreated.v1", order.Id, OrderPayload(order), order.Version, now));
             await db.SaveChangesAsync(ct);

@@ -39,13 +39,15 @@ public static class ContractLifecycleRules
             TeamId = source.TeamId, CustomerId = source.CustomerId, Status = "Draft",
             EffectiveFromUtc = effectiveFromUtc, ExpiresAtUtc = expiresAtUtc,
             TimeZoneId = source.TimeZoneId, CoversAllAssets = source.CoversAllAssets,
+            SlaClockOrigin = source.SlaClockOrigin,
             CreatedAtUtc = now, UpdatedAtUtc = now
         };
         renewed.Lines.AddRange(source.Lines.Select(x => new ContractLine
         {
             ContractId = renewed.Id, ServiceType = x.ServiceType, LaborCovered = x.LaborCovered,
             PartsCovered = x.PartsCovered, IncludedVisits = x.IncludedVisits,
-            PartsAllowance = x.PartsAllowance, Active = x.Active
+            PartsAllowance = x.PartsAllowance, Active = x.Active,
+            ResponseTargetMinutes = x.ResponseTargetMinutes, CompletionTargetMinutes = x.CompletionTargetMinutes
         }));
         var zone = TimeZoneInfo.FindSystemTimeZoneById(source.TimeZoneId);
         var starts = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(effectiveFromUtc, zone).DateTime);

@@ -121,7 +121,12 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         }
         db.Inbox.Add(new InboxMessage { Id = inboxId, ProcessedAtUtc = now });
         Notification? notification = null;
-        if (identity.Name == "work-orders") await ProjectOrder(e, context.CancellationToken);
+        if (identity.Name == "work-orders")
+        {
+            await ProjectOrder(e, context.CancellationToken);
+            var order = await db.WorkOrders.FindAsync([e.WorkOrderId], context.CancellationToken);
+            if (order is not null) await WorkOrderSla.Project(db, order, e, clock, context.CancellationToken);
+        }
         if (identity.Name == "notifications") notification = ProjectNotification(e, now);
         if (identity.Name == "reporting") await ProjectReporting(e, now, context.CancellationToken);
         await db.SaveChangesAsync(context.CancellationToken);
@@ -150,9 +155,11 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
                 if (e.SourceService == "scheduling") WorkOrderRules.ApplyBookingEvent(order, e.EventType, GetString(e, "technicianId"), e.SequenceNumber);
                 break;
             case "WorkflowStarted.v1":
+                if (e.SourceService != "workflows") break;
                 if (order.Status is not "Completed" and not "Cancelled") { order.Status = "InProgress"; order.TechnicianId = GetString(e, "technicianId"); order.Version++; }
                 break;
             case "WorkflowCompleted.v1":
+                if (e.SourceService != "workflows") break;
                 order.Status = "Completed"; order.CompletedAtUtc = GetDate(e, "completedAtUtc") ?? e.OccurredAtUtc; order.Version++;
                 db.Enqueue(new AuditEvent(Guid.NewGuid(), "WorkOrderCompleted.v1", 1, order.Id, e.WorkflowId, null, "system", "System", "work-orders", e.CorrelationId, e.EventId, e.TraceId, e.SpanId, e.OccurredAtUtc, clock.GetUtcNow(), order.Version, System.Text.Json.JsonSerializer.SerializeToElement(OperationsApi.OrderPayload(order), Json.Options))); break;
         }
@@ -203,7 +210,8 @@ public sealed class OperationalConsumer(ServiceDb db, ServiceIdentity identity, 
         projection.StateJson = Json.Write(ReplayEngine.Reconstruct(history)); projection.EventCount = history.Length; projection.UpdatedAtUtc = now;
         // Related stock activity and offers belong in replay, but are not evidence
         // that a work order was created, assigned, or advanced through a service stage.
-        if (e.SourceService == "inventory" || e.EventType.StartsWith("AssignmentOffer", StringComparison.Ordinal)) return;
+        if (e.SourceService == "inventory" || e.EventType.StartsWith("AssignmentOffer", StringComparison.Ordinal) ||
+            e.EventType.StartsWith("ContractSla", StringComparison.Ordinal)) return;
         var order = await db.WorkOrderFacts.FindAsync([e.WorkOrderId], ct);
         if (order is null) { order = new WorkOrderFact { WorkOrderId = e.WorkOrderId, CreatedAtUtc = e.OccurredAtUtc, TeamId = GetString(e, "teamId") ?? "" }; db.WorkOrderFacts.Add(order); }
         // Late creation enriches a pre-existing fact without erasing already observed completion.

@@ -94,6 +94,11 @@ public static class SchemaMigrator
             REVOKE ALL ON contract_events,contract_usage,contract_renewals FROM PUBLIC,{role};
             GRANT SELECT,INSERT ON contract_events,contract_usage,contract_renewals TO {role};
             """;
+        if (service == "work-orders") grants += $"""
+
+            REVOKE ALL ON work_order_sla_snapshots,work_order_sla_evidence FROM PUBLIC,{role};
+            GRANT SELECT,INSERT ON work_order_sla_snapshots,work_order_sla_evidence TO {role};
+            """;
         if (service == "assets") grants += $"""
 
             REVOKE ALL ON asset_changes FROM PUBLIC,{role};

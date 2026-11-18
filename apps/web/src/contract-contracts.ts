@@ -11,6 +11,67 @@ export interface ContractLine {
   committedVisits?: number;
   visitsAvailable?: number | null;
   active: boolean;
+  responseTargetMinutes?: number | null;
+  completionTargetMinutes?: number | null;
+}
+
+export type ContractSlaClockOrigin = "WorkOrderCreated" | "AppointmentStart";
+
+export const contractSlaClockLabel = (value?: ContractSlaClockOrigin | null) =>
+  value === "WorkOrderCreated"
+    ? "Work order creation"
+    : value === "AppointmentStart"
+      ? "Appointment start"
+      : "Not selected";
+
+export function parseContractSlaInput(
+  clock: string,
+  responseValue: string,
+  completionValue: string,
+) {
+  if (
+    clock !== "" &&
+    clock !== "WorkOrderCreated" &&
+    clock !== "AppointmentStart"
+  )
+    throw new Error(
+      "Choose work order creation or appointment start for the service target clock.",
+    );
+  const minutes = (value: string, label: string) => {
+    if (!value.trim()) return null;
+    const parsed = Number(value);
+    if (
+      !/^\d+$/.test(value.trim()) ||
+      !Number.isInteger(parsed) ||
+      parsed <= 0 ||
+      parsed > 2147483647
+    )
+      throw new Error(`${label} must use positive whole elapsed minutes.`);
+    return parsed;
+  };
+  const responseTargetMinutes = minutes(responseValue, "Service start target");
+  const completionTargetMinutes = minutes(
+    completionValue,
+    "Service completion target",
+  );
+  if (
+    (responseTargetMinutes !== null || completionTargetMinutes !== null) &&
+    !clock
+  )
+    throw new Error("Select a clock origin before setting service targets.");
+  if (
+    responseTargetMinutes !== null &&
+    completionTargetMinutes !== null &&
+    completionTargetMinutes < responseTargetMinutes
+  )
+    throw new Error(
+      "The service completion target must be at or after the service start target, measured from the same origin.",
+    );
+  return {
+    clockOrigin: clock === "" ? null : clock,
+    responseTargetMinutes,
+    completionTargetMinutes,
+  };
 }
 
 export interface CoveredAsset {
@@ -85,6 +146,7 @@ export interface MaintenanceContract {
   plans: MaintenancePlan[];
   visits: MaintenanceVisit[];
   usage: ContractUsage[];
+  slaClockOrigin?: ContractSlaClockOrigin | null;
 }
 
 export interface ContractSummary {
@@ -116,6 +178,7 @@ export interface PortalAgreement {
   timeZoneId: string;
   coversAllAssets: boolean;
   coveredAssets: CoveredAsset[];
+  slaClockOrigin?: ContractSlaClockOrigin | null;
 }
 
 export const contractFrequencies = [

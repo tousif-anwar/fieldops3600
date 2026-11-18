@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FieldOps.ServiceHost;
 
-public sealed record ContractLineInput(string ServiceType, bool LaborCovered, bool PartsCovered, int IncludedVisits, decimal PartsAllowance);
+public sealed record ContractLineInput(string ServiceType, bool LaborCovered, bool PartsCovered, int IncludedVisits, decimal PartsAllowance,
+    int? ResponseTargetMinutes = null, int? CompletionTargetMinutes = null);
 public sealed record CoveredAssetInput(Guid AssetId, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
 public sealed record ContractExclusionInput(string? ServiceType, Guid? AssetId, string Reason);
 public sealed record CreateContract(Guid OperationId, Guid CustomerId, DateTimeOffset EffectiveFromUtc, DateTimeOffset? ExpiresAtUtc,
-    string TimeZoneId, bool CoversAllAssets, ContractLineInput[] Lines, CoveredAssetInput[]? CoveredAssets, ContractExclusionInput[]? Exclusions);
+    string TimeZoneId, bool CoversAllAssets, ContractLineInput[] Lines, CoveredAssetInput[]? CoveredAssets, ContractExclusionInput[]? Exclusions,
+    string? SlaClockOrigin = null);
 public sealed record CreateMaintenancePlan(Guid OperationId, Guid ContractId, Guid ContractLineId, Guid? AssetId, string Frequency,
     DateOnly StartDate, DateOnly? EndsOn, Guid? ServiceLocationId = null);
 public sealed record GenerateContractVisits(Guid OperationId, Guid ContractId, DateOnly ThroughDate);
@@ -19,7 +21,7 @@ public sealed record ChangeContractStatus(Guid OperationId, Guid ContractId, int
 
 public sealed record ContractLineView(Guid Id, string ServiceType, bool LaborCovered, bool PartsCovered, int IncludedVisits,
     decimal PartsAllowance, int VisitsUsed, decimal PartsUsed, int? VisitsRemaining, bool Active,
-    int CommittedVisits = 0, int? VisitsAvailable = null);
+    int CommittedVisits = 0, int? VisitsAvailable = null, int? ResponseTargetMinutes = null, int? CompletionTargetMinutes = null);
 public sealed record CoveredAssetView(Guid AssetId, DateOnly EffectiveFrom, DateOnly? EffectiveTo, bool Active);
 public sealed record MaintenancePlanView(Guid Id, Guid ContractLineId, Guid? AssetId, string Frequency, DateOnly NextDueDate,
     DateOnly? EndsOn, bool Active, int Version, Guid? ServiceLocationId = null);
@@ -31,12 +33,12 @@ public sealed record ContractUsageView(Guid Id, Guid ContractLineId, Guid WorkOr
 public sealed record ContractView(Guid Id, string TeamId, Guid CustomerId, string Status, DateTimeOffset EffectiveFromUtc,
     DateTimeOffset? ExpiresAtUtc, string TimeZoneId, bool CoversAllAssets, int Version, DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc, ContractLineView[] Lines, CoveredAssetView[] CoveredAssets, MaintenancePlanView[] Plans,
-    MaintenanceVisitView[] Visits, ContractUsageView[] Usage);
+    MaintenanceVisitView[] Visits, ContractUsageView[] Usage, string? SlaClockOrigin = null);
 public sealed record ContractSummary(Guid Id, Guid CustomerId, string Status, DateTimeOffset EffectiveFromUtc, DateTimeOffset? ExpiresAtUtc,
     int Version, int LineCount, int VisitCount, DateOnly? NextVisit);
 public sealed record PortalContractView(Guid Id, string Status, DateTimeOffset EffectiveFromUtc, DateTimeOffset? ExpiresAtUtc,
     ContractLineView[] Lines, MaintenanceVisitView[] UpcomingVisits, string TimeZoneId, bool CoversAllAssets,
-    CoveredAssetView[] CoveredAssets);
+    CoveredAssetView[] CoveredAssets, string? SlaClockOrigin = null);
 
 public static class ContractApi
 {
@@ -81,7 +83,7 @@ public static class ContractApi
                 contract.EffectiveFromUtc, contract.ExpiresAtUtc, LineViews(contract),
                 contract.Visits.Where(x => x.DueDate >= today && (x.Status is "Pending" or "Dispatching" or "Created" or "Scheduled"))
                     .OrderBy(x => x.DueDate).Take(50).Select(VisitView).ToArray(), contract.TimeZoneId, contract.CoversAllAssets,
-                contract.CoveredAssets.OrderBy(x => x.EffectiveFrom).Select(x => new CoveredAssetView(x.AssetId, x.EffectiveFrom, x.EffectiveTo, x.Active)).ToArray());
+                contract.CoveredAssets.OrderBy(x => x.EffectiveFrom).Select(x => new CoveredAssetView(x.AssetId, x.EffectiveFrom, x.EffectiveTo, x.Active)).ToArray(), contract.SlaClockOrigin);
         }).ToArray());
     }
 
@@ -110,6 +112,7 @@ public static class ContractApi
                 EffectiveFromUtc = request.EffectiveFromUtc,
                 ExpiresAtUtc = request.ExpiresAtUtc,
                 TimeZoneId = request.TimeZoneId,
+                SlaClockOrigin = request.SlaClockOrigin,
                 CoversAllAssets = request.CoversAllAssets,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
@@ -121,7 +124,9 @@ public static class ContractApi
                 LaborCovered = line.LaborCovered,
                 PartsCovered = line.PartsCovered,
                 IncludedVisits = line.IncludedVisits,
-                PartsAllowance = line.PartsAllowance
+                PartsAllowance = line.PartsAllowance,
+                ResponseTargetMinutes = line.ResponseTargetMinutes,
+                CompletionTargetMinutes = line.CompletionTargetMinutes
             }).ToList();
             contract.CoveredAssets = assets.Select(asset => new CoveredAsset
             {
@@ -374,7 +379,7 @@ public static class ContractApi
             x.NextDueDate, x.EndsOn, x.Active, x.Version, x.ServiceLocationId)).ToArray(),
         contract.Visits.OrderBy(x => x.DueDate).Select(VisitView).ToArray(),
         contract.Usage.OrderByDescending(x => x.OccurredAtUtc).Select(x => new ContractUsageView(x.Id, x.ContractLineId, x.WorkOrderId,
-            x.VisitsUsed, x.PartsCost, x.OccurredAtUtc)).ToArray());
+            x.VisitsUsed, x.PartsCost, x.OccurredAtUtc)).ToArray(), contract.SlaClockOrigin);
 
     private static ContractLineView[] LineViews(MaintenanceContract contract) => contract.Lines.OrderBy(x => x.ServiceType).Select(line =>
     {
@@ -383,7 +388,8 @@ public static class ContractApi
         var parts = used.Sum(x => x.PartsCost);
         return new ContractLineView(line.Id, line.ServiceType, line.LaborCovered, line.PartsCovered, line.IncludedVisits,
             line.PartsAllowance, visits, parts, line.IncludedVisits == 0 ? null : Math.Max(0, line.IncludedVisits - visits), line.Active,
-            ContractRules.CommittedVisits(contract, line.Id), ContractRules.AvailableVisits(contract, line.Id));
+            ContractRules.CommittedVisits(contract, line.Id), ContractRules.AvailableVisits(contract, line.Id),
+            line.ResponseTargetMinutes, line.CompletionTargetMinutes);
     }).ToArray();
 
     private static MaintenanceVisitView VisitView(MaintenanceVisit visit) => new(visit.Id, visit.ContractLineId, visit.AssetId,

@@ -28,9 +28,15 @@ import type {
   ContractSummary,
   MaintenanceContract,
 } from "../contract-contracts";
-import { contractFrequencies, serviceTypes } from "../contract-contracts";
+import {
+  contractFrequencies,
+  serviceTypes,
+  contractSlaClockLabel,
+  parseContractSlaInput,
+} from "../contract-contracts";
 import { ContractRenewalSection } from "../components/ContractRenewal";
 import { ContractPlanEditor } from "../components/ContractPlanEditor";
+import { ContractSlaTermsEditor } from "../components/ContractSlaTermsEditor";
 
 const dateOnly = (value?: string | null) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString() : "—";
@@ -63,6 +69,9 @@ export function Contracts() {
   const [serviceType, setServiceType] = useState("HVAC");
   const [includedVisits, setIncludedVisits] = useState("2");
   const [partsAllowance, setPartsAllowance] = useState("0");
+  const [slaClockOrigin, setSlaClockOrigin] = useState("");
+  const [responseTarget, setResponseTarget] = useState("");
+  const [completionTarget, setCompletionTarget] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState(localDate);
   const [expiresAt, setExpiresAt] = useState(() => later(365));
   const [frequency, setFrequency] = useState("Quarterly");
@@ -176,6 +185,11 @@ export function Contracts() {
     setError(null);
     setNotice("");
     try {
+      const sla = parseContractSlaInput(
+        slaClockOrigin,
+        responseTarget,
+        completionTarget,
+      );
       const operationId = crypto.randomUUID();
       const created = await post<MaintenanceContract>("/api/contracts", {
         operationId,
@@ -184,6 +198,7 @@ export function Contracts() {
         expiresAtUtc: utcDate(expiresAt),
         timeZoneId: Intl.DateTimeFormat().resolvedOptions().timeZone,
         coversAllAssets: coversAll,
+        slaClockOrigin: sla.clockOrigin,
         lines: [
           {
             serviceType,
@@ -191,6 +206,8 @@ export function Contracts() {
             partsCovered: allowance > 0,
             includedVisits: visits,
             partsAllowance: allowance,
+            responseTargetMinutes: sla.responseTargetMinutes,
+            completionTargetMinutes: sla.completionTargetMinutes,
           },
         ],
         coveredAssets: covered,
@@ -372,6 +389,59 @@ export function Contracts() {
                 </Select>
               </Field>
             </div>
+            <details className="customer-subrecord">
+              <summary>Optional service targets</summary>
+              <p>
+                Leave targets blank when no service promise is agreed. Both
+                targets use elapsed UTC minutes from the selected origin.
+              </p>
+              <Field
+                label="Service target clock"
+                hint="For future maintenance, appointment start begins at its scheduled start."
+              >
+                <Select
+                  value={slaClockOrigin}
+                  disabled={busy}
+                  onChange={(event) => setSlaClockOrigin(event.target.value)}
+                >
+                  <option value="">No clock selected</option>
+                  <option value="WorkOrderCreated">Work order creation</option>
+                  <option value="AppointmentStart">Appointment start</option>
+                </Select>
+              </Field>
+              <div className="form-two">
+                <Field
+                  label="Service starts within (minutes)"
+                  hint="Service starts means the technician begins service."
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={2147483647}
+                    step={1}
+                    value={responseTarget}
+                    disabled={busy}
+                    onChange={(event) => setResponseTarget(event.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Service completes within (minutes)"
+                  hint="Total time from the same origin, not additional time after service starts."
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={2147483647}
+                    step={1}
+                    value={completionTarget}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setCompletionTarget(event.target.value)
+                    }
+                  />
+                </Field>
+              </div>
+            </details>
             <div className="form-two">
               <Field
                 label="Included visits"
@@ -584,6 +654,11 @@ export function Contracts() {
                   ) : null}
                 </div>
               ) : null}
+              <p>
+                Service target clock:{" "}
+                {contractSlaClockLabel(contract.slaClockOrigin)}. Targets use
+                elapsed UTC minutes.
+              </p>
               <div
                 className="table-scroll"
                 tabIndex={0}
@@ -601,6 +676,8 @@ export function Contracts() {
                       <th scope="col">Committed</th>
                       <th scope="col">Available to dispatch</th>
                       <th scope="col">Parts allowance remaining</th>
+                      <th scope="col">Service starts</th>
+                      <th scope="col">Service completes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -628,11 +705,31 @@ export function Contracts() {
                             ? (line.partsAllowance - line.partsUsed).toFixed(2)
                             : "Billable"}
                         </td>
+                        <td>
+                          {line.responseTargetMinutes == null
+                            ? "No target"
+                            : `Within ${line.responseTargetMinutes} min`}
+                        </td>
+                        <td>
+                          {line.completionTargetMinutes == null
+                            ? "No target"
+                            : `Within ${line.completionTargetMinutes} min`}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {manage &&
+              ["Draft", "Active", "Suspended"].includes(contract.status) ? (
+                <ContractSlaTermsEditor
+                  key={`${contract.id}:${contract.version}`}
+                  contract={contract}
+                  onSaved={() =>
+                    setNotice("Service targets updated for future work orders.")
+                  }
+                />
+              ) : null}
               <div className="detail-grid">
                 <div>
                   <h3>Recurring plans</h3>

@@ -12,6 +12,7 @@ public sealed class MaintenanceContract
     public DateTimeOffset EffectiveFromUtc { get; set; }
     public DateTimeOffset? ExpiresAtUtc { get; set; }
     public string TimeZoneId { get; set; } = "UTC";
+    public string? SlaClockOrigin { get; set; }
     public bool CoversAllAssets { get; set; }
     public int Version { get; set; } = 1;
     public DateTimeOffset CreatedAtUtc { get; set; }
@@ -34,6 +35,8 @@ public sealed class ContractLine
     public bool PartsCovered { get; set; }
     public int IncludedVisits { get; set; }
     public decimal PartsAllowance { get; set; }
+    public int? ResponseTargetMinutes { get; set; }
+    public int? CompletionTargetMinutes { get; set; }
     public bool Active { get; set; } = true;
 }
 
@@ -124,7 +127,8 @@ public sealed record EntitlementDecision(
     decimal? PartsAllowanceRemaining = null,
     bool LaborCovered = false,
     bool PartsCovered = false,
-    int CommittedVisits = 0);
+    int CommittedVisits = 0,
+    ContractSlaTerms? Sla = null);
 
 public static class ContractRules
 {
@@ -167,6 +171,7 @@ public static class ContractRules
             if (line.PartsAllowance < 0 || decimal.Round(line.PartsAllowance, 2) != line.PartsAllowance)
                 throw new DomainException(400, "Parts allowance must be a nonnegative amount with at most two decimal places.");
         }
+        ContractSlaRules.ValidateTerms(contract);
         if (contract.CoveredAssets.Select(x => x.AssetId).Distinct().Count() != contract.CoveredAssets.Count)
             throw new DomainException(400, "Covered equipment must be unique.");
         foreach (var covered in contract.CoveredAssets)
@@ -271,7 +276,10 @@ public static class ContractRules
                 remainingParts, line.LaborCovered, line.PartsCovered, committedVisits);
         return new(true, "Covered by the active contract.", contract.Id, line.Id,
             line.IncludedVisits > 0 ? line.IncludedVisits - usedVisits - others : null,
-            remainingParts, line.LaborCovered, line.PartsCovered, committedVisits);
+            remainingParts, line.LaborCovered, line.PartsCovered, committedVisits,
+            line.ResponseTargetMinutes.HasValue || line.CompletionTargetMinutes.HasValue
+                ? new ContractSlaTerms(contract.Id, line.Id, contract.Version, contract.SlaClockOrigin!,
+                    line.ResponseTargetMinutes, line.CompletionTargetMinutes, contract.TimeZoneId) : null);
     }
 
     /// <summary>Outstanding maintenance commitments, with completed usage counted only once.</summary>
