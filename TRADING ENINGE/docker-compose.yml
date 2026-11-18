@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=America/New_York
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    restart: unless-stopped

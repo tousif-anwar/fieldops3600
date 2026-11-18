@@ -1,0 +1,91 @@
+# ---------------------------------------------------------------------------
+# Strategy modules. Each entry maps to a class in backend/app/strategies/.
+# Params are the *defaults*; the UI can override them per strategy.
+# enabled: false keeps a strategy installed but out of the confluence engine.
+# requires: data capabilities needed to run (candles | trades | depth)
+# ---------------------------------------------------------------------------
+strategies:
+  trend_pullback:
+    label: Trend pullback
+    enabled: true
+    requires: [candles]
+    family: momentum
+    params:
+      ema_fast: 9
+      ema_slow: 21
+      pullback_atr: 0.35      # pullback depth vs ATR to count as "deep enough"
+      max_distance_atr: 1.2   # entry must be within this ATR distance of VWAP/EMA/POC
+      stop_atr: 0.9
+      min_structure_score: 0.45
+
+  sweep_reversal:
+    label: Liquidity sweep reversal
+    enabled: true
+    requires: [candles]
+    family: contra_trend
+    params:
+      lookback: 40
+      max_sweep_atr: 1.4      # sweep must be within this distance of the key level
+      require_reclaim: true
+      stop_atr: 0.8
+      min_score: 0.4
+
+  value_rotation:
+    label: Value area rotation
+    enabled: true
+    requires: [candles]
+    family: contra_trend
+    params:
+      require_outside_value: true
+      max_extension_atr: 1.6
+      min_value_width_atr: 0.8
+      stop_atr: 0.7
+      poc_fraction: 0.85      # target 1 scaled to POC distance
+
+  opening_range_breakout:
+    label: Opening range breakout + retest
+    enabled: true
+    requires: [candles]
+    family: momentum
+    params:
+      minutes: 30
+      max_retest_bars: 8
+      stop_atr: 0.75
+      min_range_atr: 0.25
+
+  absorption_reversal:
+    label: Absorption / iceberg reversal
+    enabled: true
+    requires: [trades, depth]
+    family: contra_trend
+    params:
+      min_absorption_score: 0.55
+      min_iceberg_evidence: 3
+      stop_atr: 0.8
+
+  # Bollinger bandwidth percentile squeeze, then a Donchian break with volume.
+  squeeze_expansion:
+    label: Squeeze expansion
+    enabled: true
+    requires: [candles]
+    family: momentum
+    params:
+      squeeze_rank: 25        # bandwidth percentile that counts as compressed
+      squeeze_lookback: 6     # bars the squeeze may have happened in
+      min_relative_volume: 1.2
+      max_atr_percentile: 92
+      stop_atr: 0.6
+      max_stop_atr: 2.5
+
+  # VWAP z-score fade, only when the AR(1) half-life says the stretch reverts.
+  vwap_mean_reversion:
+    label: VWAP band fade
+    enabled: true
+    requires: [candles]
+    family: contra_trend
+    params:
+      entry_z: 2.0            # standard deviations from VWAP to fade
+      stop_z: 3.2             # stop sits this far from VWAP
+      max_half_life: 14       # bars for the deviation to halve
+      max_variance_ratio: 1.30
+      max_stop_atr: 3.0

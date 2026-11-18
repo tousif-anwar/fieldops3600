@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pandas>=2.2
+numpy>=1.26
+PyYAML>=6.0
+# optional free/delayed Yahoo Finance adapter (enable in config/settings.yaml)
+# yfinance>=0.2.40
