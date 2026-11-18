@@ -5,6 +5,7 @@ Updated: 18 November 2026, America/New_York. The active request is the nine ente
 ## User decisions and workspace
 
 - User chose **local/test foundations** for notifications, Microsoft adapters and external validation. Do not invent credentials or claim live external delivery, tenant integration, staging, legal approval or certification.
+- On18November the user chose **response and completion targets** for maintenance agreement SLA entitlements. Leave targets unset until explicitly configured; preserve existing workflow-stage timers. Require an explicit clock origin when enabling terms so future maintenance work can use scheduled appointment start.
 - Repository: `C:/Users/tousi/Downloads/fieldops3600`, branch `codex/enterprise-completion`. Current saved commits include `d58be3e`, `935d82b`, `a9aaddd` and `d7ad124`. Follow actual Git state; do not redo committed work or commit/push automatically.
 - Preserve unrelated untracked `TRADING ENINGE/` and `data/server.pid`. Do not inspect, modify, stage or delete them as part of FieldOps work.
 - The original landing implementation remains in `stash@{0}`. Do not apply it over the newer website. The public landing page was already deployed at `https://tousif-anwar.github.io/fieldops3600/` from `1ea2dffb0bc476326faadb9db3832b1f6733ec0e`; authenticated backend changes are not a new Pages deployment.
@@ -56,7 +57,7 @@ Latest source:
 - Full backend **231/231 passed, zero skips**, clean compile,1m7s on18November. Command: `.\.tools\dotnet\dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore -m:1 --disable-build-servers -p:UseSharedCompilation=false`.
 - The grown suite initially failed from synthetic site insert ordering and pooled connections retained for many disposable test databases. Test-only fixes persist customer/sites before bound plans/visits and set `Pooling=false` only for isolated test database connection strings. Production pooling/constraints are unchanged. See `ContractPlanApiTests.cs` and `PostgresIntegrationTests.cs`.
 - Allowance/consumer/dispatch focused selection previously **27/27** passed. Recurrence amendment tests are now included in the231 full result.
-- Current web typecheck/lint passed; full test/build command is running in root exec session3557. The new recurrence editor has two component tests; final result is pending.
+- Current web typecheck/lint, **82/82 component/unit tests**, production build and formatting passed. The new recurrence editor's two tests verify retained-date boundaries/version submission and preserving operator input on a stale-command error.
 
 Earlier verified runtime (before latest allowance/amendment deployment):
 
