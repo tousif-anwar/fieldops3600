@@ -18,7 +18,10 @@ public sealed class PostgresFixture : IAsyncLifetime
         var name = "test_" + Guid.NewGuid().ToString("N");
         await using var connection = new NpgsqlConnection(Container.GetConnectionString()); await connection.OpenAsync();
         await using var command = new NpgsqlCommand($"CREATE DATABASE {name}", connection); await command.ExecuteNonQueryAsync();
-        var cs = new NpgsqlConnectionStringBuilder(Container.GetConnectionString()) { Database = name }.ConnectionString;
+        // Each test owns a distinct database. Its idle pool cannot be reused by
+        // later tests and would otherwise keep a server connection per database.
+        // Actual concurrently open connections remain independent and unpooled.
+        var cs = new NpgsqlConnectionStringBuilder(Container.GetConnectionString()) { Database = name, Pooling = false }.ConnectionString;
         await using var db = Db(cs, role); if (initialize) await db.Database.EnsureCreatedAsync(); return cs;
     }
     public static ServiceDb Db(string cs, string role) => new(new DbContextOptionsBuilder<ServiceDb>().UseNpgsql(cs).ReplaceService<IModelCacheKeyFactory, ServiceModelKeyFactory>().Options, new(role));

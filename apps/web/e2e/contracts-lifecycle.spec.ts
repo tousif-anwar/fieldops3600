@@ -6,6 +6,7 @@ import type {
   ContractPage,
   ContractRenewal,
   MaintenanceContract,
+  MaintenancePlan,
 } from "../src/contract-contracts";
 import type { Customer, Page as CustomerPage } from "../src/customer-contracts";
 import type { WorkOrder } from "../src/types";
@@ -95,8 +96,14 @@ interface ContractAudit {
   actorRole: string;
 }
 
+interface PlanAmendment {
+  contractId: string;
+  contractVersion: number;
+  plan: MaintenancePlan;
+}
+
 for (const restrictedEquipment of [false, true]) {
-  test(`manager activates, dispatches and renews a ${restrictedEquipment ? "restricted-equipment" : "generic"} maintenance agreement`, async ({
+  test(`manager activates, dispatches, amends and renews a ${restrictedEquipment ? "restricted-equipment" : "generic"} maintenance agreement`, async ({
     page,
   }, testInfo) => {
     test.setTimeout(180000);
@@ -363,6 +370,81 @@ for (const restrictedEquipment of [false, true]) {
       await page
         .getByRole("button", { name: customerName, exact: true })
         .click();
+
+      const beforeAmendmentResponse = await page.request.get(
+        `/api/contracts/${active.id}`,
+        { headers },
+      );
+      expect(beforeAmendmentResponse.ok()).toBe(true);
+      const beforeAmendment: MaintenanceContract =
+        await beforeAmendmentResponse.json();
+      const planBefore = beforeAmendment.plans[0];
+      const cadence = detail.locator("details").filter({
+        has: page.locator("summary").filter({ hasText: "Change HVAC recurrence" }),
+      });
+      await cadence.locator("summary").click();
+      await cadence
+        .getByLabel("New recurrence", { exact: true })
+        .selectOption("Quarterly");
+      const newDue = new Date(`${today}T00:00:00Z`);
+      newDue.setUTCDate(newDue.getUTCDate() + 45);
+      const newDueDate = newDue.toISOString().slice(0, 10);
+      const newEnd = new Date(expiry);
+      newEnd.setUTCDate(newEnd.getUTCDate() - 1);
+      await cadence
+        .getByLabel("First date in new cadence", { exact: false })
+        .fill(newDueDate);
+      await cadence
+        .getByLabel("New plan end", { exact: true })
+        .fill(newEnd.toISOString().slice(0, 10));
+      await cadence
+        .getByLabel("New plan service location", { exact: false })
+        .selectOption(site.id!);
+      const amendmentReason = `Synthetic browser recurrence change ${suffix}`;
+      await cadence
+        .getByLabel("Recurrence change reason", { exact: false })
+        .fill(amendmentReason);
+      const [amendmentResponse] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            new URL(response.url()).pathname ===
+              `/api/contracts/${active.id}/plans/${planBefore.id}`,
+        ),
+        cadence.getByRole("button", { name: "Save new recurrence", exact: true }).click(),
+      ]);
+      const amendment = await committed<PlanAmendment>(amendmentResponse);
+      expect(amendment.contractId).toBe(active.id);
+      expect(amendment.contractVersion).toBe(beforeAmendment.version + 1);
+      expect(amendment.plan).toMatchObject({
+        id: planBefore.id,
+        contractLineId: planBefore.contractLineId,
+        assetId: coveredAsset?.id ?? null,
+        serviceLocationId: site.id,
+        frequency: "Quarterly",
+        nextDueDate: newDueDate,
+        version: planBefore.version + 1,
+      });
+      const amendedResponse = await page.request.get(
+        `/api/contracts/${active.id}`,
+        { headers },
+      );
+      expect(amendedResponse.ok()).toBe(true);
+      const amended: MaintenanceContract = await amendedResponse.json();
+      expect(amended.visits).toEqual(beforeAmendment.visits);
+      expect(amended.usage).toEqual(beforeAmendment.usage);
+      expect(amended.plans).toHaveLength(1);
+      expect(amended.plans[0]).toEqual(amendment.plan);
+      const retainedJobResponse = await page.request.get(
+        `/api/work-orders/${dispatched.workOrderId}`,
+        { headers },
+      );
+      expect(retainedJobResponse.ok()).toBe(true);
+      expect(await retainedJobResponse.json()).toEqual(order);
+      await expect(cadence.locator("summary")).toContainText(newDueDate);
+      await page.screenshot({
+        path: testInfo.outputPath("contract-amended-recurrence.png"),
+      });
 
       const current = await page.request.get(`/api/contracts/${active.id}`, {
         headers,

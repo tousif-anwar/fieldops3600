@@ -355,6 +355,9 @@ public sealed class ContractPlanApiTests(PostgresFixture fixture)
         });
         configure?.Invoke(contract);
         db.Customers.AddRange(customer, foreign);
+        // Match the owner API lifecycle: customer sites exist before a plan or
+        // visit refers to them. The EF model does not order these opaque site FKs.
+        await db.SaveChangesAsync();
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
         return new(connection, customer.Id, contract.Id, plan.Id, originalSite.Id, newSite.Id, foreignSite.Id, assetId, existingJob);
