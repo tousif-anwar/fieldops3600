@@ -231,20 +231,26 @@ for (const restrictedEquipment of [false, true]) {
           .getByLabel("Covered equipment IDs", { exact: true })
           .fill(coveredAsset.id);
       }
-      const creation = posted(page, "/api/contracts");
-      const activation = page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          /^\/api\/contracts\/[^/]+\/status$/.test(
-            new URL(response.url()).pathname,
-          ),
+      const creation = posted(page, "/api/contracts").then((response) =>
+        committed<MaintenanceContract>(response),
       );
-      await form
-        .getByRole("button", { name: "Create and activate", exact: true })
-        .click();
-      const created = await committed<MaintenanceContract>(await creation);
+      const activation = page
+        .waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            /^\/api\/contracts\/[^/]+\/status$/.test(
+              new URL(response.url()).pathname,
+            ),
+        )
+        .then((response) => committed<MaintenanceContract>(response));
+      const [created, active] = await Promise.all([
+        creation,
+        activation,
+        form
+          .getByRole("button", { name: "Create and activate", exact: true })
+          .click(),
+      ]);
       expect(created.status).toBe("Draft");
-      const active = await committed<MaintenanceContract>(await activation);
       expect(active.id).toBe(created.id);
       expect(active.customerId).toBe(customer!.id);
       expect(active.status).toBe("Active");
@@ -305,10 +311,13 @@ for (const restrictedEquipment of [false, true]) {
           ) &&
           new URL(response.url()).pathname.endsWith("/dispatch"),
       );
-      await row
-        .getByRole("button", { name: "Create work order", exact: true })
-        .click();
-      const dispatched = await committed<DispatchResult>(await dispatch);
+      const [dispatchResponse] = await Promise.all([
+        dispatch,
+        row
+          .getByRole("button", { name: "Create work order", exact: true })
+          .click(),
+      ]);
+      const dispatched = await committed<DispatchResult>(dispatchResponse);
       expect(dispatched.dispatchComplete).toBe(true);
       expect(dispatched.status).toBe("Created");
       expect(dispatched.serviceLocationId).toBe(site.id);
@@ -379,6 +388,8 @@ for (const restrictedEquipment of [false, true]) {
       expect(beforeAmendmentResponse.ok()).toBe(true);
       const beforeAmendment: MaintenanceContract =
         await beforeAmendmentResponse.json();
+      expect(beforeAmendment.lines[0].committedVisits).toBe(1);
+      expect(beforeAmendment.lines[0].visitsAvailable).toBe(2);
       const planBefore = beforeAmendment.plans[0];
       const cadence = detail.locator("details").filter({
         has: page
@@ -700,6 +711,36 @@ for (const restrictedEquipment of [false, true]) {
             );
             cleanupStep = `work-order cancellation HTTP ${cancelled.status()}`;
             expect(cancelled.ok(), cleanupStep).toBe(true);
+            if (order.contractId && order.maintenanceVisitId) {
+              cleanupStep = "maintenance owner-cancellation projection";
+              await expect
+                .poll(
+                  async () => {
+                    const response = await page.request.get(
+                      `/api/contracts/${order.contractId}`,
+                      { headers },
+                    );
+                    expect(response.ok()).toBe(true);
+                    const agreement: MaintenanceContract =
+                      await response.json();
+                    const visit = agreement.visits.find(
+                      (item) => item.id === order.maintenanceVisitId,
+                    );
+                    return (
+                      visit?.status === "Cancelled" &&
+                      agreement.lines.every(
+                        (line) => line.committedVisits === 0,
+                      )
+                    );
+                  },
+                  {
+                    timeout: 15000,
+                    message:
+                      "Canonical owner cancellation releases this fixture's maintenance allowance",
+                  },
+                )
+                .toBe(true);
+            }
           }
           const agreementsResponse = await page.request.get(
             `/api/contracts?customerId=${customer.id}&pageSize=100`,
