@@ -43,4 +43,12 @@ Identical retries return the original response even after later generation, clos
 
 The new real PostgreSQL tests are [ContractPlanApiTests.cs](../../tests/backend/ContractPlanApiTests.cs). They cover duplicate-command races, competing commands with the same versions, replay after generation/closure, unchanged historical work, new-cadence generation, stale versions, closed states, explicit restart, all-status visit history, New York local/DST and exclusive-midnight boundaries, future Draft dates, team/customer/site isolation, active equipment/current site validation and an owner callback proving the team lock is not held across HTTP. The callback archives the site before returning so the transaction must reject the now-inactive reference.
 
-These tests are pending execution until the shared .NET window is released. No passing count or live HTTP/browser result is claimed here yet. The parent integration owns route registration, the operator UI and live acceptance.
+On 18 November 2026, the complete backend suite passed **231/231 tests, zero failures and zero skips**, including these plan-amendment tests, allowance allocation, completion projection, existing scheduling races and other PostgreSQL integration cases. Compilation was clean; test execution took one minute seven seconds.
+
+```powershell
+.\.tools\dotnet\dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore -m:1 --disable-build-servers -p:UseSharedCompilation=false --logger 'console;verbosity=minimal'
+```
+
+The first full run exposed two test-harness issues. The new plan fixture saved customer sites and site-bound plans/visits together, while EF does not model those opaque site relationships for insertion ordering. It now persists the customer/sites first, matching the actual owner API lifecycle. Separately, each disposable test database retained an idle Npgsql pool, exhausting PostgreSQL's default connection limit as the suite grew. Only disposable test-database connection strings now set `Pooling=false`; actual concurrent connections and database constraints remain exercised, and production pooling is unchanged. No test was skipped or assertion weakened.
+
+This establishes domain, handler and real PostgreSQL verification. The parent integration owns the separately reported live HTTP/browser acceptance and runtime deployment evidence.

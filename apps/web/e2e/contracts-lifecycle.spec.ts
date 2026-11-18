@@ -94,6 +94,7 @@ interface ContractAudit {
   action: string;
   actorId: string;
   actorRole: string;
+  detailsJson: string;
 }
 
 interface PlanAmendment {
@@ -380,7 +381,9 @@ for (const restrictedEquipment of [false, true]) {
         await beforeAmendmentResponse.json();
       const planBefore = beforeAmendment.plans[0];
       const cadence = detail.locator("details").filter({
-        has: page.locator("summary").filter({ hasText: "Change HVAC recurrence" }),
+        has: page
+          .locator("summary")
+          .filter({ hasText: "Change HVAC recurrence" }),
       });
       await cadence.locator("summary").click();
       await cadence
@@ -411,7 +414,9 @@ for (const restrictedEquipment of [false, true]) {
             new URL(response.url()).pathname ===
               `/api/contracts/${active.id}/plans/${planBefore.id}`,
         ),
-        cadence.getByRole("button", { name: "Save new recurrence", exact: true }).click(),
+        cadence
+          .getByRole("button", { name: "Save new recurrence", exact: true })
+          .click(),
       ]);
       const amendment = await committed<PlanAmendment>(amendmentResponse);
       expect(amendment.contractId).toBe(active.id);
@@ -442,6 +447,7 @@ for (const restrictedEquipment of [false, true]) {
       expect(retainedJobResponse.ok()).toBe(true);
       expect(await retainedJobResponse.json()).toEqual(order);
       await expect(cadence.locator("summary")).toContainText(newDueDate);
+      await cadence.scrollIntoViewIfNeeded();
       await page.screenshot({
         path: testInfo.outputPath("contract-amended-recurrence.png"),
       });
@@ -457,6 +463,18 @@ for (const restrictedEquipment of [false, true]) {
       );
       expect(auditBeforeResponse.ok()).toBe(true);
       const auditBefore: ContractAudit[] = await auditBeforeResponse.json();
+      const amendmentAudit = auditBefore.filter(
+        (item) => item.action === "MaintenancePlanAmended.v1",
+      );
+      expect(amendmentAudit).toHaveLength(1);
+      expect(amendmentAudit[0].actorRole).toBe("OperationsManager");
+      expect(JSON.parse(amendmentAudit[0].detailsJson)).toMatchObject({
+        contractId: active.id,
+        planId: planBefore.id,
+        reason: amendmentReason,
+        before: { frequency: "Monthly" },
+        after: { frequency: "Quarterly", nextDueDate: newDueDate },
+      });
       const renewalSection = detail.getByRole("region", {
         name: "Agreement renewal",
         exact: true,

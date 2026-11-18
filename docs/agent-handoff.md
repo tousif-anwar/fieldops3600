@@ -1,107 +1,83 @@
 # Enterprise implementation handoff
 
-Updated: 16 November 2026, America/New_York. Active request: nine enterprise capabilities in the latest attached brief, implemented as dependency-aware vertical slices. All nine remain in scope.
+Updated: 18 November 2026, America/New_York. The active request is the nine enterprise capabilities in the latest attached brief. All nine remain in scope. Implement one coherent vertical slice at a time and continue independent work when an external gate is unavailable.
 
-## Current phase
+## User decisions and workspace
 
-Inventory has API and desktop/mobile browser verification. The current uncommitted maintenance batch adds durable visit-to-work-order dispatch, site binding, coverage snapshots, renewal, calendar corrections, and an optional default-disabled lifecycle worker. Runtime migrations have been applied; final updated runtime/browser validation is in progress. Work is on `codex/enterprise-completion`, based on `1ea2dffb0bc476326faadb9db3832b1f6733ec0e`.
+- User chose **local/test foundations** for notifications, Microsoft adapters and external validation. Do not invent credentials or claim live external delivery, tenant integration, staging, legal approval or certification.
+- Repository: `C:/Users/tousi/Downloads/fieldops3600`, branch `codex/enterprise-completion`. Current saved commits include `d58be3e`, `935d82b`, `a9aaddd` and `d7ad124`. Follow actual Git state; do not redo committed work or commit/push automatically.
+- Preserve unrelated untracked `TRADING ENINGE/` and `data/server.pid`. Do not inspect, modify, stage or delete them as part of FieldOps work.
+- The original landing implementation remains in `stash@{0}`. Do not apply it over the newer website. The public landing page was already deployed at `https://tousif-anwar.github.io/fieldops3600/` from `1ea2dffb0bc476326faadb9db3832b1f6733ec0e`; authenticated backend changes are not a new Pages deployment.
 
-The user chose **local/test foundations** for external services. Use synthetic local notification sinks and contract-tested Microsoft adapters. Real delivery, an authorized Dataverse tenant, staging hosting, legal assessment, and production certification are not available evidence. Continue independent work rather than inventing credentials or claiming these gates passed.
+## Current phase and capability status
 
-## Capability status
+| Capability | Current evidence and remaining work |
+|---|---|
+| Inventory | Backend, web and technician-mobile source implemented; HTTP workflow, desktop/Pixel7 browser journey and real local RabbitMQ reporting delivery passed. Native Android/iOS runtime acceptance remains. |
+| Maintenance contracts | Agreements, coverage/exclusions, equipment dates, recurrence, renewal, optional lifecycle sweeps, durable dispatch, completion-driven usage and portal read implemented. Latest allowance allocation and recurrence amendments now pass full backend regression; updated runtime/browser acceptance is in progress. SLA entitlement and terms/exclusion amendment UI/API remain gaps; financial/material allowance integration belongs with later commercial work. |
+| Customer options/self-booking | Not implemented. Next phase reuses scheduling and its Booking authority; see booking design document when completed. |
+| Estimates/signatures/authorization | Not implemented. Shared decimal/currency calculation foundation exists; immutable approved revisions and a real authorization guard remain. |
+| Costing/invoices | Not implemented. Use actual stock/labor facts and one coherent commercial context; no invented costs or tax/legal claims. |
+| Notifications/preferences | Not implemented beyond existing in-app history. Add durable local provider sink, preferences, retries and truthful delivery states. |
+| Secure media/retention | Not implemented. Private verified uploads, authorization, retry/retention and mobile queue remain. |
+| Dataverse/Power Automate | Not implemented. Optional adapter with authenticated, versioned contracts; mocks differ from live tenant evidence. |
+| Production readiness | Not implemented. Hardened deployment, secrets/TLS/backups/restore, release gates and factual control evidence remain. |
 
-| Capability | Status | Next gate |
-|---|---|---|
-| Inventory/reservations/transfers/consumption | Implemented; dedicated live browser journey passed on desktop and Pixel 7; broker/mobile native runtime acceptance remain | Verify outbox delivery against RabbitMQ and mobile runtime |
-| Maintenance contracts/entitlements/recurrence | Core slice live-verified; dispatch/renewal/lifecycle extensions under final verification | Rebuild runtime with final review fix, run real HTTP/browser journey; then completion/usage integration and remaining documents/editing |
-| Customer appointment options/self-booking | Not implemented | Extend authoritative scheduling and constraints; no duplicate booking state |
-| Estimates/e-signature/financial authorization | Not implemented | Decimal policy, immutable approved revision/hash/intent evidence, work authorization guard |
-| Billing/job costing/internal invoices | Not implemented | Consume actual stock/labor and contract/estimate facts; immutable issued snapshot |
-| External notifications/preferences | Not implemented | Extend notifications; durable local delivery sink and preferences/retry states |
-| Secure media/retention | Not implemented | Authorized private objects, verified content, upload/retention state, offline retry |
-| Dataverse/Power Automate adapter | Not implemented | Optional authenticated adapter; mocks/contract tests distinguished from live tenant |
-| Production deployment/certification evidence | Not implemented | Hardened environment/secrets/TLS/backups, restore/smoke evidence, external controls matrix |
+Do not promote a capability merely because its screen exists. Relevant domain/API/database/authorization/events/client/failure/CI/end-to-end gates must pass.
 
-Do not promote a row to complete until its applicable definition-of-done gates in the user brief pass. Source code or a successful screen render alone is insufficient.
+## Architecture and business rules
 
-## Architecture decisions
+- Preserve canonical work-order lifecycle, scheduling, assignment offers, technician execution, customer intake, reporting/replay and existing owner boundaries.
+- Inventory is its own stock/ledger context (service5109). Contracts extend `customers`; equipment remains owned by `assets` and is validated through its reference API. Do not add a separate service for each new capability.
+- Reuse numbered immutable SQL migrations/checksums, actor-scoped request hashes/receipts, shared PostgreSQL advisory locks, transactional outbox and inbox deduplication. Runtime roles do not own schema.
+- Maintenance dispatch commits intent under the customer team lock, calls the canonical work-order owner outside that transaction, then links the result. Deterministic work-order ID equals visit ID. Lost responses repair the same commitment, including after trusted completion; retries do not create another job or repeat usage. Scheduling assigns technicians separately.
+- Customer consumer accepts matching owner work-order and scheduling facts, respects assignment revisions and terminal service state, and appends exactly one completed visit usage with zero invented material cost. Changed/ineligible coverage retains Completed evidence with an explicit review reason. Current non-active terms and intervening lifecycle changes conservatively require review.
+- Finite maintenance visit allowance now accounts for consumed usage plus Dispatching/Created/Scheduled allocations and unresolved completed review allocations. Own-visit validation is bound to exact committed references. Only a canonical `WorkOrderUpdated.v1` Cancelled fact releases capacity; appointment cancellation and pending cancellation intent do not. Ordinary job coverage snapshots remain advisory; no general financial authorization is claimed.
+- Recurrence amendment uses expected contract/plan versions, a reason, an active owned site, receipt, audit and outbox. Its new first date must follow all already-generated dates for the same line/equipment. Existing visits/jobs retain dates. No deletion or hidden rescheduling.
+- Renewal creates a new future Draft with fresh terms/IDs/allowances and immutable linkage. Usage, visits and plans are not copied. Future Draft plans can be configured; activation cannot precede the exact effective instant.
+- Month-end anchors and agreement-local time zones are enforced. Lifecycle worker is integrated but default-disabled unless an explicit horizon/policy is configured. Per-agreement failures roll back and do not starve healthy agreements.
+- Reuse Fluent UI and native mobile patterns. Stock writes are online-only. Keep production or legal claims tied to independent evidence.
 
-- Keep the eight existing service-owned contexts and canonical work-order lifecycle. Preserve customer intake, assignment offers, service reports, SLA, and replay.
-- Inventory is a justified bounded context because stock balances, reservations, transfer receipts, consumption, and an immutable ledger must commit atomically.
-- Contracts extend `customers` because it owns customer identity, locations, contacts, and consent. Equipment remains owned by `assets` and is validated over its reference API. Do not duplicate equipment rows.
-- Reuse PostgreSQL migrations/checksums, per-service EF models, actor-scoped request hashes/receipts, transactional outbox, inbox deduplication, signed role/team claims, and authoritative remote resource checks.
-- Reuse the existing Fluent UI and React Native design tokens/components. Inventory mutations require a connection; never silently queue optimistic stock balances.
-- Contract mutations use team-scoped PostgreSQL advisory locks, version concurrency tokens, and append-only event/usage tables. Generated visits use database uniqueness including a NULL-safe equipment expression.
-- Estimates, billing, and invoices remain a later commercial context; do not create three independent financial ledgers.
-- New production or legal compliance claims require independent evidence. Deterministic monetary rules are application policy, not tax/legal advice.
+## Migrations and local runtime
 
-## Commits in this run
+Applied to the existing local databases without resetting volumes:
 
-- `a2bceef` — inventory domain, persistence, API, immutable ledger migration, host/gateway/Compose wiring, clients, tests.
-- `66ef07e` — technician-mobile Expo dependency alignment.
-- `aaef565` — contract domain, persistence, API, migration, gateway/schema/local-role integration.
-- `edc6764` — contract domain, migration, and API PostgreSQL tests.
-- `b2fa6f1` — contract operator workspace, customer-portal agreement view, live HTTP verification, append-only usage fix, integration documentation.
-- `ddc6eec` — contract browser smoke, Keycloak/booking test hardening, final handoff evidence.
+- customers001 existing registry,002 contracts,003 maintenance site/dispatch,004 renewal/calendar lifecycle,005 completion/review/revision evidence.
+- work-orders009 maintenance/coverage snapshot fields.
+- Earlier inventory migrations/context are already deployed. Never edit applied migration files.
+- Allowance allocation and plan amendment add no schema migration.
 
-The original landing implementation remains in `stash@{0}`; do not apply it over newer website sources blindly.
+Docker Desktop was stopped on18November and has been started hidden. Docker29.9.2 is ready. At this handoff update, `docker compose build customers work-orders web` followed by `docker compose up -d` is still running in root exec session88537. Logs: `.local/contract-allowance-build.log` and `.local/contract-stack-start.log`. Image layers are downloading; do not reset volumes or start competing rebuilds. Wait for completion, run readiness, then authorize live checks.
 
 ## Verification
 
-- Final completion/dispatch batch: full backend **195/195 passed, zero skips**. Migration005 applied to the actual local customers database; final customer/work-order images restarted. `python tests/backend/verify_contracts_http.py -v` **1/1 passed in110.3s** through real booking, technician template execution, RabbitMQ, work-order completion and exactly one contract usage record. Runtime ACL verification passed afterward.
-- Web: **80/80** tests passed; typecheck/lint and full formatting check passed. Three previously unformatted web files were normalized without semantic changes.
-- Generic and restricted-equipment contract browser journeys **4/4 passed**, desktop and Pixel7, before the next allocation/plan-amendment source additions. Restricted creation now creates a plan per covered equipment item and preserves asset/site through dispatch and renewal. The full60-case browser regression is running; no final result claimed yet.
-- Current new source slice (not yet deployed): allowance allocation from existing visit states, trusted owner cancellation release, and versioned recurrence plan amendment. New `ContractPlanApi.cs` / `ContractPlanEditor.tsx`; root API/bootstrap/DTO hooks are integrated. Focused and final combined tests remain to run. No new schema migration is expected.
+Latest source:
 
-- Local real RabbitMQ delivery: `python scripts/verify-enterprise-delivery.py` passed, with recent inventory **20 published / 20 reporting audit / 20 inbox** and customers **20/20/20**. Read-only matching of actual owner event IDs; no event injection/replay. CI now runs this after both live HTTP workflows. See `docs/enterprise/MESSAGING_EVIDENCE.md`.
-- Renewal component tests **2/2 passed**. Future Draft renewal→new plan→exact activation PostgreSQL regression passed in the lifecycle selection **23/23**.
-- The current completion module and migration005 are implemented, but are still undergoing focused tests and are not applied to the live local runtime yet. Do not deploy source against migration004 alone: the visit model now has completion/review/revision fields requiring005.
-- A live contract write/dispatch/renewal desktop journey passed; Pixel7 exposed actual intrinsic-width overflow (658px document at412px viewport). Scoped grid/field fixes are now in the rebuilt web image; the unweakened mobile journey is rerunning.
+- Full backend **231/231 passed, zero skips**, clean compile,1m7s on18November. Command: `.\.tools\dotnet\dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore -m:1 --disable-build-servers -p:UseSharedCompilation=false`.
+- The grown suite initially failed from synthetic site insert ordering and pooled connections retained for many disposable test databases. Test-only fixes persist customer/sites before bound plans/visits and set `Pooling=false` only for isolated test database connection strings. Production pooling/constraints are unchanged. See `ContractPlanApiTests.cs` and `PostgresIntegrationTests.cs`.
+- Allowance/consumer/dispatch focused selection previously **27/27** passed. Recurrence amendment tests are now included in the231 full result.
+- Current web typecheck/lint passed; full test/build command is running in root exec session3557. The new recurrence editor has two component tests; final result is pending.
 
-- Current extension batch: full backend **180/180 passed, zero skips** before the final future-Draft plan/activation review fix. Lifecycle-selected **22/22** passed. The newly added regression and final rebuild remain to run.
-- Dedicated Inventory browser journey: **2/2 passed**, desktop and Pixel 7, actual Keycloak/API/UI with no request mocking. See `docs/enterprise/INVENTORY_BROWSER.md`.
-- Customer migrations **003_maintenance_dispatch.sql**, **004_contract_lifecycle.sql**, and work-order **009_contract_dispatch.sql** applied to the existing local databases with successful owner migration jobs. No volume reset or data deletion.
-- Web typecheck/lint, **78/78** existing tests, and production build passed. Two new renewal component tests are being validated separately; one initial exact-label selector included Fluent's required asterisk and is corrected.
+Earlier verified runtime (before latest allowance/amendment deployment):
 
-- Backend build: `./.tools/dotnet/dotnet.exe build services/FieldOps.Backend.slnx -c Release --no-restore -m:1 -p:UseSharedCompilation=false` — passed, one NU1900 warning when the NuGet vulnerability feed is unreachable.
-- Full backend tests: `./.tools/dotnet/dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore` — **155/155 passed, zero skips**, including real PostgreSQL Testcontainers.
-- Contract-selected tests: `./.tools/dotnet/dotnet.exe test tests/backend/FieldOps.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~Contract'` — **9/9 passed**.
-- Live contract HTTP workflow: `python tests/backend/verify_contracts_http.py -v` — **1/1 passed** against real Keycloak/gateway/customers/work-orders. It creates a uniquely labelled synthetic customer/agreement, verifies replay and changed-command conflicts, authorization denials, plan creation, activation, idempotent visit generation, entitlement exhaustion after usage, append-only usage, and cancellation.
-- Inventory HTTP workflow: `python tests/backend/verify_inventory_http.py -v` — **1/1 passed** earlier in the run, including reservation races, transfer receipt, consumption/return, unauthorized access, and replay.
-- Web: `cd apps/web && npm run typecheck && npm run lint` passed; `npm run test` — **78/78 passed**; `npm run build` passed.
-- Mobile: `npm run check` — **48/48 passed**; `npx expo install --check` reports dependencies up to date.
-- Local bootstrap: `python scripts/test-local-bootstrap.py` — **6/6 passed** earlier.
-- Database permissions: `python scripts/verify-database-permissions.py` — passed earlier; the customers role now has SELECT/INSERT only on `customer_changes`, `contract_events`, and `contract_usage`.
-- Live Playwright suite after rebuilding the web image: **39 passed, 0 failed, 13 intentionally skipped**. The Keycloak form wait was widened to 15 seconds. The booking journey now searches up to 12 business days because repeated local runs had filled the fixed 15:00 slot on the first work week.
-- Dedicated contract browser smoke: `cd apps/web && WEB_BASE_URL=http://localhost:8088 FIELDOPS_LIVE_E2E=1 npx playwright test e2e/contracts.spec.ts --reporter=list` — **1/1 desktop test passed**, mobile intentionally skipped.
-- Containers were rebuilt for customers and gateway and the contract migration job exited 0. No volumes were reset.
+- Backend completion/dispatch batch **195/195**; web **80/80**, formatting/typecheck/lint/build passed; mobile **48/48**, Expo dependencies aligned.
+- `python tests/backend/verify_contracts_http.py -v` **1/1 passed in110.3s** through real Keycloak, gateway, scheduling, technician template execution, RabbitMQ, work-order completion and exactly one zero-material-cost contract usage record. Script now also asserts committed/available allowance; rerun against updated images.
+- `python scripts/verify-database-permissions.py` passed isolated runtime identities and append-only history/renewal ACLs.
+- `python scripts/verify-enterprise-delivery.py` passed recent inventory **20published/20audit/20inbox** and customers **20/20/20**, including completion/usage events after the real workflow. Read-only matching; no injected messages. Must run after fresh workflows because it requires events within24hours.
+- Inventory live browser **2/2** and contract generic/restricted equipment journeys **4/4** passed on desktop/Pixel7. Real assets/site/version are preserved through plan, work order and renewal. Intrinsic mobile form overflow and newly-created detail cache races were fixed and verified.
+- Latest combined60-case browser attempt had **43passed/14intentional mobile skips/3failures** from real gateway429s. A fresh-window four-worker attempt also exceeded the shared manager's240/minute budget by the phone phase. Do not weaken the limiter or claim a green full suite. A bounded desktop-then-phone runner with fresh windows and preserved output directories is being added; old ephemeral session72078 is unavailable and its success was not established.
 
-## Current implementation batch
+## Current parallel work
 
-- Inventory files remain as recorded in earlier handoffs; the full backend suite includes its PostgreSQL, HTTP, and client checks.
-- Contracts:
-  - `building-blocks/FieldOps.Core/Contracts.cs`
-  - `building-blocks/FieldOps.ServiceHost/ContractPersistence.cs`
-  - `building-blocks/FieldOps.ServiceHost/ContractApi.cs`
-  - `services/customers/migrations/002_contracts.sql` (immutable, applied once)
-  - `apps/web/src/pages/Contracts.tsx`, `apps/web/src/components/PortalAgreements.tsx`, `apps/web/src/contract-contracts.ts`
-  - `tests/backend/ContractTests.cs`, `ContractPostgresTests.cs`, `ContractApiTests.cs`, `verify_contracts_http.py`
-  - `apps/web/e2e/contracts.spec.ts`
-  - `docs/enterprise/CONTRACTS_INTEGRATION.md`
-- The contract web route is `/contracts`; customer agreement data is read at `/api/customer-portal/agreements`. The new page was smoke-tested through the live gateway after rebuilding the web image.
-- The customer service runtime role has append-only access to `contract_events` and `contract_usage`; the live test caught and now verifies the EF navigation-add/update mistake that initially caused a 42501 permission error.
-- Rebuild the web image (`docker compose build web`, then recreate `web`) before expecting the new contracts screen at `http://localhost:8088`.
-
-## Known gaps and blockers
-
-- The new maintenance dispatch bridge creates exactly one unassigned job per visit with durable retry intent. It reuses normal scheduling afterward; a completed schedule-to-service-to-usage journey still needs implementation/verification.
-- Work-order creation and equipment changes now evaluate coverage and store an advisory snapshot. This does not reserve entitlement capacity or provide financial authorization; estimates/billing must supply that later authority.
-- Renewal and optional automatic expiry/generation/missed processing are implemented with PostgreSQL tests. The worker is integrated but disabled without explicit policy. Contract documents and per-asset effective-date/exclusion editing remain.
-- New live contract write/dispatch/renewal browser tests are in progress. Existing contract smoke remains valid for the older runtime.
-- Real RabbitMQ outbox delivery and mobile runtime acceptance remain unverified (inventory and contract events are queued in the transactional outbox).
-- Warehouse tests could not run on host Python without `psycopg`; previous documented result is 44/44 in a provisioned environment.
-- No external notification delivery, e-signature provider, Dataverse tenant, staging deployment, or certification assessment has been performed or claimed.
+- `contract_regression_repair`: backend fixes/result complete; preparing read-only `docs/enterprise/CUSTOMER_BOOKING_DESIGN.md` for the next phase. No runtime/manager traffic.
+- `contract_acceptance_review`: extending four real contract journeys to amend recurrence before renewal; adding a bounded live E2E runner/package/CI hook. Wait for root runtime-ready signal. Trace remains off for sensitive browser specs. Preserve every assertion and propagate failures.
+- Inherited fixture cleanup requires read/confirm before writes: exact contract suffix `8d95c1b1` with matching synthetic site, and Inventory job `Synthetic inventory browser job937aa790` /number `WO-20261116-648B99` (check actual spacing in stored record). Only cancel own unassigned Created records after checking no booking/workflow activity; release only their reservations/requests. Never delete customer/site/ledger/history. An interrupted cleanup may have performed a prefix; re-read state first.
 
 ## Next action
 
-Integrate generated maintenance visits with the existing work-order and scheduling owners: create exactly one work order per pending visit, preserve source/correlation/idempotency, link the visit's `WorkOrderId`, and schedule through the existing booking/assignment rules rather than silently assigning technicians. Then call entitlement evaluation during work-order creation/classification and add the focused contract and inventory browser journeys. After that, begin customer appointment options/self-booking without duplicating the authoritative booking state.
+1. Finish current web checks and local image/start/readiness. Preserve unrelated files and existing data.
+2. Run updated real contract HTTP, ACL and broker evidence against the allowance/amendment runtime. Then allow a fresh rate-limit window before the four extended contract browser journeys and bounded full browser suite. Do not restart services while acceptance runs.
+3. Fix concrete failures without skipping or weakening checks. Update evidence/handoff and clearly distinguish source, PostgreSQL, real local broker/browser, native and external gates.
+4. Address remaining contract SLA/terms-management gaps as explicit slices or document their later dependency; begin customer self-booking through the existing scheduling authority once this acceptance batch is settled. All subsequent capabilities remain authorized and unfinished.
+
+Relevant skills previously read/applied: React best practices, React Native patterns, .NET security, code simplification, behavior-oriented API testing, and the official ASP.NET Core skill pinned into `.local/enterprise-skills/aspnet-core`. No external credentials or production approvals have been inferred.
